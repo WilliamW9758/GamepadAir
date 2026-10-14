@@ -1,0 +1,4 @@
+Generated with the built-in image generation tool.
+Design brief reconstructed from development notes (not the verbatim generation prompt).
+
+Minimalist PocketPad app icon: an ivory phone/controller silhouette with a graphite directional cross and two circular buttons on a charcoal square background. No text, gradients or 3D effects.

@@ -1,0 +1,4 @@
+Generated with the built-in image generation tool.
+Design brief reconstructed from development notes (not the verbatim generation prompt).
+
+Original PocketPad app icon: a landscape phone-shaped gamepad with directional cross, four action buttons and a connection motif, with a polished sculpted finish. No text or logos.

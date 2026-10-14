@@ -1,0 +1,4 @@
+BUNDLE_PREFIX = dev.pocketpad.prototype
+SWIFT_VERSION = 5.0
+// Optional, untracked: DEVELOPMENT_TEAM and a unique BUNDLE_PREFIX.
+#include? "Local.xcconfig"
