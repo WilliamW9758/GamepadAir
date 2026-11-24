@@ -48,3 +48,9 @@ Check the Mac App ID's distribution HID capability assignment and enablement, th
 Runtime implementation has advanced since the historical notes above: layouts now carry controller style and profiles, Xbox/PlayStation emulation is implemented, and the user exercised Valheim and Stardew Valley. These gameplay observations do not establish public distribution approval or universal game compatibility.
 
 Portal recheck November 23: the Mac App ID has HID Virtual Device checked and HID Virtual Device (development) unchecked. A manual Developer ID profile flow permits choosing the Mac App ID but stops at “No Certificates are available.” Create an authorized Developer ID Application certificate, then retry a manual profile before assuming distribution permission is missing.
+
+### Explicit distribution profile issued
+
+With the user's approval, created a Developer ID Application certificate and imported its identity into the login keychain. The portal issued “PocketPad Mac Developer ID 2026-11.” Decoding the downloaded Developer ID profile confirms com.apple.developer.hid.virtual.device=true, the correct Mac application identifier, and no get-task-allow entitlement. This resolves the profile-issuance blocker without removing HID or requesting additional capability approval. Config/ExportOptions-DeveloperID.plist now uses this explicit profile and Developer ID signing; contributors must replace the profile mapping with their own.
+
+Mac export is being retried; keychain authentication is required for codesign to use the new key. Notarization and clean-machine validation remain separate gates.

@@ -14,7 +14,7 @@ Updated November 23, 2026. This is a preparation packet, not an approval or publ
 
 - iPhone: App Store / TestFlight, free, iOS 17+, landscape. Preserve dev.pocketpad.prototype.iphone.
 - Mac: Developer ID signed, notarized standalone download, macOS 15+. Preserve dev.pocketpad.prototype.mac. Use MacGamepad-HID, not the keyboard-only MacGamepad release configuration.
-- Resolve the Developer ID HID profile first. Then export, notarize, staple, and test on another Mac before publishing a companion download.
+- Explicit Developer ID certificate/profile are now created; downloaded profile includes HID. Finish export after keychain authentication, then notarize, staple, and test on another Mac before publishing a companion download.
 - Build 6 is reserved for this local rehearsal, not confirmed on App Store Connect. Check uploaded build numbers before the next upload. Never reuse an already-uploaded build number.
 - Keep manual release. Production submission must include working AI/Marketplace or remove their preview entry points. TestFlight previews must be clearly described in beta notes.
 
@@ -89,7 +89,7 @@ Internal beta first: install through TestFlight and install the notarized Mac co
 
 ## Repeatable build commands
 
-Use Scripts/prepare_release.sh with a new build number and destination. It archives and exports locally, never uploads or submits. The Mac export currently fails at the HID distribution gate. iPhone output is still useful for validation. Do not treat archive success as successful distribution.
+Use Scripts/prepare_release.sh with a new build number and destination. It archives and exports locally, never uploads or submits. The initial automatic Mac export failed; the explicit profile now includes HID, and signing authentication is being completed. iPhone output is still useful for validation. Do not treat archive success as successful distribution.
 
 After signing is resolved: notarize the Developer ID app, staple it, create the drag-to-Applications DMG with Scripts/package_mac_release.sh, then verify Gatekeeper on a clean Mac. The packaging script deliberately refuses an unstapled or incorrectly signed app.
 
@@ -105,3 +105,18 @@ After signing is resolved: notarize the Developer ID app, staple it, create the 
 ## Local rehearsal artifacts
 
 Saved outside Git at `~/PocketPad Backups/Release Prep 2026-11-23/`: iPhone and Mac archives, App Store IPA, export summary, and build/export/test logs. Build 6 was archived from commit 718b83e before this preparation pass updated the embedded privacy text. Rebuild the final version after the planned services and disclosure changes. No binary has been uploaded to TestFlight, notarization, or production.
+
+## Notarization handoff after signed export
+
+Use an authorized Apple notarytool keychain credential profile (or Xcode Organizer's Developer ID distribution flow). Keep passwords and API private keys out of this repository and chat. Example commands below assume a credential profile named PocketPad-Notary has already been configured by the account owner:
+
+```sh
+ditto -c -k --keepParent '/path/to/export/MacGamepad.app' '/path/to/PocketPad-notarization.zip'
+xcrun notarytool submit '/path/to/PocketPad-notarization.zip' --keychain-profile PocketPad-Notary --wait
+# Continue only after status Accepted. Fetch the submission log if rejected.
+xcrun stapler staple '/path/to/export/MacGamepad.app'
+xcrun stapler validate '/path/to/export/MacGamepad.app'
+Scripts/package_mac_release.sh '/path/to/export/MacGamepad.app' '/path/to/PocketPad-1.0.dmg'
+```
+
+These are future steps, not a record of completed notarization. An App Store Connect upload and a notarization submission are different operations; neither publishes the app on its own.
