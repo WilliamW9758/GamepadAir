@@ -5,7 +5,7 @@
 This status supersedes the build 6 rehearsal notes below.
 
 - Version 1.0 (11), source commit `4a39a93aa48fc8486fb241afaa0f8243f80e856e`, archived and exported for iPhone and Mac.
-- iPhone upload and processing succeeded. Encryption compliance information was saved based on use of Apple-provided encryption APIs. TestFlight shows **Ready to Submit**. Beta App Review has not been submitted.
+- iPhone upload and processing succeeded. Encryption compliance information was saved based on use of Apple-provided encryption APIs. Submitted to TestFlight Beta App Review on November 24, 2026. TestFlight shows **Waiting for Review** for the **Friends** external group. Automatic tester notification is off; no invitations have been sent. An empty Internal group was created as Apple's prerequisite for external groups.
 - Mac Developer ID notarization and stapled export succeeded. Signature validation, Gatekeeper assessment, and DMG verification passed.
 - [Mac beta download and installation instructions](https://github.com/WilliamW9758/PocketPad/releases/tag/v1.0-beta.11). GitHub's uploaded asset digest matches the local SHA-256 checksum.
 - All 127 Swift package tests passed; both app bundles passed release resource checks.
