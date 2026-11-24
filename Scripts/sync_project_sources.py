@@ -37,6 +37,24 @@ for path in sorted(root.glob("Sources/**/*.swift")) + sorted(root.glob("Apps/**/
         objects[build] = dict(isa="PBXBuildFile", fileRef=ref)
         phase["files"].append(build)
 
+# Layered iPhone icons are compiled by actool; the Mac keeps its existing catalog icon.
+phone = next(item for item in objects.values() if item.get("isa") == "PBXNativeTarget" and item["name"] == "PhoneGamepad")
+resources = next(objects[key] for key in phone["buildPhases"] if objects[key]["isa"] == "PBXResourcesBuildPhase")
+for path in sorted((root / "Assets/LayeredIcons").glob("*.icon")):
+    relative = str(path.relative_to(root))
+    ref = identifier(relative)
+    objects[ref] = dict(isa="PBXFileReference", lastKnownFileType="folder.icon", path=relative, sourceTree="SOURCE_ROOT")
+    if ref not in main_group["children"]:
+        main_group["children"].append(ref)
+    build = identifier("PhoneGamepad-" + ref)
+    objects[build] = dict(isa="PBXBuildFile", fileRef=ref)
+    if build not in resources["files"]:
+        resources["files"].append(build)
+for config in objects[phone["buildConfigurationList"]]["buildConfigurations"]:
+    settings = objects[config]["buildSettings"]
+    settings["ASSETCATALOG_COMPILER_APPICON_NAME"] = "PocketPad"
+    settings["ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES"] = "AppIconWhite AppIconGraphite"
+
 def serialize(value):
     if isinstance(value, dict):
         return "{\n" + "".join(f"{json.dumps(key)} = {serialize(item)};\n" for key, item in value.items()) + "}"

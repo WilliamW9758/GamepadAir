@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Build/sign/install the simple iPhone app without Xcode destination discovery.
+"""Legacy flattened-icon fallback: build/sign/install without Xcode destination discovery.
+
+Use the PhoneGamepad Xcode target for production appearance-aware layered icons.
 
 Uses the existing iPhoneOS SDK, signing identity, and provisioning profile.
 No downloads or account/provisioning changes. Run with --help for options.
@@ -84,7 +86,7 @@ def main():
     icon_entries = {}
     for name in ["Red", "White", "Graphite"]:
         icon_set = "AppIcon" if name == "Red" else f"AppIcon{name}"
-        source = root / f"Assets/AppIcon.xcassets/{icon_set}.appiconset"
+        source = root / (f"Assets/AppIcon.xcassets/{icon_set}.appiconset" if name == "Red" else f"Assets/LegacyAppIcons/{icon_set}.appiconset")
         shutil.copyfile(source / "icon-180.png", app / f"IconPreview{name}.png")
         # Content-specific resource names keep system icon caches from using a
         # previous image when a development build replaces artwork in place.
