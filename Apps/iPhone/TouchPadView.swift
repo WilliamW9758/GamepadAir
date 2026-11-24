@@ -472,6 +472,15 @@ final class TouchPadView: UIView {
                 continue
             }
             let circle = UIBezierPath(ovalIn: CGRect(x: item.center.x - item.radius, y: item.center.y - item.radius, width: item.radius * 2, height: item.radius * 2))
+            if item.control == .dpad && dpadStyle == .fourWay {
+                circle.removeAllPoints()
+                let points: [(CGFloat, CGFloat)] = [(-0.32,-0.92),(0.32,-0.92),(0.32,-0.32),(0.92,-0.32),(0.92,0.32),(0.32,0.32),(0.32,0.92),(-0.32,0.92),(-0.32,0.32),(-0.92,0.32),(-0.92,-0.32),(-0.32,-0.32)]
+                for (index, point) in points.enumerated() {
+                    let p = CGPoint(x: item.center.x + point.0 * item.radius, y: item.center.y + point.1 * item.radius)
+                    if index == 0 { circle.move(to: p) } else { circle.addLine(to: p) }
+                }
+                circle.close(); circle.lineJoinStyle = .round
+            }
             let context = UIGraphicsGetCurrentContext()
             context?.saveGState()
             context?.setShadow(offset: CGSize(width: 0, height: 2), blur: 6, color: UIColor.black.withAlphaComponent(0.07).cgColor)
@@ -506,6 +515,13 @@ final class TouchPadView: UIView {
                     segment.addArc(withCenter: item.center, radius: item.radius * 0.92, startAngle: start, endAngle: end, clockwise: true)
                     segment.addArc(withCenter: item.center, radius: inner, startAngle: end, endAngle: start, clockwise: false)
                     segment.close()
+                    if dpadStyle == .fourWay {
+                        let key = UIBezierPath(roundedRect: CGRect(x: -item.radius * 0.29, y: -item.radius * 0.89,
+                            width: item.radius * 0.58, height: item.radius * 0.59), cornerRadius: item.radius * 0.08)
+                        key.apply(CGAffineTransform(rotationAngle: angle))
+                        key.apply(CGAffineTransform(translationX: item.center.x, y: item.center.y))
+                        segment.removeAllPoints(); segment.append(key)
+                    }
                     segment.lineJoinStyle = .round
                     let pressed = !editing && state.hat == UInt8(direction)
                     (pressed ? accent.withAlphaComponent(0.25) : idleFill).setFill(); segment.fill()

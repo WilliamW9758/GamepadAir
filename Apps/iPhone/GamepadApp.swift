@@ -378,8 +378,11 @@ struct PhoneGamepadApp: App {
                             Label(server.connected ? "Connected" : "Disconnected", systemImage: server.connected ? "checkmark.circle.fill" : "circle")
                                 .font(.callout).foregroundStyle(server.connected ? PadAppearance.accent : .secondary)
                         }
-                        HStack {
-                            Spacer()
+                        HStack(spacing: 16) {
+                            Text("Hold the Settings button to quickly edit your layout.")
+                                .font(.callout).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 8)
                             Button { startEditing() } label: { Label("Edit layout", systemImage: "slider.horizontal.3") }
                                 .buttonStyle(PadActionStyle(prominent: true))
                         }

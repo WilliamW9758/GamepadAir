@@ -99,7 +99,9 @@ GeometryReader { geometry in
                     let p = placement(item)
                     let diameter = item.radius * unit * p.scale * 2
                     ZStack {
-                        Circle().fill(.regularMaterial)
+                        if item.id == "dpad" && mode.effectiveDPadStyle == .fourWay {
+                            DPadCross().fill(.regularMaterial)
+                        } else { Circle().fill(.regularMaterial) }
                         if item.id != "dpad" && isPressed(item.id) { Circle().fill(Color.accentColor.opacity(0.65)) }
                         if let state = liveState, item.id == "left-stick" || item.id == "right-stick" {
                             let left = item.id == "left-stick"
@@ -113,7 +115,10 @@ GeometryReader { geometry in
                             Circle().fill(Color.accentColor).frame(width: 18, height: 18)
                                 .offset(x: sin(angle) * diameter * 0.42, y: -cos(angle) * diameter * 0.42)
                         }
-                        Circle().strokeBorder(layout.unmappedControls.contains(where: { $0.canvasID == item.id }) ? Color.red : (selected == item.id ? Color.accentColor : Color.primary.opacity(0.16)), lineWidth: 2)
+                        let borderColor = layout.unmappedControls.contains(where: { $0.canvasID == item.id }) ? Color.red : (selected == item.id ? Color.accentColor : Color.primary.opacity(0.16))
+                        if item.id == "dpad" && mode.effectiveDPadStyle == .fourWay {
+                            DPadCross().stroke(borderColor, style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+                        } else { Circle().strokeBorder(borderColor, lineWidth: 2) }
                         // Compensate for canvas scaling: labels remain 14 pt on screen.
                         if item.id == "dpad" {
                             DPadPreview(hat: liveState?.hat ?? 8, style: mode.effectiveDPadStyle)
@@ -399,7 +404,9 @@ private struct DPadPreview: View {
                     let angle = Double(direction) * .pi / 4
                     let start = angle - .pi / 2 - style.sectorHalfAngle + 0.045
                     let end = angle - .pi / 2 + style.sectorHalfAngle - 0.045
-                    let segment = Path { path in
+                    let segment = style == .fourWay ? Path(roundedRect: CGRect(x: -radius * 0.29, y: -radius * 0.89, width: radius * 0.58, height: radius * 0.59), cornerRadius: radius * 0.08)
+                        .applying(CGAffineTransform(rotationAngle: angle))
+                        .applying(CGAffineTransform(translationX: radius, y: radius)) : Path { path in
                         path.addArc(center: center, radius: radius * 0.92, startAngle: .radians(start), endAngle: .radians(end), clockwise: false)
                         path.addArc(center: center, radius: radius * 0.23, startAngle: .radians(end), endAngle: .radians(start), clockwise: true)
                         path.closeSubpath()
@@ -414,5 +421,19 @@ private struct DPadPreview: View {
                 }
             }
         }.allowsHitTesting(false)
+    }
+}
+
+private struct DPadCross: Shape {
+    func path(in rect: CGRect) -> Path {
+        let r = min(rect.width, rect.height) / 2
+        let points: [(CGFloat, CGFloat)] = [(-0.32,-0.92),(0.32,-0.92),(0.32,-0.32),(0.92,-0.32),(0.92,0.32),(0.32,0.32),(0.32,0.92),(-0.32,0.92),(-0.32,0.32),(-0.92,0.32),(-0.92,-0.32),(-0.32,-0.32)]
+        return Path { path in
+            for (index, point) in points.enumerated() {
+                let p = CGPoint(x: rect.midX + point.0 * r, y: rect.midY + point.1 * r)
+                if index == 0 { path.move(to: p) } else { path.addLine(to: p) }
+            }
+            path.closeSubpath()
+        }
     }
 }

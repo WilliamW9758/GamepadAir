@@ -8,17 +8,29 @@ PocketPad is in release preparation. Keyboard/mouse and virtual gamepad output w
 
 ## Features
 
-- USB cable, local Wi-Fi, and Bluetooth transports. USB is the most exercised path; wireless needs broader device/network testing.
-- Xbox and PlayStation touch-layout presets, named layouts, and independent Aim/Cursor modes.
-- Move, resize, rename, and color controls; optional per-layout haptics.
-- Optional linked positions across modes, copy-position, ghost outlines, and editor undo/redo.
-- Analog sticks with optional floating centers, stick-tap actions, hold-to-aim attack buttons, and a cursor trackpad.
-- Custom buttons and an eight-direction radial quick bar.
-- Keyboard/mouse mappings with hold/tap behavior, combinations, scroll inputs, mouse sensitivity, and automatic running.
-- App-scoped or global input, with release on stale connection/disconnect.
-- Layout backups and portable JSON profiles that can bundle Mac mappings. Layout edits and selection sync between connected devices.
+- USB cable, local Wi-Fi, and Bluetooth connections, with guided first-time setup and a shorter reconnect flow. USB is the most exercised path; wireless needs broader testing.
+- A live Mac view that mirrors the phone’s layout, screen proportions, buttons, sticks, D-pad, and radial input.
+- A combined layout and mapping editor on Mac, plus touch editing on iPhone. Move, resize, rename, color, add, and remove controls, with undo/redo.
+- Named layouts with creation, duplication, renaming, deletion, import/export, and selection/edit synchronization between connected devices. Clear saved layouts or erase local app data from Settings, with confirmation.
+- Input type belongs to each layout: keyboard/mouse or controller. Converting a copy preserves straightforward mappings and flags controls that need manual remapping.
+- Xbox and PlayStation emulation, including guide buttons. Default button labels follow the emulated controller; custom labels stay unchanged.
+- Optional Aim/Cursor behavior for layouts that need it. Single-mode layouts hide the mode switch and other-mode outlines.
+- Floating or fixed sticks, center-hold L3/R3 followed by dragging, stick-tap actions, hold-to-aim attack buttons, and a cursor trackpad.
+- Four-direction or eight-direction D-pads, custom buttons, and radial controls with fewer than eight mapped directions. Unused radial directions share their space with adjacent mapped choices.
+- Keyboard/mouse mappings with hold/tap behavior, editable combinations, scroll inputs, mouse sensitivity, and automatic running.
+- Per-layout button haptics with adjustable strength, plus supported game rumble forwarded to the phone. Stick movement does not trigger button feedback.
+- A movable phone Settings button: tap for settings, hold to edit, or drag to reposition.
+- Native layered app icons with red, white, and graphite choices and system appearance support.
+- Active-app or single-app targeting, input paused while editing without disconnecting, and release of held input on stale connections or disconnects.
+- Bounded Mac input diagnostics: a rolling five-minute window capped at 512 KB. The last saved log can remain after quitting; see [privacy details](docs/PRIVACY.md).
 
-Controller layouts can select Xbox or PlayStation emulation. Recognition, prompts, and Steam Input requirements vary by game; public distribution signing is still being validated.
+Controller recognition, button prompts, rumble, and Steam Input requirements vary by game. Valheim and Stardew Valley have been exercised locally; this is not a guarantee of compatibility with every game or configuration.
+
+## Community layouts and assisted discovery
+
+Marketplace and assisted layout discovery currently have **local preview interfaces**, not live online services. The planned flow is to find a community layout by game or scenario, then offer a generated starting layout if no suitable result exists. Fine edits stay in the regular editor.
+
+The [portable layout format draft](docs/layout-format/README.md) includes a schema and example designed for validation and readable authoring. It is not yet a replacement for the app’s existing JSON export format. The [AWS service plan](docs/AWS_LAYOUT_SERVICE.md) covers hosting, search, uploads, moderation, and generation; no service is deployed yet.
 
 ## Build and run
 
@@ -51,7 +63,7 @@ After adding Swift files, run `python3 Scripts/sync_project_sources.py`. Avoid r
 
 ## Release preparation
 
-See [release readiness and product roadmap](docs/RELEASE_PLAN.md) for launch blockers, the guided setup redesign, Community Layouts, and the proposed AI layout assistant. AI and Marketplace currently have local preview interfaces; the online services are not implemented.
+See [release readiness and product roadmap](docs/RELEASE_PLAN.md) for launch blockers, Community Layouts, and assisted layout discovery.
 
 `Config/AppInfo.plist` supplies Bonjour declarations to the app Info.plists; it is not a privacy manifest. Required-reason API declarations are in `Config/PrivacyInfo.xcprivacy`. See the [submission packet](docs/SUBMISSION.md) for archive validation and outstanding release gates.
 
