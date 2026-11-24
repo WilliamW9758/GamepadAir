@@ -116,7 +116,7 @@ GeometryReader { geometry in
                         Circle().strokeBorder(layout.unmappedControls.contains(where: { $0.canvasID == item.id }) ? Color.red : (selected == item.id ? Color.accentColor : Color.primary.opacity(0.16)), lineWidth: 2)
                         // Compensate for canvas scaling: labels remain 14 pt on screen.
                         if item.id == "dpad" {
-                            DPadPreview(hat: liveState?.hat ?? 8)
+                            DPadPreview(hat: liveState?.hat ?? 8, style: mode.effectiveDPadStyle)
                         } else {
                             Text(item.label).font(.system(size: 14 / scale, weight: .medium))
                                 .fixedSize().help(item.label)
@@ -202,6 +202,17 @@ GeometryReader { geometry in
                 } else { Text("Select a control to edit it.").foregroundStyle(.secondary) }
                 Spacer()
             }.frame(height: 36)
+            if selected == "dpad" {
+                HStack {
+                    Picker("D-pad style", selection: Binding(get: { mode.effectiveDPadStyle }, set: { value in
+                        change { $0.modes[modeIndex].dpadStyle = value }
+                    })) {
+                        ForEach(DPadStyle.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }.pickerStyle(.segmented).frame(width: 320)
+                    Text("4 directions excludes diagonals.").foregroundStyle(.secondary)
+                    Spacer()
+                }
+            }
             mappingInspector
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], alignment: .leading, spacing: 12) {
                 ForEach(items.filter { mappingSummary($0.id) != nil }) { item in
@@ -378,15 +389,16 @@ GeometryReader { geometry in
 
 private struct DPadPreview: View {
     let hat: UInt8
+    let style: DPadStyle
     var body: some View {
         GeometryReader { geometry in
             let radius = geometry.size.width / 2
             let center = CGPoint(x: radius, y: radius)
             ZStack {
-                ForEach(0..<8) { direction in
+                ForEach(style.directions, id: \.self) { direction in
                     let angle = Double(direction) * .pi / 4
-                    let start = angle - .pi / 2 - .pi / 8 + 0.045
-                    let end = angle - .pi / 2 + .pi / 8 - 0.045
+                    let start = angle - .pi / 2 - style.sectorHalfAngle + 0.045
+                    let end = angle - .pi / 2 + style.sectorHalfAngle - 0.045
                     let segment = Path { path in
                         path.addArc(center: center, radius: radius * 0.92, startAngle: .radians(start), endAngle: .radians(end), clockwise: false)
                         path.addArc(center: center, radius: radius * 0.23, startAngle: .radians(end), endAngle: .radians(start), clockwise: true)

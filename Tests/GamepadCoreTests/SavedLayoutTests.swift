@@ -2,6 +2,31 @@ import XCTest
 @testable import GamepadCore
 
 final class SavedLayoutTests: XCTestCase {
+    func testDPadDirectionStyles() {
+        for style in DPadStyle.allCases {
+            XCTAssertEqual(style.hat(x: 0, y: 0), 8)
+            XCTAssertEqual(style.hat(x: 0.1, y: 0), 8)
+            XCTAssertEqual(style.hat(x: 0, y: -1), 0)
+            XCTAssertEqual(style.hat(x: 1, y: 0), 2)
+            XCTAssertEqual(style.hat(x: 0, y: 1), 4)
+            XCTAssertEqual(style.hat(x: -1, y: 0), 6)
+        }
+        XCTAssertEqual(DPadStyle.eightWay.hat(x: 1, y: -1), 1)
+        XCTAssertEqual(DPadStyle.fourWay.hat(x: 0.8, y: -1), 0)
+        XCTAssertEqual(DPadStyle.fourWay.hat(x: 1, y: -0.8), 2)
+        for degree in 0..<360 {
+            let angle = Double(degree) * .pi / 180
+            XCTAssertTrue([0, 2, 4, 6].contains(Int(DPadStyle.fourWay.hat(x: sin(angle), y: -cos(angle)))))
+        }
+    }
+    func testDPadStyleStorageAndLegacyDefault() throws {
+        var mode = LayoutMode(name: "Default", cursor: false)
+        let legacyData = try JSONEncoder().encode(mode)
+        XCTAssertFalse(String(decoding: legacyData, as: UTF8.self).contains("dpadStyle"))
+        XCTAssertEqual(try JSONDecoder().decode(LayoutMode.self, from: legacyData).effectiveDPadStyle, .eightWay)
+        mode.dpadStyle = .fourWay
+        XCTAssertEqual(try JSONDecoder().decode(LayoutMode.self, from: JSONEncoder().encode(mode)), mode)
+    }
     func testDeleteSelectedLayoutLeavesValidSelectionAndPreservesOthers() throws {
         var catalog = LayoutCatalog.fresh()
         let presets = catalog.layouts

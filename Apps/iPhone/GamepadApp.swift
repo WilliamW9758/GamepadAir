@@ -326,6 +326,17 @@ struct PhoneGamepadApp: App {
                     Toggle("Show other mode outline", isOn: $showGhost)
                     Text("Keep this button’s position and size matched across modes.").font(.callout).foregroundStyle(.secondary)
                 } }
+                if selectedID == "dpad" {
+                    Section {
+                        Picker("Directions", selection: Binding(get: { mode.effectiveDPadStyle }, set: { value in
+                            changeMode { $0.dpadStyle = value }
+                        })) {
+                            ForEach(DPadStyle.allCases, id: \.self) { Text($0.title).tag($0) }
+                        }.pickerStyle(.segmented)
+                    } header: { Text("D-pad style") } footer: {
+                        Text("4 directions selects one direction at a time. 8 directions also allows diagonals.")
+                    }
+                }
                 Section("Appearance") {
                     Picker("Button color", selection: feedbackBinding(\.tint)) {
                         ForEach(ButtonTint.allCases, id: \.self) { tint in
@@ -683,6 +694,7 @@ struct ControllerSurface: UIViewRepresentable {
         view.onReference = onReference
         view.onCanvasSize = onCanvasSize
         view.buttonFeedback = mode.buttonFeedback ?? [:]
+        view.dpadStyle = mode.effectiveDPadStyle
         view.style = style; view.showDPad = mode.showDPad; view.onState = onState
         view.cursorMode = mode.cursor; view.trackpadHoldDelay = mode.trackpadHoldDelay; view.onPointer = onPointer
         view.holdAimEnabled = mode.holdAimEnabled && !mode.cursor; view.holdAimDelay = mode.holdAimDelay

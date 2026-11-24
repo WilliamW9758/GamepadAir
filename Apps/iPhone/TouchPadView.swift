@@ -72,6 +72,7 @@ final class TouchPadView: UIView {
     private var pulses: [UUID: StickTapAction] = [:]
     private var pulseEnds: [UUID: DispatchWorkItem] = [:]
     var showDPad = true
+    var dpadStyle = DPadStyle.eightWay
     var showsModeSwitch = true
     var cursorMode = false
     var trackpadHoldDelay = 0.5
@@ -408,10 +409,7 @@ final class TouchPadView: UIView {
             case .leftTrigger: next.leftTrigger = 255
             case .rightTrigger: next.rightTrigger = 255
             case .dpad:
-                if hypot(x, y) > 0.18 / 0.7 {
-                    let angle = atan2(x, -y)
-                    next.hat = UInt8((Int((angle / (.pi / 4)).rounded()) + 8) % 8)
-                }
+                next.hat = dpadStyle.hat(x: Double(x), y: Double(y))
             }
         }
         if stickClickHolds[.leftStick]?.pressed == true { next.set(.leftClick, pressed: true) }
@@ -497,13 +495,13 @@ final class TouchPadView: UIView {
                 (active ? accent : UIColor.tertiarySystemFill).setFill(); thumb.fill()
                 text(item.label, at: center, color: active ? contrastingText(on: accent) : muted, size: 14)
             case .dpad:
-                // Inset, softly outlined keys keep the eight angular regions legible
+                // Inset, softly outlined keys keep the selected direction regions legible
                 // without making the pad look like a separate wheel control.
                 let inner = item.radius * 0.23
-                for direction in 0..<8 {
+                for direction in dpadStyle.directions {
                     let angle = CGFloat(direction) * .pi / 4
-                    let start = angle - .pi / 2 - .pi / 8 + 0.045
-                    let end = angle - .pi / 2 + .pi / 8 - 0.045
+                    let start = angle - .pi / 2 - CGFloat(dpadStyle.sectorHalfAngle) + 0.045
+                    let end = angle - .pi / 2 + CGFloat(dpadStyle.sectorHalfAngle) - 0.045
                     let segment = UIBezierPath()
                     segment.addArc(withCenter: item.center, radius: item.radius * 0.92, startAngle: start, endAngle: end, clockwise: true)
                     segment.addArc(withCenter: item.center, radius: inner, startAngle: end, endAngle: start, clockwise: false)

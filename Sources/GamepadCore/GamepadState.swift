@@ -59,6 +59,20 @@ public struct GamepadState: Equatable, Sendable {
     }
 }
 
+/// Direction sectors use screen coordinates: positive Y points down.
+public enum DPadStyle: String, Codable, CaseIterable, Sendable {
+    case fourWay, eightWay
+    public var title: String { self == .fourWay ? "4 directions" : "8 directions" }
+    public var directions: [Int] { self == .fourWay ? [0, 2, 4, 6] : Array(0..<8) }
+    public var sectorHalfAngle: Double { self == .fourWay ? .pi / 4 : .pi / 8 }
+    public func hat(x: Double, y: Double) -> UInt8 {
+        guard x.isFinite, y.isFinite, hypot(x, y) > 0.18 / 0.7 else { return 8 }
+        let step = self == .fourWay ? 2 : 1
+        let sector = Int((atan2(x, -y) / (.pi / 4 * Double(step))).rounded())
+        return UInt8(((sector * step) + 8) % 8)
+    }
+}
+
 public enum PadStyle: String, CaseIterable, Codable, Sendable {
     case xbox = "Xbox", playStation = "PlayStation"
     public func label(_ button: PadButton) -> String {
@@ -232,6 +246,9 @@ public struct LayoutMode: Codable, Equatable, Identifiable {
     public var cursor: Bool
     public var controls: LayoutLibrary
     public var showDPad = true
+    /// Missing on older layouts preserves their eight-way behavior.
+    public var dpadStyle: DPadStyle?
+    public var effectiveDPadStyle: DPadStyle { dpadStyle ?? .eightWay }
     public var holdAimEnabled = true
     public var holdAimDelay = 0.3
     public var trackpadHoldDelay = 0.5
