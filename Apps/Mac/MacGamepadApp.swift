@@ -68,6 +68,9 @@ final class HostModel: ObservableObject {
     @Published var layoutCommandNotice: String?
     func sendLayout(_ command: LayoutCommand) {
         guard let session, update.connected, layoutCommandID == nil else { return }
+        if (command.action == .delete || command.action == .clear), update.layout?.supportsLayoutDeletion != true {
+            layoutCommandNotice = "Update Pocket Pad on your iPhone to delete layouts from Mac."; return
+        }
         do {
             try session.sendLayoutCommand(command)
             layoutCommandID = command.id; layoutCommandNotice = "Updating iPhone…"
@@ -249,6 +252,9 @@ struct HostView: View {
     @State private var controlsPage = -1
     @State private var previousMode = OutputMode.keyboardMouse
     @State private var settingsTab = 0
+    @State private var confirmDataAction = false
+    @State private var dataAction = "delete"
+    @State private var deletionLayout: SavedLayout?
     @State private var accessibilityAllowed = KeyboardMousePermissions.allowed
     private let accent = PadAppearance.accent
     enum Panel: String, Identifiable { case settings, mappings, gamepadMappings, layout; var id: String { rawValue } }
@@ -360,6 +366,23 @@ struct HostView: View {
                 model.sendLayout(LayoutCommand(action: .create, layout: layout))
                 newLayoutPrompt = false
             }
+        }
+        .confirmationDialog(dataAction == "delete" ? "Delete \(deletionLayout?.name ?? "layout") from iPhone?" : dataAction == "clear" ? "Clear saved layouts on the connected iPhone?" : "Erase local data on this Mac?", isPresented: $confirmDataAction, titleVisibility: .visible) {
+            Button(dataAction == "delete" ? "Delete layout" : dataAction == "clear" ? "Clear saved layouts" : "Erase data and quit", role: .destructive) {
+                if dataAction == "delete", let layout = deletionLayout {
+                    model.sendLayout(LayoutCommand(action: .delete, layoutID: layout.id, base: layout))
+                } else if dataAction == "clear" {
+                    model.sendLayout(LayoutCommand(action: .clear))
+                } else if dataAction == "erase" {
+                    model.stop()
+                    if let id = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: id) }
+                    InputDiagnostics.erase { NSApplication.shared.terminate(nil) }
+                }
+                deletionLayout = nil
+            }
+            Button("Cancel", role: .cancel) { deletionLayout = nil }
+        } message: {
+            Text(dataAction == "erase" ? "Deletes this Mac's preferences, saved mappings, imported profiles, pairing settings, and diagnostic logs, then quits. iPhone data, exported files, and macOS permissions remain unchanged. This cannot be undone." : "Deletes personal layout data and recovery history on your iPhone. Built-in presets and exported files remain. This cannot be undone.")
         }
         .sheet(isPresented: $tour) { MacOnboarding(transport: $model.transport) { tourComplete = true; tour = false } }
         .onChange(of: model.update.frames) { _, _ in
@@ -543,6 +566,10 @@ struct HostView: View {
                             duplicateSource = source; newLayoutType = source.effectiveInputType
                             newLayoutName = source.name + " Copy"; newLayoutPrompt = true
                         }
+                        Button("Delete…", role: .destructive) {
+                            deletionLayout = snapshot.layout; dataAction = "delete"; confirmDataAction = true
+                        }.disabled(snapshot.layout.isPreset || snapshot.supportsLayoutDeletion != true)
+                            .help("Delete a saved layout. Requires the updated iPhone app.")
                     }.disabled(model.layoutCommandID != nil).padding(.horizontal, 24).padding(.top, 16)
                     if let screen = snapshot.screen {
                         Text("\(screen.model) · \(Int(screen.width)) × \(Int(screen.height)) pt")
@@ -598,6 +625,11 @@ struct HostView: View {
                     Button("Import profile…") { model.importProfile() }
                     Button("Export profile…") { model.exportProfile() }.disabled(model.portable == nil)
                     if let notice = model.profileNotice { Text(notice).foregroundStyle(.secondary) }
+                }
+                Section("Local data") {
+                    Button("Clear saved layouts on iPhone…", role: .destructive) { dataAction = "clear"; confirmDataAction = true }
+                        .disabled(!model.update.connected || model.layoutCommandID != nil || model.update.layout?.supportsLayoutDeletion != true)
+                    Button("Erase all local Mac data…", role: .destructive) { dataAction = "erase"; confirmDataAction = true }
                 }
             }.formStyle(.grouped)
         case .diagnostics:

@@ -74,6 +74,12 @@ final class LayoutStore: ObservableObject {
     func apply(_ command: LayoutCommand) throws {
         guard storageError == nil else { throw ProtocolError.invalidState }
         switch command.action {
+        case .delete:
+            guard let id = command.layoutID, let base = command.base,
+                  catalog.layouts.first(where: { $0.id == id }) == base else { throw ProtocolError.invalidState }
+            try delete(id)
+        case .clear:
+            clearLayouts()
         case .bindLegacy:
             guard let layout = command.layout, let type = layout.inputType,
                   command.base == catalog.layouts.first(where: { $0.id == catalog.selectedID }) else { throw ProtocolError.invalidState }
@@ -101,6 +107,23 @@ final class LayoutStore: ObservableObject {
             if let data = try? JSONEncoder().encode(catalog) { UserDefaults.standard.set(data, forKey: "layouts-before-mac-save") }
             var updated = layout; updated.isPreset = false
             catalog.layouts[index] = updated; save()
+        }
+    }
+    func delete(_ id: String) throws {
+        var updated = catalog
+        try updated.delete(id)
+        catalog = updated
+        discardHistoryAndBackups()
+        save()
+    }
+    func clearLayouts() {
+        catalog = .fresh(); storageError = nil
+        discardHistoryAndBackups(); save()
+    }
+    private func discardHistoryAndBackups() {
+        history = LayoutHistory(); editStart = nil
+        for key in ["control-layouts-v1", "control-layouts-v1-backup", "named-control-layouts-before-modern-editor", "layouts-before-mac-save"] {
+            UserDefaults.standard.removeObject(forKey: key)
         }
     }
     func select(_ id: String) { endEdit(); catalog.selectedID = id; save() }
@@ -146,6 +169,8 @@ struct PhoneGamepadApp: App {
     @State private var newStyle = PadStyle.xbox
     @State private var newInputType = LayoutInputType.keyboardMouse
     @State private var confirmReset = false
+    @State private var confirmDataAction = false
+    @State private var dataAction = "delete"
     private var layout: SavedLayout { layouts.selected }
     private var mode: LayoutMode { layout.modes[modeIndex] }
     private var padStyle: PadStyle { layout.style }
@@ -410,6 +435,9 @@ struct PhoneGamepadApp: App {
                     Picker("New layout base", selection: $newStyle) { ForEach(PadStyle.allCases, id: \.self) { Text($0.rawValue) } }
                     Button("New layout…") { beginName("new", value: "New Controls") }
                     if !layout.isPreset { Button("Rename layout…") { beginName("rename", value: layout.name) } }
+                    if !layout.isPreset {
+                        Button("Delete layout…", role: .destructive) { dataAction = "delete"; confirmDataAction = true }
+                    }
                     if layout.isPreset { Text("Presets stay unchanged. Save a copy to customize.").font(.callout) }
                 }
                 DisclosureGroup("Right-stick cursor switching") {
@@ -498,6 +526,11 @@ struct PhoneGamepadApp: App {
                     Button("Import profile or backup") { importing = true }
                     Text("Import always creates copies. To bundle Mac mappings: export a profile, open it on the Mac, then export it there with your mappings. Import that file here to keep a complete backup.").font(.callout).foregroundStyle(.secondary)
                 }
+                Section("Local data") {
+                    Button("Clear saved layouts…", role: .destructive) { dataAction = "clear"; confirmDataAction = true }
+                    Button("Erase all local data…", role: .destructive) { dataAction = "erase"; confirmDataAction = true }
+                    Text("Built-in presets remain available. Exported files and data on your Mac are not deleted.").font(.callout).foregroundStyle(.secondary)
+                }
                 AppIconSettingsSection()
             }.scrollContentBackground(.hidden).background { PadBackdrop() }.navigationTitle("Settings").navigationBarTitleDisplayMode(.inline).toolbar { Button("Done") { settings = false } }
         }
@@ -511,6 +544,27 @@ struct PhoneGamepadApp: App {
                     try layouts.importData(Data(contentsOf: url)); modeIndex = 0; selectedID = nil; release()
                     transferMessage = "Imported as a new layout. Your existing layouts are unchanged."
                 } catch { transferMessage = "Could not import: \(error.localizedDescription)" }
+            }
+            .confirmationDialog(dataAction == "delete" ? "Delete \(layout.name)?" : dataAction == "clear" ? "Clear all saved layouts?" : "Erase all Pocket Pad data on this iPhone?", isPresented: $confirmDataAction, titleVisibility: .visible) {
+                Button(dataAction == "delete" ? "Delete layout" : dataAction == "clear" ? "Clear saved layouts" : "Erase local data", role: .destructive) {
+                    release(); editing = false; selectedID = nil; modeIndex = 0
+                    if dataAction == "delete" {
+                        do { try layouts.delete(layout.id) } catch { transferMessage = "Could not delete this layout." }
+                    } else if dataAction == "clear" { layouts.clearLayouts() }
+                    else {
+                        server.stop()
+                        if let id = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: id) }
+                        layouts.clearLayouts()
+                        lastLayoutCommand = nil; layoutCommandError = nil; document = ProfileDocument()
+                        transferMessage = nil; selectedReference = nil; nameDraft = ""
+                        settings = false; tourComplete = false; tour = true; connectionScreen = false
+                        server.selectTransport(.usb); server.newPairingCode()
+                    }
+                    release(); publishLayout()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(dataAction == "erase" ? "Deletes layouts, local backups, preferences, and pairing settings on this iPhone. System permissions, the Home Screen icon, and exported files remain unchanged. This cannot be undone." : "Deletes personal layout data and local recovery history. Built-in presets and exported files remain. This cannot be undone.")
             }
             .alert("Profiles", isPresented: Binding(get: { transferMessage != nil }, set: { if !$0 { transferMessage = nil } })) {
                 Button("OK") { transferMessage = nil }
@@ -570,6 +624,7 @@ struct PhoneGamepadApp: App {
             snapshot.screen = PhoneScreen(model: model, width: size.width, height: size.height)
         }
         snapshot.layouts = layouts.catalog.layouts.map(LayoutSummary.init)
+        snapshot.supportsLayoutDeletion = true
         snapshot.commandID = lastLayoutCommand; snapshot.commandError = layoutCommandError
         server.updateLayout(snapshot)
     }

@@ -2,6 +2,38 @@ import XCTest
 @testable import GamepadCore
 
 final class SavedLayoutTests: XCTestCase {
+    func testDeleteSelectedLayoutLeavesValidSelectionAndPreservesOthers() throws {
+        var catalog = LayoutCatalog.fresh()
+        let presets = catalog.layouts
+        let id = catalog.duplicate(catalog.selectedID, name: "Personal")!
+        try catalog.delete(id)
+        XCTAssertEqual(catalog.layouts, presets)
+        XCTAssertTrue(catalog.layouts.contains { $0.id == catalog.selectedID })
+        XCTAssertEqual(try LayoutCatalog.decode(JSONEncoder().encode(catalog)), catalog)
+        XCTAssertThrowsError(try catalog.delete(catalog.selectedID))
+        XCTAssertThrowsError(try catalog.delete("missing"))
+    }
+    func testDeletingOnlyPersonalLayoutRestoresUsablePresets() throws {
+        var catalog = LayoutCatalog.fresh()
+        var layout = catalog.layouts[0]; layout.isPreset = false
+        catalog.layouts = [layout]; catalog.selectedID = layout.id
+        try catalog.delete(layout.id)
+        XCTAssertEqual(catalog.layouts.count, PadStyle.allCases.count)
+        XCTAssertTrue(catalog.layouts.allSatisfy { $0.isPreset && !$0.hasCursorSwitching })
+        _ = try LayoutCatalog.decode(JSONEncoder().encode(catalog))
+    }
+    func testDeleteCommandCarriesConflictCheckOverWire() throws {
+        let layout = LayoutCatalog.fresh().layouts[0]
+        let command = LayoutCommand(action: .delete, layoutID: layout.id, base: layout)
+        let data = try command.encode()
+        var receiver = LayoutCommandReceiver()
+        var received: LayoutCommand?
+        for start in stride(from: 0, to: data.count, by: 4) {
+            if let value = try receiver.accept(data.subdata(in: start..<start+4)) { received = value }
+        }
+        XCTAssertEqual(received, command)
+    }
+
     func testMigrationPreservesBothStylesAndSettingsAndFreshPresets() throws {
         var legacy = LayoutLibrary()
         for style in PadStyle.allCases {

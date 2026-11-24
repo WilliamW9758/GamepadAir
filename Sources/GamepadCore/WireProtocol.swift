@@ -114,6 +114,7 @@ public struct ControllerSnapshot: Codable, Equatable {
     public var layouts: [LayoutSummary]?
     public var commandID: String?
     public var commandError: String?
+    public var supportsLayoutDeletion: Bool?
     public init(layout: SavedLayout, modeIndex: Int) {
         self.layout = layout; self.modeIndex = modeIndex
     }
@@ -172,7 +173,7 @@ public struct LayoutSummary: Codable, Equatable, Identifiable {
     public init(_ layout: SavedLayout) { id = layout.id; name = layout.name; isPreset = layout.isPreset }
 }
 public struct LayoutCommand: Codable, Equatable {
-    public enum Action: String, Codable { case select, create, save, bindLegacy }
+    public enum Action: String, Codable { case select, create, save, bindLegacy, delete, clear }
     public var id = UUID().uuidString
     public var action: Action
     public var layoutID: String?

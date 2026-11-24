@@ -298,6 +298,25 @@ public struct LayoutCatalog: Codable, Equatable {
             layouts.append(preset)
         }
     }
+    /// Reset to immutable starters without reviving legacy personal layouts.
+    public static func fresh() -> Self {
+        var value = Self(legacy: LayoutLibrary(), style: .xbox, showDPad: true,
+                         holdAimEnabled: true, holdAimDelay: 0.3, trackpadHoldDelay: 0.5)
+        value.layouts = value.layouts.filter(\.isPreset)
+        for i in value.layouts.indices {
+            value.layouts[i].cursorSwitching = false
+        }
+        value.selectedID = value.layouts[0].id
+        return value
+    }
+    public mutating func delete(_ id: String) throws {
+        guard let index = layouts.firstIndex(where: { $0.id == id }), !layouts[index].isPreset else {
+            throw ProtocolError.invalidState
+        }
+        layouts.remove(at: index)
+        if layouts.isEmpty { self = .fresh() }
+        else if selectedID == id { selectedID = layouts[min(index, layouts.count - 1)].id }
+    }
     public static func decode(_ data: Data) throws -> Self {
         let catalog = try JSONDecoder().decode(Self.self, from: data)
         guard catalog.version == 2, !catalog.layouts.isEmpty,

@@ -5,6 +5,8 @@ import GamepadCore
 #endif
 
 public enum InputDiagnostics {
+    /// Stop diagnostic writes before erasing local data and quitting.
+    public static func erase(completion: @escaping () -> Void) { InputTrace.shared.erase(completion: completion) }
     public static var url: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("PocketPad/input-trace.log")
@@ -18,6 +20,7 @@ private final class InputTrace {
     private var recent = RecentInputLog()
     private var timer: DispatchSourceTimer?
     private var dirty = false
+    private var erased = false
     private let sessionStart = ProcessInfo.processInfo.systemUptime
     private init() {
         let url = InputDiagnostics.url
@@ -47,10 +50,18 @@ private final class InputTrace {
         self.timer = timer; timer.resume()
         record("SESSION \(Date())")
     }
+    func erase(completion: @escaping () -> Void) {
+        writer.async { [self] in
+            erased = true; dirty = false; recent = RecentInputLog(); timer?.cancel(); timer = nil
+            try? FileManager.default.removeItem(at: InputDiagnostics.url.deletingLastPathComponent())
+            DispatchQueue.main.async(execute: completion)
+        }
+    }
     func record(_ text: String) {
         let uptime = ProcessInfo.processInfo.systemUptime - sessionStart
         let date = Date()
         writer.async { [self] in
+            guard !erased else { return }
             recent.append(String(format: "%.3f ", uptime) + date.ISO8601Format() + " " + text + "\n", at: date)
             dirty = true
         }
