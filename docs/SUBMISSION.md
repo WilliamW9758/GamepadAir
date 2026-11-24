@@ -1,5 +1,20 @@
 # Pocket Pad release preparation
 
+## Beta 11 — November 24, 2026
+
+This status supersedes the build 6 rehearsal notes below.
+
+- Version 1.0 (11), source commit `4a39a93aa48fc8486fb241afaa0f8243f80e856e`, archived and exported for iPhone and Mac.
+- iPhone upload to App Store Connect succeeded. Beta App Review has not been submitted; processing and eligibility must be confirmed in TestFlight.
+- Mac Developer ID notarization and stapled export succeeded. Signature validation, Gatekeeper assessment, and DMG verification passed.
+- [Mac beta download and installation instructions](https://github.com/WilliamW9758/PocketPad/releases/tag/v1.0-beta.11). GitHub's uploaded asset digest matches the local SHA-256 checksum.
+- All 127 Swift package tests passed; both app bundles passed release resource checks.
+- TestFlight feedback/review contact information is saved in App Store Connect (not in this repository). Review notes include the signed Mac download and connection/editing test steps.
+- Clean installation on a separate Mac and TestFlight installation on a phone remain to be verified. No friend invitations have been sent.
+- Local archives, exports, notarization/upload logs, and DMG are preserved outside Git in `~/PocketPad Backups/Beta 1.0-build11-2026-11-24/`.
+
+## Historical rehearsal
+
 Updated November 23, 2026. This is a preparation packet, not an approval or public release. AI and Marketplace remain local previews; the combined launch is intended after their services are complete.
 
 ## Current evidence
