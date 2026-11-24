@@ -259,7 +259,7 @@ struct PhoneGamepadApp: App {
             .sheet(isPresented: $settings, onDismiss: release) { settingsView }
             .sheet(isPresented: $buttonOptions, onDismiss: release) { buttonOptionsView }
             .sheet(isPresented: $naming) {
-                LayoutNameSheet(name: $nameDraft, action: $nameAction, type: $newInputType, currentType: layout.effectiveInputType) {
+                LayoutNameSheet(name: $nameDraft, action: nameAction, type: $newInputType, style: $newStyle, currentType: layout.effectiveInputType) {
                     saveName(); naming = false
                 }
             }
@@ -432,7 +432,6 @@ struct PhoneGamepadApp: App {
                         ForEach(layouts.catalog.layouts) { Text($0.name + ($0.isPreset ? " · preset" : "")).tag($0.id) }
                     }
                     Button("Save a copy…") { beginName("copy", value: layout.name + " Copy") }
-                    Picker("New layout base", selection: $newStyle) { ForEach(PadStyle.allCases, id: \.self) { Text($0.rawValue) } }
                     Button("New layout…") { beginName("new", value: "New Controls") }
                     if !layout.isPreset { Button("Rename layout…") { beginName("rename", value: layout.name) } }
                     if !layout.isPreset {
@@ -723,26 +722,72 @@ private struct PhoneNameEditor: View {
 
 private struct LayoutNameSheet: View {
     @Binding var name: String
-    @Binding var action: String
+    let action: String
     @Binding var type: LayoutInputType
+    @Binding var style: PadStyle
     let currentType: LayoutInputType
     let save: () -> Void
     @Environment(\.dismiss) private var dismiss
+
+    private var title: String {
+        switch action {
+        case "new": return "New layout"
+        case "copy": return "Duplicate layout"
+        case "control": return "Rename control"
+        default: return "Rename layout"
+        }
+    }
+    private var saveTitle: String {
+        action == "new" ? "Create" : action == "copy" ? "Duplicate" : "Save"
+    }
+
     var body: some View {
-        VStack(spacing: 20) {
-            Text(action == "control" ? "Rename control" : "Layout name").font(.title2)
-            TextField("Name", text: $name)
-            if action == "copy" || action == "new" {
-                Picker("Input type", selection: $type) {
-                    ForEach(LayoutInputType.allCases) { Text($0.title).tag($0) }
+        NavigationStack {
+            Form {
+                Section("Name") {
+                    TextField(action == "control" ? "Control name" : "Layout name", text: $name)
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.done)
+                        .onSubmit { if !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { save() } }
                 }
-                if action == "copy", type != currentType {
-                    Text("Unmapped controls stay disabled. Remap them on your Mac.").foregroundStyle(.secondary)
+                if action == "new" || action == "copy" {
+                    Section {
+                        Picker("Input type", selection: $type) {
+                            ForEach(LayoutInputType.allCases) { Text($0.title).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                    } header: {
+                        Text("Input type")
+                    } footer: {
+                        if action == "copy", type != currentType {
+                            Text("Controls that cannot be converted will need to be remapped before use.")
+                        }
+                    }
+                }
+                if action == "new" {
+                    Section("Starting layout") {
+                        Picker("Starting layout", selection: $style) {
+                            ForEach(PadStyle.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                    }
                 }
             }
-            Button("Save", action: save).disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            Button("Cancel", role: .cancel) { dismiss() }
-        }.padding(24)
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", role: .cancel) { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(saveTitle, action: save)
+                        .fontWeight(.semibold)
+                        .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
     }
 }
 
