@@ -42,7 +42,7 @@ struct PhoneConnectionView: View {
                 Label(server.connected ? "Finishing connection…" : server.status, systemImage: "antenna.radiowaves.left.and.right")
                     .foregroundStyle(.secondary).lineLimit(2)
                 Spacer()
-                Button("Use offline", action: dismiss).buttonStyle(PadActionStyle())
+                Button("Use disconnected", action: dismiss).buttonStyle(PadActionStyle())
             }.frame(height: 44)
         }
         .padding(20).frame(maxWidth: 620).padGlass().padding(16)

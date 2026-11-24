@@ -223,13 +223,14 @@ struct HostView: View {
     @State private var duplicateSource: SavedLayout?
     @State private var section: WorkspaceSection = .connection
     enum WorkspaceSection: String, CaseIterable, Identifiable {
-        case connection = "Connection", layouts = "Layout & mappings", marketplace = "Marketplace", general = "General", diagnostics = "Diagnostics", about = "About"
+        case connection = "Connection", layouts = "Layout & mappings", marketplace = "Marketplace", assistant = "AI helper", general = "General", diagnostics = "Diagnostics", about = "About"
         var id: String { rawValue }
         var icon: String {
             switch self {
             case .connection: "antenna.radiowaves.left.and.right"
             case .layouts: "rectangle.on.rectangle"
             case .marketplace: "square.grid.2x2"
+            case .assistant: "sparkles"
             case .general: "gearshape"
             case .diagnostics: "waveform.path.ecg"
             case .about: "info.circle"
@@ -443,6 +444,8 @@ struct HostView: View {
                 Spacer()
                 Label(model.update.connected ? "Connected" : model.running ? "Connecting…" : "Not connected",
                       systemImage: model.update.connected ? "checkmark.circle.fill" : "iphone").foregroundStyle(.secondary)
+                Button { openSettings(.assistant) } label: { Label("AI helper", systemImage: "sparkles") }
+                    .help("Preview the layout assistant")
                 Button { openSettings(.general) } label: { Image(systemName: "gearshape").frame(width: 32, height: 32) }
                     .buttonStyle(.plain).help("Settings").accessibilityLabel("Settings")
             }.padding(24)
@@ -528,6 +531,7 @@ struct HostView: View {
                                 Text(item.name + (item.isPreset ? " · preset" : "")).tag(item.id)
                             }
                         }
+                        Button { section = .assistant } label: { Label("AI helper", systemImage: "sparkles") }
                         Button("New") { duplicateSource = nil; newLayoutType = .keyboardMouse; newLayoutName = ""; newLayoutPrompt = true }
                         Button("Duplicate") {
                             var source = snapshot.layout
@@ -563,6 +567,8 @@ struct HostView: View {
                     Button("Connect iPhone") { section = .connection }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+        case .assistant:
+            LayoutAssistantView(model: model) { section = .marketplace }
         case .marketplace:
             MarketplaceView()
         case .general:

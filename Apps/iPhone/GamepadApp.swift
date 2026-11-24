@@ -337,14 +337,16 @@ struct PhoneGamepadApp: App {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(layout.name).font(.title2.weight(.medium))
-                                if layout.hasCursorSwitching { Text(mode.name).foregroundStyle(.secondary) }
                             }
                             Spacer()
-                            Label(server.connected ? "Connected" : "Offline", systemImage: server.connected ? "checkmark.circle.fill" : "circle")
+                            Label(server.connected ? "Connected" : "Disconnected", systemImage: server.connected ? "checkmark.circle.fill" : "circle")
                                 .font(.callout).foregroundStyle(server.connected ? PadAppearance.accent : .secondary)
                         }
-                        Button { startEditing() } label: { Label("Edit layout", systemImage: "slider.horizontal.3") }
-                            .buttonStyle(PadActionStyle(prominent: true))
+                        HStack {
+                            Spacer()
+                            Button { startEditing() } label: { Label("Edit layout", systemImage: "slider.horizontal.3") }
+                                .buttonStyle(PadActionStyle(prominent: true))
+                        }
                     }.padding(.vertical, 8)
                 }
 
@@ -497,7 +499,7 @@ struct PhoneGamepadApp: App {
                     Text("Import always creates copies. To bundle Mac mappings: export a profile, open it on the Mac, then export it there with your mappings. Import that file here to keep a complete backup.").font(.callout).foregroundStyle(.secondary)
                 }
                 AppIconSettingsSection()
-            }.scrollContentBackground(.hidden).background { PadBackdrop() }.navigationTitle("Pocket Pad").navigationBarTitleDisplayMode(.inline).toolbar { Button("Done") { settings = false } }
+            }.scrollContentBackground(.hidden).background { PadBackdrop() }.navigationTitle("Settings").navigationBarTitleDisplayMode(.inline).toolbar { Button("Done") { settings = false } }
         }
             .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: exportName) { result in
                 if case .failure(let error) = result { transferMessage = error.localizedDescription }
@@ -696,7 +698,7 @@ private struct MovableSettingsButton: View {
     let editLayout: () -> Void
     @AppStorage("settings-button-position-x") private var savedX = 0.5
     @AppStorage("settings-button-position-y") private var savedY = 0.0
-    @GestureState private var dragTranslation = CGSize.zero
+    @State private var dragTranslation = CGSize.zero
 
     var body: some View {
         GeometryReader { geometry in
@@ -715,20 +717,14 @@ private struct MovableSettingsButton: View {
                 .frame(width: 48, height: 44)
                 .background(.ultraThinMaterial, in: Capsule())
                 .contentShape(Capsule())
-                .gesture(DragGesture(minimumDistance: 8, coordinateSpace: .named("settings-button-canvas"))
-                    .updating($dragTranslation) { drag, translation, _ in translation = drag.translation }
-                    .exclusively(before: LongPressGesture(minimumDuration: 0.5, maximumDistance: 8)
-                        .exclusively(before: TapGesture()))
-                    .onEnded { value in
-                        switch value {
-                        case .first(let drag):
-                            let start = resting
-                            if travelX > 0 { savedX = min(1, max(0, (start.x + drag.translation.width - insetX) / travelX)) }
-                            if travelY > 0 { savedY = min(1, max(0, (start.y + drag.translation.height - insetY) / travelY)) }
-                        case .second(.first): editLayout()
-                        case .second(.second): openSettings()
+                .overlay(SettingsHandleGestures(onTap: openSettings, onHold: editLayout,
+                    onDrag: { dragTranslation = $0 }, onEnd: { translation in
+                        if let translation {
+                            if travelX > 0 { savedX = min(1, max(0, (resting.x + translation.width - insetX) / travelX)) }
+                            if travelY > 0 { savedY = min(1, max(0, (resting.y + translation.height - insetY) / travelY)) }
                         }
-                    })
+                        dragTranslation = .zero
+                    }))
                 .position(center)
                 .accessibilityLabel("Settings")
                 .accessibilityHint("Tap to open settings, drag to reposition, or hold to edit the layout.")

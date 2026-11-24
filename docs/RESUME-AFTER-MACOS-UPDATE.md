@@ -42,3 +42,6 @@ Copy resulting MacGamepad.app to existing installed Pocket Pad.app, verify signi
 2. Rebuild with new SDK and verify Duo fills native display, handles fold/unfold, keeps controls/settings handle reachable, and Mac mirrors actual canvas.
 3. Recheck in-app previews and iOS icon confirmation on latest Duo build. Home Screen icon switching already confirmed.
 4. Keep existing custom layouts, mappings, and pairing intact. No remote push/publish requested.
+
+## Follow-up after initial checkpoint
+Phone build 3 now installed on Duo: disconnected wording, Settings title, no mode subtitle, right-aligned Edit layout, hold-to-edit firing on recognizer began. Mac assistant prototype added with real local sample edits through existing layout command/ack transport and preview-only free-form requests. Mac UI inspected; signed builds pass. Await user reopening phone to verify physical hold timing and assistant sync. Latest source checkpoint supersedes the original icon-only checkpoint.

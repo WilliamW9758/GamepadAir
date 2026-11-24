@@ -169,3 +169,9 @@ Run `swift test` to validate the current checkout. Report your OS versions, tran
 ### macOS update handoff (2026-11-23)
 - Downloaded Apple's full macOS Tahoe 26.7.3 installer successfully to /Applications/Install macOS Tahoe.app. Installer opened; currently at Apple license agreement, awaiting explicit user acceptance authorization. No macOS installation or restart has begun; Xcode remains 26.5. About 25 GiB free after download.
 - Next: accept license only after confirmation, inspect disk/preflight, stop before restart so work can be saved. After macOS update, install Xcode 27.1+ and rebuild to enable native Duo sizing.
+
+### Phone settings polish and Mac assistant prototype (2026-11-23)
+- Renamed Use offline to Use disconnected and status Offline to Disconnected. Phone sheet title is Settings, removed mode subtitle from its header, right-aligned Edit layout.
+- Replaced settings-handle gesture arbitration with UIKit pan/tap/long-press recognizers. Long press acts at began (0.5 seconds), tap waits for pan/hold failure, dragging uses window coordinates and cancellation resets translation. Signed device build 3 passed and installed on Duo; physical hold timing check requested.
+- Added Mac AI helper entry in sidebar, dashboard header and layout toolbar. Native split view shows phone canvas/proposed draft beside a clearly labeled local assistant preview. Two sample edits (size +15%, light haptics) preview before applying; presets create copies; custom edits use guarded base revision. Existing sendLayout transport and acknowledgement update the preview; free-form requests explicitly remain unavailable and marketplace opens the existing placeholder. No external AI calls or credentials.
+- Mac build passed, installed and UI inspected. Device disconnected after update, so end-to-end assistant edit acknowledgement is pending reconnect.
