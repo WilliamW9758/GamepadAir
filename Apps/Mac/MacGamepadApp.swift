@@ -246,7 +246,8 @@ struct HostView: View {
     @State private var sawStick = false
     @State private var sawButton = false
     @State private var practiceFlash = false
-    @State private var controlsPage = 0
+    @State private var controlsPage = -1
+    @State private var setupPreview: WorkspaceSection?
     @State private var previousMode = OutputMode.keyboardMouse
     @State private var settingsTab = 0
     @State private var accessibilityAllowed = KeyboardMousePermissions.allowed
@@ -360,6 +361,24 @@ struct HostView: View {
                 model.sendLayout(LayoutCommand(action: .create, layout: layout))
                 newLayoutPrompt = false
             }
+        }
+        .sheet(item: $setupPreview) { preview in
+            VStack(spacing: 0) {
+                HStack {
+                    Button("Back") { setupPreview = nil }
+                    Spacer()
+                    Text(preview == .assistant ? "AI assist · Preview" : "Marketplace · Preview").font(.headline)
+                    Spacer()
+                    Button("Continue setup") { setupPreview = nil; controlsPage = 0 }
+                        .buttonStyle(PadActionStyle(prominent: true))
+                }.padding(20)
+                Divider()
+                if preview == .assistant {
+                    LayoutAssistantView(model: model) { setupPreview = .marketplace }
+                } else {
+                    MarketplaceView()
+                }
+            }.frame(width: 980, height: 650)
         }
         .sheet(isPresented: $tour) { MacOnboarding(transport: $model.transport) { tourComplete = true; tour = false } }
         .onChange(of: model.update.frames) { _, _ in
@@ -741,14 +760,12 @@ struct HostView: View {
                     Label("Press A", systemImage: sawButton ? "checkmark.circle.fill" : "circle")
                 }.foregroundStyle(.secondary)
             }.frame(maxWidth: .infinity).padding(.vertical, 12)
-            Text("Practice only. No input is sent to your game.")
-                .foregroundStyle(.secondary)
             if !model.running { Button("Try again") { model.start() } }
             HStack {
                 Button("Back") { model.stop(); model.mode = previousMode; testing = false }
                 Spacer()
-                Button(sawStick && sawButton ? "Choose controls" : "Skip test") {
-                    connectionWalkthroughComplete = true; model.syncSetup(.controls); model.mode = previousMode == .monitor ? .keyboardMouse : previousMode; testing = false; controlsPage = 0; step = 1; model.refreshApps()
+                Button(sawStick && sawButton ? "Continue" : "Skip test") {
+                    connectionWalkthroughComplete = true; model.syncSetup(.controls); model.mode = previousMode == .monitor ? .keyboardMouse : previousMode; testing = false; controlsPage = -1; step = 1; model.refreshApps()
                 }.buttonStyle(PadActionStyle(prominent: true))
             }
 
@@ -757,7 +774,12 @@ struct HostView: View {
     }
     private var controlView: some View {
         VStack(alignment: .leading, spacing: 24) {
-            if controlsPage == 0 {
+            if controlsPage == -1 {
+                heading("How would you like to get started?", "Find a layout for your game, or make it your own.")
+                setupChoice("AI assist", detail: "Describe what you want to play and try sample layout edits.", icon: "sparkles", preview: true) { setupPreview = .assistant }
+                setupChoice("Marketplace", detail: "Explore example layouts. Game search and downloads are coming later.", icon: "square.grid.2x2", preview: true) { setupPreview = .marketplace }
+                setupChoice("Build manually", detail: "Choose your input type and customize your controls.", icon: "slider.horizontal.3", preview: false) { controlsPage = 0 }
+            } else if controlsPage == 0 {
                 heading("Choose your controls.", "How should your game receive input?")
                 modeChoice(.keyboardMouse, title: "Emulate keyboard & mouse", detail: "Send key presses, clicks, and mouse movement.", icon: "keyboard")
                 modeChoice(.gamepad, title: "Emulate controller", detail: "Send gamepad buttons and analog stick input.", icon: "gamecontroller")
@@ -806,11 +828,13 @@ struct HostView: View {
             }
             HStack {
                 Button("Back") {
-                    if controlsPage == 0 { model.stop(); step = 0; model.syncSetup(.pairing) }
+                    if controlsPage == -1 { testing = true; model.mode = .monitor; model.syncSetup(.practice) }
+                    else if controlsPage == 0 { controlsPage = -1 }
                     else if controlsPage == 2 && model.mode == .keyboardMouse && !accessibilityAllowed { controlsPage = 1 }
                     else { controlsPage = 0 }
                 }
                 Spacer()
+                if controlsPage >= 0 {
                 Button(controlsPage < 2 ? "Continue" : "Start playing") {
                     accessibilityAllowed = KeyboardMousePermissions.allowed
                     if controlsPage == 0 { controlsPage = model.mode == .keyboardMouse && !accessibilityAllowed ? 1 : 2 }
@@ -819,8 +843,29 @@ struct HostView: View {
                     else if model.mode == .keyboardMouse && !accessibilityAllowed { controlsPage = 1 }
                 }.buttonStyle(PadActionStyle(prominent: true))
                     .disabled(controlsPage == 1 ? !accessibilityAllowed : controlsPage == 2 ? !canStart : false)
+                }
             }
         }
+    }
+
+    private func setupChoice(_ title: String, detail: String, icon: String, preview: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                Image(systemName: icon).font(.title2).foregroundStyle(accent).frame(width: 32)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(title).font(.headline)
+                        if preview { Text("Preview").font(.callout).foregroundStyle(.secondary) }
+                    }
+                    Text(detail).foregroundStyle(.secondary).multilineTextAlignment(.leading)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").foregroundStyle(.secondary)
+            }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 18))
+                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.1)))
+                .contentShape(RoundedRectangle(cornerRadius: 18))
+        }.buttonStyle(.plain)
     }
 
     private func modeChoice(_ mode: OutputMode, title: String, detail: String, icon: String) -> some View {
