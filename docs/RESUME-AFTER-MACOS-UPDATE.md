@@ -61,3 +61,9 @@ Removed the remaining practice-only sentence. After practice, three full-row but
 - Xcode project compiles all three .icon documents with actool. Primary iOS icon name PocketPad; alternate names AppIconWhite/AppIconGraphite unchanged. Mac keeps existing catalog icon. Legacy alternate bitmap sets moved to Assets/LegacyAppIcons; SDK-only install script remains explicitly marked as legacy flattened-icon fallback, not the preferred installer.
 - Await physical-device confirmation: Duo fills display without zoom button; fold/unfold resizes and Mac canvas follows; check Home Screen dark/clear/tinted modes and all icon choices. Original Air has not received build 4.
 - Build product: /tmp/PocketPadNativeDuo/Build/Products/Debug-iphoneos/PhoneGamepad.app. Build log: /tmp/pocketpad-native-duo-build.log.
+
+## Red icon and final onboarding destinations — 2026-11-23
+- User confirmed native icon appearances and Duo phone mode work correctly. Shifted primary icon default and dark glyph toward a cooler red; refreshed Icon Composer export and in-app preview. White/Graphite unchanged.
+- AI assist and Marketplace now finish setup and open their existing full-window workspace pages. Removed setup preview sheets and Continue setup return path. Manual setup retains controls/permissions flow. Existing phone layout determines input type; Active app remains default.
+- Paused sessions can initialize with monitor output so entering editing pages does not fail before keyboard/mouse permission is available.
+- Signed Mac and iPhone builds passed; 14 CableTests passed; git diff --check passed. Installed Mac app at existing path and phone build 5 on Duo, preserving data. Physical color comparison and full onboarding walkthrough remain to be confirmed.

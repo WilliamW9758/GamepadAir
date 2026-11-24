@@ -88,7 +88,7 @@ public final class CableSession {
         do {
             if let outputOverride { output = try outputOverride() }
             // Wait for the phone layout before publishing its controller identity.
-            else if mode == .gamepad { output = MonitorOutput() }
+            else if mode == .gamepad || isOutputPaused { output = MonitorOutput() }
             else if mode == .keyboardMouse { output = try KeyboardMouseOutput(profile: keyboardProfile, targetPID: targetPID, global: globalInput) }
             else { output = MonitorOutput() }
         }

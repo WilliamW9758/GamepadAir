@@ -247,7 +247,6 @@ struct HostView: View {
     @State private var sawButton = false
     @State private var practiceFlash = false
     @State private var controlsPage = -1
-    @State private var setupPreview: WorkspaceSection?
     @State private var previousMode = OutputMode.keyboardMouse
     @State private var settingsTab = 0
     @State private var accessibilityAllowed = KeyboardMousePermissions.allowed
@@ -361,24 +360,6 @@ struct HostView: View {
                 model.sendLayout(LayoutCommand(action: .create, layout: layout))
                 newLayoutPrompt = false
             }
-        }
-        .sheet(item: $setupPreview) { preview in
-            VStack(spacing: 0) {
-                HStack {
-                    Button("Back") { setupPreview = nil }
-                    Spacer()
-                    Text(preview == .assistant ? "AI assist · Preview" : "Marketplace · Preview").font(.headline)
-                    Spacer()
-                    Button("Continue setup") { setupPreview = nil; controlsPage = 0 }
-                        .buttonStyle(PadActionStyle(prominent: true))
-                }.padding(20)
-                Divider()
-                if preview == .assistant {
-                    LayoutAssistantView(model: model) { setupPreview = .marketplace }
-                } else {
-                    MarketplaceView()
-                }
-            }.frame(width: 980, height: 650)
         }
         .sheet(isPresented: $tour) { MacOnboarding(transport: $model.transport) { tourComplete = true; tour = false } }
         .onChange(of: model.update.frames) { _, _ in
@@ -776,8 +757,8 @@ struct HostView: View {
         VStack(alignment: .leading, spacing: 24) {
             if controlsPage == -1 {
                 heading("How would you like to get started?", "Find a layout for your game, or make it your own.")
-                setupChoice("AI assist", detail: "Describe what you want to play and try sample layout edits.", icon: "sparkles", preview: true) { setupPreview = .assistant }
-                setupChoice("Marketplace", detail: "Explore example layouts. Game search and downloads are coming later.", icon: "square.grid.2x2", preview: true) { setupPreview = .marketplace }
+                setupChoice("AI assist", detail: "Describe what you want to play and try sample layout edits.", icon: "sparkles", preview: true) { finishSetup(in: .assistant) }
+                setupChoice("Marketplace", detail: "Explore example layouts. Game search and downloads are coming later.", icon: "square.grid.2x2", preview: true) { finishSetup(in: .marketplace) }
                 setupChoice("Build manually", detail: "Choose your input type and customize your controls.", icon: "slider.horizontal.3", preview: false) { controlsPage = 0 }
             } else if controlsPage == 0 {
                 heading("Choose your controls.", "How should your game receive input?")
@@ -846,6 +827,23 @@ struct HostView: View {
                 }
             }
         }
+    }
+
+    private func finishSetup(in destination: WorkspaceSection) {
+        // Enter the full workspace once; these are destinations, not setup previews.
+        model.mode = model.update.layout?.layout.effectiveInputType == .gamepad ? .gamepad : .keyboardMouse
+        model.globalInput = true
+        model.pauseOutput(true)
+        setupComplete = true
+        replaySetup = false
+        testing = false
+        pairingAttempt = false
+        quickConnection = false
+        step = 2
+        section = destination
+        showingSettings = true
+        model.syncSetup(.play)
+        model.start()
     }
 
     private func setupChoice(_ title: String, detail: String, icon: String, preview: Bool, action: @escaping () -> Void) -> some View {
