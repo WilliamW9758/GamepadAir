@@ -2,6 +2,9 @@ import Foundation
 import Network
 import Security
 import CryptoKit
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public enum LinkTransport: String, CaseIterable, Codable {
     case usb = "USB cable", wifi = "Wi-Fi", bluetooth = "Bluetooth"
@@ -21,10 +24,16 @@ public enum WirelessSettings {
     public static func newCode() -> String { String(format: "%06d", Int.random(in: 0...999999)) }
     public static func formattedCode(_ code: String) -> String { normalizedCode(code) }
     public static func deviceName() -> String {
-        let defaults = UserDefaults.standard
-        if let name = defaults.string(forKey: "wireless-device-name") { return name }
-        let name = "PocketPad-" + String(UUID().uuidString.prefix(4))
-        defaults.set(name, forKey: "wireless-device-name"); return name
+        if let name = UserDefaults.standard.string(forKey: "custom-device-name"), !name.isEmpty { return name }
+#if canImport(UIKit)
+        return UIDevice.current.name
+#else
+        return "iPhone"
+#endif
+    }
+    public static func setDeviceName(_ name: String) {
+        let clean = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+        UserDefaults.standard.set(clean, forKey: "custom-device-name")
     }
     public static func parameters(code: String) -> NWParameters {
         let tcp = NWProtocolTCP.Options(); tcp.noDelay = true
@@ -38,7 +47,7 @@ public enum WirelessSettings {
         // Failed live attempts are separately rate-limited by the phone.
         sec_protocol_options_set_min_tls_protocol_version(tls.securityProtocolOptions, .TLSv12)
         sec_protocol_options_set_max_tls_protocol_version(tls.securityProtocolOptions, .TLSv12)
-        sec_protocol_options_append_tls_ciphersuite(tls.securityProtocolOptions, tls_ciphersuite_t(rawValue: TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256)!)
+        sec_protocol_options_append_tls_ciphersuite(tls.securityProtocolOptions, tls_ciphersuite_t(rawValue: UInt16(TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256))!)
         let parameters = NWParameters(tls: tls, tcp: tcp)
         parameters.includePeerToPeer = false
         return parameters

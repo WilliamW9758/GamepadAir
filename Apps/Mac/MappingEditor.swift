@@ -2,6 +2,10 @@ import SwiftUI
 
 struct MappingEditor: View {
     @Binding var profile: KeyboardProfile
+    var embedded = false
+    var advancedOnly = false
+    var labels: [MappedControl: String] = [:]
+    @State private var advanced = false
     @Environment(\.dismiss) private var dismiss
     @State private var selection: MappedControl? = .east
     @State private var confirmReset = false
@@ -11,44 +15,41 @@ struct MappingEditor: View {
     var body: some View {
         ScrollView {
         VStack(alignment: .leading, spacing: 16) {
+            if !advancedOnly {
             HStack {
                 VStack(alignment: .leading) {
                     Text("Keyboard & mouse mappings").font(.title2.bold())
-                    Text("Changes save automatically. USB output is stopped while you edit.").font(.caption).foregroundStyle(.secondary)
+                    Text("Game input is paused while editing.").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Done") { profile = profile.sanitized; dismiss() }.keyboardShortcut(.defaultAction)
+                if !embedded { Button("Done") { profile = profile.sanitized; dismiss() }.keyboardShortcut(.defaultAction) }
             }
             HStack(alignment: .top, spacing: 20) {
-                List(MappedControl.allCases, id: \.self, selection: $selection) { item in
+                ScrollView {
+                LazyVStack(alignment: .leading, spacing: 4) {
+                ForEach(MappedControl.allCases, id: \.self) { item in
+                    Button { selection = item } label: {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(item.label)
+                        Text(labels[item] ?? item.label)
                         Text(profile[item].summary).font(.caption).foregroundStyle(.secondary)
-                    }.tag(item)
-                }.frame(width: 205, height: 410)
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(8)
+                        .background(selection == item ? Color.accentColor.opacity(0.15) : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+                    }.buttonStyle(.plain)
+                }
+                }
+                }.frame(width: embedded ? 150 : 205, height: 390)
                 VStack(alignment: .leading, spacing: 16) {
-                    Text(control.label).font(.title3.bold())
+                    Text(labels[control] ?? control.label).font(.title3.bold())
                     if MappedControl.customControls.contains(control) {
                         Text("Add this numbered custom slot in iPhone Edit layout → Buttons. Its phone label can be renamed independently. Slots 1–8 default to quick-bar keys 1–8.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    Text("Press inputs in this order; release them in reverse. Up to four keys or mouse buttons can be combined.")
+                    Text("Combine up to four keys or mouse buttons.")
                         .font(.caption).foregroundStyle(.secondary)
-                    Text("Scroll up/down: Tap scrolls one step; Hold repeats after a short delay.")
+                    Text("Scroll bindings repeat when held.")
                         .font(.caption).foregroundStyle(.secondary)
-                    ForEach(0..<4) { index in
-                        Picker("Input \(index + 1)", selection: token(at: index)) {
-                            Text("None").tag(nil as OutputToken?)
-                            ForEach(OutputToken.allCases, id: \.self) { token in Text(token.label).tag(Optional(token)) }
-                        }
-                    }
+                    ComboBindingEditor(binding: Binding(get: { profile[control] }, set: { profile[control] = $0 }))
                     if control != .autoRun {
-                    Picker("Behavior", selection: Binding(get: { binding.behavior }, set: { value in
-                        var b = binding; b.behavior = value; profile[control] = b
-                    })) {
-                        Text("Hold while pressed").tag(KeyBinding.Behavior.hold)
-                        Text("Tap once per press").tag(KeyBinding.Behavior.tap)
-                    }.pickerStyle(.segmented)
                     Text(binding.behavior == .tap ? "A tap completes even if you lift your finger quickly. Holding the button does not repeat it." : "All inputs release when you lift your finger. Shared inputs stay held if another virtual control still needs them.")
                         .font(.caption).foregroundStyle(.secondary)
                     } else {
@@ -66,26 +67,31 @@ struct MappingEditor: View {
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }
             Divider()
+            }
+            DisclosureGroup("Stick behavior and timing", isExpanded: $advanced) {
             VStack(alignment: .leading, spacing: 8) {
                 Toggle("Auto-run beyond left-stick threshold", isOn: Binding(get: { profile.autoRunEnabled ?? false }, set: { profile.autoRunEnabled = $0 }))
                 HStack {
                     ZStack {
                         Circle().stroke(.secondary.opacity(0.4), lineWidth: 1)
-                        Circle().stroke(.mint, style: StrokeStyle(lineWidth: 2, dash: [3]))
+                        Circle().stroke(PadAppearance.accent, style: StrokeStyle(lineWidth: 2, dash: [3]))
                             .scaleEffect(profile.runThreshold)
                     }.frame(width: 42, height: 42).accessibilityLabel("Circular run threshold")
                     Text("Run radius")
                     Slider(value: Binding(get: { profile.runThreshold }, set: { profile.autoRunThreshold = $0 }), in: 0.2...0.95, step: 0.01)
                     Text("\(Int((profile.runThreshold * 100).rounded()))%").monospacedDigit().frame(width: 45)
-                    Button("Run mapping…") { selection = .autoRun }
+                    if !advancedOnly { Button("Run mapping…") { selection = .autoRun } }
                 }.disabled(!(profile.autoRunEnabled ?? false))
+                if advancedOnly && (profile.autoRunEnabled ?? false) {
+                    ComboBindingEditor(binding: Binding(get: { profile[.autoRun] }, set: { profile[.autoRun] = $0 }))
+                }
                 Text("Holds \(profile[.autoRun].summary) beyond the circle in any direction. Releases 5% inside it to prevent flicker.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            HStack(spacing: 24) {
+            VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Toggle("Right stick moves the mouse", isOn: $profile.rightStickMouse)
+                    if !advancedOnly { Toggle("Right stick moves the mouse", isOn: $profile.rightStickMouse) }
                     Picker("Mouse updates", selection: Binding(get: { profile.updateRate }, set: { profile.mouseUpdateRate = $0 })) {
                         Text("250 Hz").tag(250)
                         Text("500 Hz").tag(500)
@@ -110,15 +116,18 @@ struct MappingEditor: View {
                     timing("Combo spacing", value: $profile.comboGap, range: 0.01...0.1)
                     timing("Tap duration", value: $profile.tapDuration, range: 0.05...0.5)
                 }.frame(width: 230)
-            }.font(.caption)
-            HStack {
+            }.font(.body)
+            }
+            if !advancedOnly { HStack {
                 Text("Key names use US physical positions. Match bindings to your game settings.").font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 Button("Restore starter bindings", role: .destructive) { confirmReset = true }
             }
         }
+        }
         .padding(24)
-        }.frame(width: 790, height: 760)
+        }.frame(width: embedded ? nil : 790, height: embedded ? nil : 760).background { PadBackdrop() }.buttonStyle(PadActionStyle()).disclosureGroupStyle(RowDisclosureStyle())
+        .onAppear { if advancedOnly { advanced = true } }
         .confirmationDialog("Replace all mappings with the starter bindings?", isPresented: $confirmReset) {
             Button("Restore starter bindings", role: .destructive) { profile = .starter }
         }

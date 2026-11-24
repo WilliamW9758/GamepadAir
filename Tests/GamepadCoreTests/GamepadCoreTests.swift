@@ -18,7 +18,7 @@ final class GamepadCoreTests: XCTestCase {
     func testMalformedFramesAreRejected() {
         let good = StateFrame(sequence: 0, state: .neutral).encode()
         XCTAssertThrowsError(try StateFrame(data: good.dropLast()))
-        for (index, byte) in [(0, UInt8(0)), (4, 2), (6, 2), (13, 0xff), (14, 9), (15, 1), (24, 128)] {
+        for (index, byte) in [(0, UInt8(0)), (4, 2), (6, 2), (13, 0xff), (14, 9), (15, 10), (24, 128)] {
             var bad = good; bad[index] = byte
             XCTAssertThrowsError(try StateFrame(data: bad), "offset \(index)")
         }
@@ -34,7 +34,7 @@ final class GamepadCoreTests: XCTestCase {
             state.isPaused = true
             XCTAssertEqual(try StateFrame(data: StateFrame(sequence: 2, state: state).encode()).state, state)
             state.rightTrigger = 255
-            XCTAssertThrowsError(try StateFrame(data: StateFrame(sequence: 3, state: state).encode()))
+            XCTAssertEqual(try StateFrame(data: StateFrame(sequence: 3, state: state).encode()).state, state)
         }
         var bad = StateFrame(sequence: 0, state: .neutral).encode(); bad[7] = 3
         XCTAssertThrowsError(try StateFrame(data: bad))
@@ -76,7 +76,7 @@ final class GamepadCoreTests: XCTestCase {
         var s = GamepadState()
         for button in PadButton.allCases { s.set(button, pressed: true) }
         s.hat = 3; s.leftTrigger = 255; s.rightTrigger = 255; s.rightX = 32767
-        XCTAssertEqual(Array(HIDReport.encode(s)), [255, 3, 3, 0, 0, 0, 0, 255, 127, 0, 0, 255, 255])
+        XCTAssertEqual(Array(HIDReport.encode(s)), [255, 7, 3, 0, 0, 0, 0, 255, 127, 0, 0, 255, 255])
         for button in PadButton.allCases { s.set(button, pressed: false) }
         XCTAssertEqual(s.buttons, 0)
     }

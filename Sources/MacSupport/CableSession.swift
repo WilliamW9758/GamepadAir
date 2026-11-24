@@ -10,6 +10,7 @@ public struct HostUpdate {
     public let frames: UInt64
     public var interpretedInput = "No input"
     public var finished = false
+    public var layout: ControllerSnapshot?
 }
 
 /// One serial worker owns transport and HID writes. Stop interrupts blocking reads.
@@ -17,6 +18,40 @@ public final class CableSession {
     public static var gamepadAuthorized: Bool { VirtualGamepadOutput.hasEntitlement }
     private let lock = NSLock()
     private var stopped = false
+    private var setupStage: SetupStage?
+    public func setSetupStage(_ stage: SetupStage) {
+        lock.lock(); setupStage = stage; lock.unlock()
+    }
+    private var currentSetupStage: SetupStage? {
+        lock.lock(); defer { lock.unlock() }; return setupStage
+    }
+    private var outputPaused = false
+    private var pendingMappings: (KeyboardProfile, GamepadProfile)?
+    public func setOutputPaused(_ paused: Bool) {
+        lock.lock(); outputPaused = paused; lock.unlock()
+    }
+    public func updateMappings(keyboard: KeyboardProfile, gamepad: GamepadProfile) {
+        lock.lock(); pendingMappings = (keyboard, gamepad); lock.unlock()
+    }
+    private var isOutputPaused: Bool {
+        lock.lock(); defer { lock.unlock() }; return outputPaused
+    }
+    private func takeMappings() -> (KeyboardProfile, GamepadProfile)? {
+        lock.lock(); defer { lock.unlock() }
+        guard !outputPaused else { return nil }
+        let value = pendingMappings; pendingMappings = nil; return value
+    }
+    private var commandBytes = Data()
+    public func sendLayoutCommand(_ command: LayoutCommand) throws {
+        let bytes = try command.encode()
+        lock.lock(); defer { lock.unlock() }
+        guard commandBytes.isEmpty else { throw LinkError.message("A layout change is already sending") }
+        commandBytes = bytes
+    }
+    private func nextCommandBytes() -> Data {
+        lock.lock(); defer { lock.unlock() }
+        let part = Data(commandBytes.prefix(64)); commandBytes.removeFirst(part.count); return part
+    }
     private var socket: InputLink?
     private let queue = DispatchQueue(label: "gamepad.cable", qos: .userInteractive)
     private let transport: LinkTransport
@@ -25,15 +60,16 @@ public final class CableSession {
     private let mode: OutputMode
     private let serial: String?
     private let keyboardProfile: KeyboardProfile
+    private let gamepadProfile: GamepadProfile
     private let globalInput: Bool
     private let targetPID: Int32?
     private let update: (HostUpdate) -> Void
     private var connectOverride: (() throws -> StreamSocket)?
     private var outputOverride: (() throws -> GamepadOutput)?
 
-    public init(mode: OutputMode, transport: LinkTransport = .usb, wirelessHost: String = "", pairingCode: String = "", serial: String? = nil, keyboardProfile: KeyboardProfile = .starter, targetPID: Int32? = nil, globalInput: Bool = false, update: @escaping (HostUpdate) -> Void) {
+    public init(mode: OutputMode, transport: LinkTransport = .usb, wirelessHost: String = "", pairingCode: String = "", serial: String? = nil, keyboardProfile: KeyboardProfile = .starter, gamepadProfile: GamepadProfile = GamepadProfile(), targetPID: Int32? = nil, globalInput: Bool = false, update: @escaping (HostUpdate) -> Void) {
         self.transport = transport; self.wirelessHost = wirelessHost; self.pairingCode = pairingCode
-        self.mode = mode; self.serial = serial; self.keyboardProfile = keyboardProfile; self.targetPID = targetPID; self.globalInput = globalInput; self.update = update
+        self.mode = mode; self.serial = serial; self.keyboardProfile = keyboardProfile; self.gamepadProfile = gamepadProfile; self.targetPID = targetPID; self.globalInput = globalInput; self.update = update
     }
     convenience init(connect: @escaping () throws -> StreamSocket, output: @escaping () throws -> GamepadOutput, update: @escaping (HostUpdate) -> Void) {
         self.init(mode: .monitor, update: update)
@@ -48,14 +84,20 @@ public final class CableSession {
         update(HostUpdate(message: message, connected: connected, state: state, frames: frames, finished: finished))
     }
     private func run() {
-        let output: GamepadOutput
+        var output: GamepadOutput
         do {
             if let outputOverride { output = try outputOverride() }
-            else if mode == .gamepad { output = try VirtualGamepadOutput() }
+            // Wait for the phone layout before publishing its controller identity.
+            else if mode == .gamepad { output = MonitorOutput() }
             else if mode == .keyboardMouse { output = try KeyboardMouseOutput(profile: keyboardProfile, targetPID: targetPID, global: globalInput) }
             else { output = MonitorOutput() }
         }
         catch { announce(error.localizedDescription, finished: true); return }
+        var activeMode = mode
+        var activeGamepad = gamepadProfile
+        var activeStyle: PadStyle = .xbox
+        var appliedLayout: SavedLayout?
+        var outputFailure: String?
         var endMessage = "Stopped; controls released"
         defer { output.close(); announce(endMessage, finished: true) }
         while !isStopped {
@@ -69,28 +111,90 @@ public final class CableSession {
                 if let wifi = stream as? WiFiLink { try wifi.prepare() }
                 if let bluetooth = stream as? BluetoothLink { try bluetooth.prepare() }
                 try stream.write(StateFrame.hello)
+                var sentSetupStage: SetupStage?
                 var sequence = SequenceGuard()
                 var count: UInt64 = 0
+                var layoutReceiver = LayoutTelemetryReceiver()
+                var phoneLayout: ControllerSnapshot?
+                var stateDeadline = ProcessInfo.processInfo.systemUptime + 3
+                var lastRumble = RumbleFrame()
+                var lastRumbleSent: TimeInterval = 0
                 while !isStopped {
-                    let data = try stream.readExactly(StateFrame.byteCount, timeout: count == 0 ? 3 : 0.25)
+                    let command = nextCommandBytes()
+                    if !command.isEmpty { try stream.write(command) }
+                    if let stage = currentSetupStage, stage != sentSetupStage, stage != .play || count > 0 {
+                        try stream.write(stage.encode()); sentSetupStage = stage
+                    }
+                    let remaining = stateDeadline - ProcessInfo.processInfo.systemUptime
+                    guard remaining > 0 else { throw LinkError.message("Controller heartbeat timed out; controls released") }
+                    let data = try stream.readExactly(StateFrame.byteCount, timeout: remaining)
+                    if data[5] == 3 {
+                        let bytes = Array(data)
+                        let number = (0..<4).reduce(UInt32(0)) { $0 | UInt32(bytes[8 + $1]) << (8 * $1) }
+                        try sequence.accept(number)
+                        if let snapshot = try layoutReceiver.accept(data) {
+                            phoneLayout = snapshot
+                            var resolved = snapshot.layout
+                            resolved.inputType = resolved.inputType ?? (mode == .gamepad ? .gamepad : .keyboardMouse)
+                            resolved.keyboardProfile = resolved.keyboardProfile ?? keyboardProfile
+                            resolved.gamepadProfile = resolved.gamepadProfile ?? gamepadProfile
+                            if mode != .monitor,
+                               (appliedLayout?.inputType != resolved.inputType || appliedLayout?.keyboardProfile != resolved.keyboardProfile || appliedLayout?.gamepadProfile != resolved.gamepadProfile || appliedLayout?.effectiveControllerStyle != resolved.effectiveControllerStyle) {
+                                try output.reset(); output.close()
+                                activeMode = resolved.effectiveInputType == .gamepad ? .gamepad : .keyboardMouse
+                                activeGamepad = resolved.gamepadProfile ?? GamepadProfile()
+                                activeStyle = resolved.effectiveControllerStyle
+                                do {
+                                    if activeMode == .gamepad { output = try VirtualGamepadOutput(profile: activeGamepad, style: activeStyle) }
+                                    else { output = try KeyboardMouseOutput(profile: resolved.keyboardProfile ?? .starter, targetPID: targetPID, global: globalInput) }
+                                    outputFailure = nil
+                                } catch {
+                                    output = MonitorOutput(); outputFailure = "Input unavailable: " + error.localizedDescription
+                                }
+                                appliedLayout = resolved
+                            }
+                        }
+                        continue
+                    }
+                    if let mappings = takeMappings(), phoneLayout?.layout.inputType == nil {
+                        try output.reset()
+                        output.close()
+                        if mode == .gamepad { output = try VirtualGamepadOutput(profile: mappings.1, style: activeStyle) }
+                        else if mode == .keyboardMouse { output = try KeyboardMouseOutput(profile: mappings.0, targetPID: targetPID, global: globalInput) }
+                    }
+                    let paused = isOutputPaused
                     if data[5] == 2 {
                         let pointer = try PointerFrame(data: data)
                         try sequence.accept(pointer.sequence)
-                        try output.pointer(pointer)
+                        if paused { try output.reset() } else { try output.pointer(pointer) }
                         continue
                     }
                     let frame = try StateFrame(data: data)
                     try sequence.accept(frame.sequence)
-                    if frame.state.isPaused { try output.reset() }
+                    stateDeadline = ProcessInfo.processInfo.systemUptime + 0.25
+                    if paused || frame.state.isPaused { try output.reset() }
                     else { try output.submit(frame.state) }
+                    let rumble = paused || frame.state.isPaused ? RumbleFrame() : (output as? VirtualGamepadOutput)?.currentRumble() ?? RumbleFrame()
+                    let now = ProcessInfo.processInfo.systemUptime
+                    if rumble != lastRumble || (rumble != RumbleFrame() && now - lastRumbleSent > 0.2) {
+                        try stream.write(rumble.data); lastRumble = rumble; lastRumbleSent = now
+                    }
                     count += 1
-                    let status = frame.state.isPaused ? "Layout editing · output paused" :
-                        (output as? KeyboardMouseOutput)?.statusDescription ?? (mode == .monitor ? "\(transport.rawValue) connected · monitor only" : "\(transport.rawValue) connected · HID output active")
+                    // Enter play only after authenticated controller traffic has arrived.
+                    // Send the same transition to the phone before reporting success to the Mac UI.
+                    if currentSetupStage == .play && sentSetupStage != .play {
+                        try stream.write(SetupStage.play.encode())
+                        sentSetupStage = .play
+                    }
+                    let status = outputFailure ?? (paused || frame.state.isPaused ? "Layout editing · output paused" :
+                        (output as? KeyboardMouseOutput)?.statusDescription ?? (mode == .monitor ? "\(transport.rawValue) connected · monitor only" : "\(transport.rawValue) connected · HID output active"))
                     var event = HostUpdate(message: status, connected: true, state: frame.state, frames: count)
-                    event.interpretedInput = (output as? KeyboardMouseOutput)?.interpretedInput ?? "See controller indicators below"
+                    event.layout = phoneLayout
+                    event.interpretedInput = paused ? "Editing · input paused" : (output as? KeyboardMouseOutput)?.interpretedInput ?? (activeMode == .gamepad ? activeGamepad.summary(frame.state) : "See controller indicators below")
                     update(event)
                 }
             } catch {
+                lock.lock(); commandBytes.removeAll(); lock.unlock()
                 do { try output.reset() }
                 catch { endMessage = "Output failed; restart required: \(error.localizedDescription)"; return }
                 announce(error.localizedDescription)

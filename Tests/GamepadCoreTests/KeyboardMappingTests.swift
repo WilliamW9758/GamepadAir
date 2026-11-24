@@ -47,7 +47,7 @@ final class KeyboardMappingTests: XCTestCase {
         XCTAssertEqual(mapper.tick(now: 1), [])
         XCTAssertEqual(try StateFrame(data: StateFrame(sequence: 0, state: .paused).encode()).state, .paused)
         state.isPaused = true
-        XCTAssertThrowsError(try StateFrame(data: StateFrame(sequence: 0, state: state).encode()))
+        XCTAssertEqual(try StateFrame(data: StateFrame(sequence: 0, state: state).encode()).state, state)
     }
     func testSharedKeyboardKeyUsesAllOwners() {
         var profile = KeyboardProfile()

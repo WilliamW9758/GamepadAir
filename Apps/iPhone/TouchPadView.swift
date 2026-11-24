@@ -19,28 +19,35 @@ final class TouchPadView: UIView {
         }
     }
     struct Item { let control: Control; let center: CGPoint; let radius: CGFloat; let label: String }
+    var hiddenControls = Set<String>()
+    var unmapped = Set<String>()
     var referencePlacements: [String: ControlPlacement] = [:]
     var referenceSizeFactor = 1.0
     var referenceAvailable = true
     var showGhost = true
     var onReference: ((ControlPlacement?) -> Void)?
+    var onCanvasSize: ((CGSize) -> Void)?
     private func reference(for item: Item) -> ControlPlacement? {
-        guard referenceAvailable, let base = presetItems.first(where: { $0.control == item.control }) else { return nil }
+        guard showsModeSwitch, referenceAvailable, let base = presetItems.first(where: { $0.control == item.control }) else { return nil }
         var p = referencePlacements[item.control.id] ?? ControlPlacement(x: base.center.x / max(1, bounds.width), y: base.center.y / max(1, bounds.height))
         p.scale *= referenceSizeFactor / max(0.01, sizeFactor)
         return p
     }
     var buttonFeedback: [String: ButtonFeedback] = [:]
+    var touchHaptic: ButtonHaptic = .medium
     private static let lightHaptic = UIImpactFeedbackGenerator(style: .light)
     private static let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
     private static let strongHaptic = UIImpactFeedbackGenerator(style: .heavy)
-    static func playHaptic(_ kind: ButtonHaptic) {
+    static func playHaptic(_ kind: ButtonHaptic, intensity: Double = 1) {
         switch kind {
         case .off: return
-        case .light: lightHaptic.impactOccurred()
-        case .medium: mediumHaptic.impactOccurred()
-        case .strong: strongHaptic.impactOccurred()
+        case .light: lightHaptic.impactOccurred(intensity: CGFloat(max(0, min(1, intensity))))
+        case .medium: mediumHaptic.impactOccurred(intensity: CGFloat(max(0, min(1, intensity))))
+        case .strong: strongHaptic.impactOccurred(intensity: CGFloat(max(0, min(1, intensity))))
         }
+    }
+    private func pressHaptic(_ control: Control) {
+        Self.playHaptic(touchHaptic)
     }
     var style = PadStyle.xbox
     var radialEnabled = false
@@ -53,16 +60,19 @@ final class TouchPadView: UIView {
     private var radialEnds: [Int: DispatchWorkItem] = [:]
     var modeName = "Aim"
     var onToggle: (() -> Void)?
-    var floatingLeft = false, floatingRight = false
+    var floatingLeft = true, floatingRight = true
     var leftTap = StickTapAction.off, rightTap = StickTapAction.off
     var legacyCanvas = false
     var sizeFactor = 1.0
     var onMigration: (([String: ControlPlacement], Double) -> Void)?
     private var migrationSent = false
     private var stickGestures: [Control: StickGesture] = [:]
+    private var stickClickHolds: [Control: StickClickHold] = [:]
+    private var stickHoldWork: [Control: DispatchWorkItem] = [:]
     private var pulses: [UUID: StickTapAction] = [:]
     private var pulseEnds: [UUID: DispatchWorkItem] = [:]
     var showDPad = true
+    var showsModeSwitch = true
     var cursorMode = false
     var trackpadHoldDelay = 0.5
     var onPointer: ((PointerAction, Double, Double) -> Void)?
@@ -96,8 +106,14 @@ final class TouchPadView: UIView {
         isOpaque = false
         backgroundColor = .clear
         accessibilityLabel = "Gamepad touch controls"
+        registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitAccessibilityContrast.self]) {
+            (view: TouchPadView, _: UITraitCollection) in view.setNeedsDisplay()
+        }
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    var showsGuideButton = false
+    var guideLabel = "Xbox"
 
     private var presetItems: [Item] {
         let w = bounds.width, h = bounds.height
@@ -123,16 +139,18 @@ final class TouchPadView: UIView {
         for (button, dx, dy) in [(PadButton.south, 0.0, 1.0), (.east, 1, 0), (.west, -1, 0), (.north, 0, -1)] {
             result.append(Item(control: .button(button), center: CGPoint(x: center.x + dx * 48 * unit, y: center.y + dy * 48 * unit), radius: 23 * unit, label: style.label(button)))
         }
-        if showDPad { result.append(item(.dpad, ps ? 0.14 : 0.355, ps ? 0.43 : 0.66, 43, "D-PAD")) }
+        if showsGuideButton { result.append(item(.button(.guide), 0.5, 0.35, 20, guideLabel)) }
+        if showDPad { result.append(item(.dpad, ps ? 0.14 : 0.355, ps ? 0.43 : 0.66, 50, "D-PAD")) }
         for slot in customSlots {
             result.append(item(.custom(slot), 0.10 + CGFloat(slot % 8) * 0.11, slot < 8 ? 0.91 : 0.51, 19, "C\(slot + 1)"))
         }
         if radialEnabled { result.append(item(.radial, 0.5, 0.5, 30, radialTitle)) }
+        if !showsModeSwitch { result.removeAll { $0.control == .modeToggle } }
         return result
     }
 
     private var items: [Item] {
-        presetItems.map { item in
+        presetItems.filter { !hiddenControls.contains($0.control.id) }.map { item in
             let fallback = ControlPlacement(x: item.center.x / max(1, bounds.width), y: item.center.y / max(1, bounds.height))
             let p = (placements[item.control.id] ?? fallback).fitting(width: bounds.width, height: bounds.height, baseRadius: item.radius)
             return Item(control: item.control, center: CGPoint(x: p.x * bounds.width, y: p.y * bounds.height), radius: item.radius * p.scale, label: item.control == .modeToggle ? modeName : (labels[item.control.id] ?? item.label))
@@ -165,6 +183,13 @@ final class TouchPadView: UIView {
         if previousSize != bounds.size {
             previousSize = bounds.size
             touches.removeAll(); cancelSticks(); cancelAim(); cancelTrackpad(); editTouch = nil; refresh()
+            let size = bounds.size
+            if size.width > 0 && size.height > 0 {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.bounds.size == size else { return }
+                    self.onCanvasSize?(size)
+                }
+            }
         }
     }
 
@@ -194,13 +219,22 @@ final class TouchPadView: UIView {
             if let item = items.min(by: { distance($0.center, point) / $0.radius < distance($1.center, point) / $1.radius }),
                hit(item, point),
                !self.touches.values.contains(where: { $0.control == item.control }) {
-                Self.playHaptic(buttonFeedback[item.control.id]?.haptic ?? .off)
+                if item.control != .leftStick && item.control != .rightStick {
+                    pressHaptic(item.control)
+                }
                 self.touches[ObjectIdentifier(touch)] = (item.control, point)
                 if item.control == .radial { radialOrigin = point; radialChoice = nil }
                 if item.control == .leftStick || item.control == .rightStick || item.control == .modeToggle {
                     let floating = item.control == .leftStick ? floatingLeft : floatingRight
                     stickGestures[item.control] = StickGesture(x: point.x, y: point.y, centerX: item.center.x, centerY: item.center.y,
                         floating: floating, now: ProcessInfo.processInfo.systemUptime)
+                }
+                if item.control == .leftStick || (item.control == .rightStick && !cursorMode) {
+                    let control = item.control
+                    stickClickHolds[control] = StickClickHold(now: ProcessInfo.processInfo.systemUptime)
+                    let work = DispatchWorkItem { [weak self] in self?.refresh() }
+                    stickHoldWork[control]?.cancel(); stickHoldWork[control] = work
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.46, execute: work)
                 }
                 if item.control == .rightStick && cursorMode {
                     cancelTrackpad()
@@ -248,7 +282,7 @@ final class TouchPadView: UIView {
                 let point = touch.location(in: self)
                 self.touches[id] = (previous.control, point)
                 if previous.control == .radial {
-                    radialChoice = RadialInput.direction(x: point.x - radialOrigin.x, y: point.y - radialOrigin.y, deadZone: 24)
+                    radialChoice = RadialInput.direction(x: point.x - radialOrigin.x, y: point.y - radialOrigin.y, deadZone: 24, slots: radialSlots)
                 }
                 stickGestures[previous.control]?.move(x: point.x, y: point.y)
                 if previous.control == .rightStick && cursorMode {
@@ -276,9 +310,13 @@ final class TouchPadView: UIView {
             let id = ObjectIdentifier(touch)
             if self.touches[id]?.control == .radial {
                 let end = touch.location(in: self)
-                let direction = RadialInput.direction(x: end.x - radialOrigin.x, y: end.y - radialOrigin.y, deadZone: 24)
+                let direction = RadialInput.direction(x: end.x - radialOrigin.x, y: end.y - radialOrigin.y, deadZone: 24, slots: radialSlots)
                 if !cancelled, let direction, radialSlots.indices.contains(direction) { radialPulse(radialSlots[direction]) }
                 radialChoice = nil
+            }
+            if let control = self.touches[id]?.control {
+                stickClickHolds.removeValue(forKey: control)
+                stickHoldWork.removeValue(forKey: control)?.cancel()
             }
             if let control = self.touches[id]?.control, var gesture = stickGestures.removeValue(forKey: control) {
                 let end = touch.location(in: self); gesture.move(x: end.x, y: end.y)
@@ -312,6 +350,8 @@ final class TouchPadView: UIView {
         radialChoice = nil
         radialEnds.values.forEach { $0.cancel() }; radialEnds.removeAll(); radialPulses.removeAll()
         stickGestures.removeAll()
+        stickClickHolds.removeAll()
+        stickHoldWork.values.forEach { $0.cancel() }; stickHoldWork.removeAll()
         pulseEnds.values.forEach { $0.cancel() }; pulseEnds.removeAll(); pulses.removeAll()
     }
     private func radialPulse(_ slot: Int) {
@@ -350,6 +390,11 @@ final class TouchPadView: UIView {
             let origin = CGPoint(x: gesture?.originX ?? item.center.x, y: gesture?.originY ?? item.center.y)
             let x = Double((value.point.x - origin.x) / (item.radius * 0.7))
             let y = Double((value.point.y - origin.y) / (item.radius * 0.7))
+            let wasPressed = stickClickHolds[value.control]?.pressed == true
+            stickClickHolds[value.control]?.update(x: x, y: y, now: ProcessInfo.processInfo.systemUptime)
+            if !wasPressed && stickClickHolds[value.control]?.pressed == true {
+                pressHaptic(.button(value.control == .leftStick ? .leftClick : .rightClick))
+            }
             let inside = distance(value.point, item.center) <= item.radius * 1.3
             switch value.control {
             case .modeToggle, .radial: break
@@ -363,12 +408,14 @@ final class TouchPadView: UIView {
             case .leftTrigger: next.leftTrigger = 255
             case .rightTrigger: next.rightTrigger = 255
             case .dpad:
-                if hypot(x, y) > 0.22 {
+                if hypot(x, y) > 0.18 / 0.7 {
                     let angle = atan2(x, -y)
                     next.hat = UInt8((Int((angle / (.pi / 4)).rounded()) + 8) % 8)
                 }
             }
         }
+        if stickClickHolds[.leftStick]?.pressed == true { next.set(.leftClick, pressed: true) }
+        if !cursorMode, stickClickHolds[.rightStick]?.pressed == true { next.set(.rightClick, pressed: true) }
         if holdAimEnabled, let touch = touches.values.first(where: { $0.control == .rightTrigger }),
            let item = items.first(where: { $0.control == .rightTrigger }) {
             let axes = holdAim.update(x: touch.point.x, y: touch.point.y, now: ProcessInfo.processInfo.systemUptime,
@@ -377,25 +424,33 @@ final class TouchPadView: UIView {
             // let a simultaneous ordinary right-stick touch overwrite this gesture.
             if holdAim.isAiming { (next.rightX, next.rightY) = axes }
         }
+        if touches.values.contains(where: { $0.control == .radial }) { next.radialPreview = radialChoice.map { UInt8($0 + 2) } ?? 1 }
         for slot in radialPulses { next.setCustom(slot, pressed: true) }
         for action in pulses.values { action.apply(to: &next) }
         state = next; onState?(next); setNeedsDisplay()
     }
 
+    private func contrastingText(on color: UIColor) -> UIColor {
+        let resolved = color.resolvedColor(with: traitCollection)
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        resolved.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        return 0.2126 * red + 0.7152 * green + 0.0722 * blue > 0.55 ? .black : .white
+    }
+
     override func draw(_ rect: CGRect) {
-        let muted = UIColor(white: 0.58, alpha: 1)
+        let muted = UIColor.secondaryLabel
         if editing, showGhost, let id = selectedID, let item = items.first(where: { $0.control.id == id }), let p = reference(for: item), let base = presetItems.first(where: { $0.control.id == id }) {
             let radius = base.radius * p.scale
             let ghost = UIBezierPath(ovalIn: CGRect(x: p.x * bounds.width - radius, y: p.y * bounds.height - radius, width: radius * 2, height: radius * 2))
-            UIColor(white: 0.9, alpha: 0.25).setStroke(); ghost.lineWidth = 1
+            UIColor.label.withAlphaComponent(0.2).setStroke(); ghost.lineWidth = 1
             ghost.setLineDash([3, 5], count: 2, phase: 0); ghost.stroke()
             text("OTHER MODE", at: CGPoint(x: p.x * bounds.width, y: p.y * bounds.height - radius - 10), color: muted, size: 8)
         }
         for original in items {
             let tint = buttonFeedback[original.control.id]?.tint ?? .automatic
             let accent = tint.uiColor
-            let idleFill = tint == .automatic ? UIColor(white: 1, alpha: 0.035) : accent.withAlphaComponent(0.18)
-            let idleStroke = tint == .automatic ? UIColor(white: 1, alpha: 0.12) : accent.withAlphaComponent(0.7)
+            let idleFill = tint == .automatic ? UIColor.secondarySystemGroupedBackground : accent.withAlphaComponent(0.18)
+            let idleStroke = tint == .automatic ? UIColor.separator.withAlphaComponent(0.45) : accent.withAlphaComponent(0.7)
             var item = original
             if !editing, (original.control == .leftStick || (original.control == .rightStick && !cursorMode)),
                let gesture = stickGestures[original.control] {
@@ -415,16 +470,19 @@ final class TouchPadView: UIView {
                 let pad = UIBezierPath(roundedRect: CGRect(x: item.center.x - item.radius, y: item.center.y - item.radius, width: item.radius * 2, height: item.radius * 2), cornerRadius: 14)
                 (active ? accent.withAlphaComponent(0.3) : idleFill).setFill(); pad.fill()
                 (active ? accent : (tint == .automatic ? muted : accent)).setStroke(); pad.lineWidth = 1.5; pad.stroke()
-                text(trackpad.rightClicked ? "RIGHT CLICK" : "TRACKPAD", at: item.center, color: active ? accent : .white, size: 10, maxWidth: item.radius * 1.8)
-                text("Tap / hold", at: CGPoint(x: item.center.x, y: item.center.y + 18), color: muted, size: 8, maxWidth: item.radius * 1.8)
+                text(trackpad.rightClicked ? "RIGHT CLICK" : "TRACKPAD", at: item.center, color: .label, size: 10, maxWidth: item.radius * 1.8)
                 continue
             }
             let circle = UIBezierPath(ovalIn: CGRect(x: item.center.x - item.radius, y: item.center.y - item.radius, width: item.radius * 2, height: item.radius * 2))
-            (active ? accent.withAlphaComponent(0.35) : idleFill).setFill(); circle.fill()
-            (active ? accent : idleStroke).setStroke(); circle.lineWidth = 1; circle.stroke()
+            let context = UIGraphicsGetCurrentContext()
+            context?.saveGState()
+            context?.setShadow(offset: CGSize(width: 0, height: 2), blur: 6, color: UIColor.black.withAlphaComponent(0.07).cgColor)
+            (active && item.control != .dpad ? accent.withAlphaComponent(0.25) : idleFill).setFill(); circle.fill()
+            context?.restoreGState()
+            (unmapped.contains(item.control.id) ? UIColor.systemRed : (active && item.control != .dpad ? accent : idleStroke)).setStroke(); circle.lineWidth = unmapped.contains(item.control.id) ? 2 : 1; circle.stroke()
             if editing {
                 let selected = selectedID == item.control.id
-                (selected ? accent : muted).setStroke()
+                (unmapped.contains(item.control.id) ? UIColor.systemRed : (selected ? accent : muted)).setStroke()
                 circle.lineWidth = selected ? 3 : 1
                 circle.stroke()
             }
@@ -436,14 +494,40 @@ final class TouchPadView: UIView {
                 let r = item.radius * 0.43
                 let center = CGPoint(x: item.center.x + x * item.radius * 0.48, y: item.center.y + y * item.radius * 0.48)
                 let thumb = UIBezierPath(ovalIn: CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2))
-                (active ? accent : UIColor(white: 0.19, alpha: 1)).setFill(); thumb.fill()
-                text(item.label, at: center, color: active ? .black : muted, size: 14)
+                (active ? accent : UIColor.tertiarySystemFill).setFill(); thumb.fill()
+                text(item.label, at: center, color: active ? contrastingText(on: accent) : muted, size: 14)
             case .dpad:
-                for (label, dx, dy) in [("▲", 0.0, -1.0), ("▶", 1, 0), ("▼", 0, 1), ("◀", -1, 0)] {
-                    text(label, at: CGPoint(x: item.center.x + dx * item.radius * 0.6, y: item.center.y + dy * item.radius * 0.6), color: active ? accent : muted, size: 12)
+                // Inset, softly outlined keys keep the eight angular regions legible
+                // without making the pad look like a separate wheel control.
+                let inner = item.radius * 0.23
+                for direction in 0..<8 {
+                    let angle = CGFloat(direction) * .pi / 4
+                    let start = angle - .pi / 2 - .pi / 8 + 0.045
+                    let end = angle - .pi / 2 + .pi / 8 - 0.045
+                    let segment = UIBezierPath()
+                    segment.addArc(withCenter: item.center, radius: item.radius * 0.92, startAngle: start, endAngle: end, clockwise: true)
+                    segment.addArc(withCenter: item.center, radius: inner, startAngle: end, endAngle: start, clockwise: false)
+                    segment.close()
+                    segment.lineJoinStyle = .round
+                    let pressed = !editing && state.hat == UInt8(direction)
+                    (pressed ? accent.withAlphaComponent(0.25) : idleFill).setFill(); segment.fill()
+                    (pressed ? accent : idleStroke.withAlphaComponent(0.35)).setStroke()
+                    segment.lineWidth = 1; segment.stroke()
+                    let point = CGPoint(x: item.center.x + sin(angle) * item.radius * 0.64,
+                                        y: item.center.y - cos(angle) * item.radius * 0.64)
+                    context?.saveGState()
+                    context?.translateBy(x: point.x, y: point.y)
+                    context?.rotate(by: angle)
+                    let chevron = UIBezierPath()
+                    chevron.move(to: CGPoint(x: -3.5, y: 1.75))
+                    chevron.addLine(to: CGPoint(x: 0, y: -1.75))
+                    chevron.addLine(to: CGPoint(x: 3.5, y: 1.75))
+                    chevron.lineWidth = 1.5; chevron.lineCapStyle = .round; chevron.lineJoinStyle = .round
+                    (pressed ? accent : UIColor.secondaryLabel).setStroke(); chevron.stroke()
+                    context?.restoreGState()
                 }
             default:
-                text(item.label, at: item.center, color: active ? accent : .white, size: item.label.count > 3 ? 10 : 17, maxWidth: item.radius * 1.8)
+                text(item.label, at: item.center, color: .label, size: item.label.count > 3 ? 10 : 17, maxWidth: item.radius * 1.8)
             }
         }
         if holdAim.isAiming, let item = items.first(where: { $0.control == .rightTrigger }) {
@@ -458,18 +542,18 @@ final class TouchPadView: UIView {
                                 y: origin.y + CGFloat(state.rightY) / 32767 * radius * 0.7)
             let thumb = UIBezierPath(ovalIn: CGRect(x: point.x - thumbRadius, y: point.y - thumbRadius, width: thumbRadius * 2, height: thumbRadius * 2))
             accent.setFill(); thumb.fill()
-            text("AIM", at: point, color: .black, size: 10)
+            text("AIM", at: point, color: contrastingText(on: accent), size: 10)
         }
         if !editing, touches.values.contains(where: { $0.control == .radial }) {
             let accent = (buttonFeedback[Control.radial.id]?.tint ?? .automatic).uiColor
-            for i in 0..<8 {
+            for i in 0..<8 where radialSlots.indices.contains(i) && radialSlots[i] >= 0 {
                 let angle = Double(i) * .pi / 4
                 let point = CGPoint(x: min(bounds.maxX - 20, max(20, radialOrigin.x + sin(angle) * 78)),
                                     y: min(bounds.maxY - 20, max(20, radialOrigin.y - cos(angle) * 78)))
                 let ring = UIBezierPath(ovalIn: CGRect(x: point.x - 19, y: point.y - 19, width: 38, height: 38))
-                (radialChoice == i ? accent : UIColor(white: 0.12, alpha: 0.95)).setFill(); ring.fill()
+                (radialChoice == i ? accent : UIColor.secondarySystemGroupedBackground).setFill(); ring.fill()
                 let slot = radialSlots.indices.contains(i) ? radialSlots[i] : i
-                text(slot < 0 ? "—" : (labels["custom-\(slot)"] ?? (slot < 8 ? "\(slot + 1)" : "C\(slot + 1)")), at: point, color: radialChoice == i ? .black : .white, size: 12, maxWidth: 34)
+                text(slot < 0 ? "—" : (labels["custom-\(slot)"] ?? (slot < 8 ? "\(slot + 1)" : "C\(slot + 1)")), at: point, color: radialChoice == i ? contrastingText(on: accent) : .label, size: 12, maxWidth: 34)
             }
         }
         text(editing ? "Editing · input paused" : "Pocket Pad", at: CGPoint(x: bounds.midX, y: bounds.height - 12), color: muted, size: 9)
@@ -486,7 +570,7 @@ final class TouchPadView: UIView {
 extension ButtonTint {
     var uiColor: UIColor {
         switch self {
-        case .automatic: return UIColor(red: 0.75, green: 0.86, blue: 0.81, alpha: 1)
+        case .automatic: return .label
         case .mint: return UIColor(red: 0.44, green: 0.94, blue: 0.79, alpha: 1)
         case .blue: return .systemBlue
         case .violet: return .systemPurple

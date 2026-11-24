@@ -13,7 +13,7 @@ UIKit multi-touch surface
 
 The iPhone supplies a listening port; the Mac initiates the connection through `/var/run/usbmuxd`. USBMux ListDevices and Connect messages use its length-prefixed XML-plist protocol. Only `ConnectionType == USB` is eligible. The Connect port field is network byte order inside the plist. The implementation is independent code; the wire protocol is documented by [libusbmuxd](https://github.com/libimobiledevice/libusbmuxd) and Apple's running local service.
 
-The listener is loopback-only and accepts one Mac connection. The host sends ASCII `IPGP/1\n`; the phone validates it before sending input. This is version negotiation, not cryptographic authentication. The existing iPhone/Mac USB trust relationship and loopback binding are the prototype's trust boundary. Wireless transports will require explicit pairing/authentication, not just rebinding this listener to a LAN interface.
+The listener is loopback-only and accepts one Mac connection. The host sends ASCII `IPGP/1\n`; the phone validates it before sending input. This is version negotiation, not cryptographic authentication. The existing iPhone/Mac USB trust relationship and loopback binding are the prototype's trust boundary. Wireless transports use separate pairing/authentication paths; see Wireless transport additions below.
 
 ## Input wire format
 
@@ -50,12 +50,9 @@ One Generic Desktop/Game Pad application collection, no Report ID. Input is 13 b
 
 The local experimental vendor/product pair is FFFF:0001, transport Virtual. This is not a registered hardware identity or a shipping VID assignment, and does not impersonate Xbox/PS hardware. Some games may require mappings or a different, properly validated backend. CoreHID wraps the same underlying virtual-device mechanism; it does not avoid signing or recognition constraints.
 
-## Next milestones
+## Release work
 
-1. Install on the target iPhone, verify wired multi-touch, unplug/replug, lock/unlock, and sustained traffic.
-2. Resolve virtual-HID authorization or evaluate an existing authorized driver; test native Valheim and one other Mac game.
-3. Validate keyboard/mouse behavior in native Valheim and other games; extend profiles as needed. Per-control layout editing and keyboard mapping are implemented.
-4. Add authenticated Wi-Fi/Bluetooth transports behind the same state contract.
+See [release readiness and product roadmap](RELEASE_PLAN.md) for current milestones and launch blockers.
 
 Custom button labels and enabled slots are stored per phone layout. Stable numbered slots map to Mac keyboard bindings independently of display names. Existing receivers reject nonzero custom bits; install both updated apps. The HID descriptor remains unchanged and ignores custom bits.
 
@@ -67,4 +64,7 @@ Cursor trackpad actions use separate 28-byte type-2 pointer frames alongside typ
 
 `InputLink` abstracts blocking framed reads, writes, and cancellation. USB uses the original `StreamSocket`; `WiFiLink` adapts Network.framework TLS and `BluetoothLink` adapts Core Bluetooth. `LinkInbox` assembles arbitrary notification/TCP fragmentation up to 8192 queued bytes and enforces a fixed read deadline. Session cancellation interrupts pending reads/setup and closes transports. Wi-Fi and BLE share the existing 28-byte frames and sequence guard; no keyboard mappings are transmitted to the phone. TLS pairing is covered by a live loopback integration test including wrong-code rejection. BLE MTU fragmentation has a unit test; on-air behavior is not yet verified.
 
-`LayoutMode` gains optional radial fields for backward-compatible catalog decoding. Slot -1 means unused; otherwise slots are 0–15. Slot arrays, when present, must contain exactly eight valid entries. The pure radial geometry helper handles clockwise sectors and a cancellation center; the touch view emits existing custom-button bits on release without extending the protocol.
+`LayoutMode` gains optional radial fields for backward-compatible catalog decoding. Slot -1 means unused; otherwise slots are 0–15. Slot arrays, when present, must contain exactly eight valid entries. The radial helper chooses the nearest mapped angular direction, splitting unused sectors between their mapped neighbors, with a cancellation center. The touch view emits existing custom-button bits only on release. State-frame byte 15 carries preview-only radial telemetry: 0 idle, 1 center touch, and 2–9 for directions 0–7. Both apps must be updated together; older receivers required this byte to be zero. HID/keyboard output ignores this telemetry.
+
+### Controller Guide button
+`PadButton.guide` appends wire button bit 10, preserving the ten existing button IDs. State frames remain 28 bytes and accept bits 0–10. Matching phone/Mac builds are required for Guide input; older receivers reject that formerly reserved bit. Controller layouts expose a movable/removable center Xbox/PS button, named for their emulated controller identity. Guide is distinct from Menu/Options and supports normal gamepad remapping. Xbox wireless reports encode Guide at byte 15 bit 4; DS4 reports encode it at byte 7 bit 0 independently of the six-bit sequence. The receiving game, Steam, or OS determines whether Guide opens an overlay; it is not a guaranteed pause-menu shortcut.

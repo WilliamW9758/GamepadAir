@@ -26,9 +26,16 @@ final class MonitorOutput: GamepadOutput {
 }
 
 final class VirtualGamepadOutput: GamepadOutput {
+    private let profile: GamepadProfile
     private var device: IOHIDUserDevice?
     private let reportLock = NSLock()
-    private var report = HIDReport.encode(.neutral)
+    private var report = Data()
+    private let style: PadStyle
+    private var sequence: UInt8 = 0
+    private var rumble = RumbleFrame()
+    func currentRumble() -> RumbleFrame {
+        reportLock.lock(); defer { reportLock.unlock() }; return rumble
+    }
     private let callbackQueue = DispatchQueue(label: "gamepad.hid.requests")
 
     static var hasEntitlement: Bool {
@@ -36,14 +43,17 @@ final class VirtualGamepadOutput: GamepadOutput {
         return SecTaskCopyValueForEntitlement(task, "com.apple.developer.hid.virtual.device" as CFString, nil) as? Bool == true
     }
 
-    init() throws {
+    init(profile: GamepadProfile = GamepadProfile(), style: PadStyle = .xbox) throws {
+        self.profile = profile
+        self.style = style
         guard Self.hasEntitlement else {
             throw LinkError.message("Gamepad output requires an Apple-authorized signing profile with com.apple.developer.hid.virtual.device. Input monitor works without it. See docs/SETUP.md.")
         }
+        report = style == .playStation ? CompatibilityHIDReport.encode(.neutral) : XboxHIDReport.encode(.neutral)
         let properties: [String: Any] = [
-            "ReportDescriptor": HIDReport.descriptor,
-            "VendorID": 0xFFFF, "ProductID": 1, "VersionNumber": 1,
-            "Product": "iPhone Gamepad Prototype", "Manufacturer": "iPhoneGamepad",
+            "ReportDescriptor": style == .playStation ? CompatibilityHIDReport.descriptor : XboxHIDReport.descriptor,
+            "VendorID": style == .playStation ? 0x054C : 0x045E, "ProductID": style == .playStation ? 0x09CC : 0x0B13, "VersionNumber": 1,
+            "Product": style == .playStation ? "PocketPad PlayStation Controller" : "Xbox PocketPad Wireless Controller", "Manufacturer": "PocketPad",
             "Transport": "Virtual", "PrimaryUsagePage": 1, "PrimaryUsage": 5
         ]
         guard let device = IOHIDUserDeviceCreateWithProperties(kCFAllocatorDefault, properties as CFDictionary, 1) else {
@@ -51,14 +61,22 @@ final class VirtualGamepadOutput: GamepadOutput {
         }
         self.device = device
         IOHIDUserDeviceRegisterGetReportBlock(device) { [weak self] type, id, buffer, length in
-            guard let self, type == kIOHIDReportTypeInput, id == 0 else { return kIOReturnUnsupported }
+            guard let self, type == kIOHIDReportTypeInput, id == 1 else { return kIOReturnUnsupported }
             self.reportLock.lock(); defer { self.reportLock.unlock() }
             guard length.pointee >= self.report.count else { return kIOReturnNoSpace }
             self.report.copyBytes(to: buffer, count: self.report.count)
             length.pointee = self.report.count
             return kIOReturnSuccess
         }
-        IOHIDUserDeviceRegisterSetReportBlock(device) { _, _, _, _ in kIOReturnUnsupported }
+        IOHIDUserDeviceRegisterSetReportBlock(device) { [weak self] type, id, buffer, length in
+            guard let self, type == kIOHIDReportTypeOutput else { return kIOReturnUnsupported }
+            let data = Data(bytes: buffer, count: length)
+            if let value = RumbleFrame.decodeHID(data, reportID: Int(id), style: self.style) {
+                self.reportLock.lock(); self.rumble = value; self.reportLock.unlock()
+                return kIOReturnSuccess
+            }
+            return self.style == .playStation && id == 5 ? kIOReturnSuccess : kIOReturnUnsupported
+        }
         IOHIDUserDeviceSetDispatchQueue(device, callbackQueue)
         IOHIDUserDeviceActivate(device)
         do { try submit(.neutral) } catch { close(); throw error }
@@ -66,7 +84,9 @@ final class VirtualGamepadOutput: GamepadOutput {
 
     func submit(_ state: GamepadState) throws {
         guard let device else { return }
-        let next = HIDReport.encode(state)
+        let mapped = profile.apply(state)
+        let next = style == .playStation ? CompatibilityHIDReport.encode(mapped, sequence: sequence) : XboxHIDReport.encode(mapped)
+        sequence &+= 1
         reportLock.lock(); report = next; reportLock.unlock()
         let result = next.withUnsafeBytes { IOHIDUserDeviceHandleReportWithTimeStamp(device, mach_absolute_time(), $0.baseAddress!, next.count) }
         guard result == kIOReturnSuccess else { throw LinkError.message("Virtual HID report failed (\(result))") }

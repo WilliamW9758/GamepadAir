@@ -49,6 +49,12 @@ The CLI also provides `--probe` and `--gamepad`; these require virtual-HID autho
 
 After adding Swift files, run `python3 Scripts/sync_project_sources.py`. Avoid rerunning the original project generator on a configured checkout; it replaces project settings.
 
+## Release preparation
+
+See [release readiness and product roadmap](docs/RELEASE_PLAN.md) for launch blockers, the guided setup redesign, Community Layouts, and the proposed AI layout assistant. These planned features are not yet implemented.
+
+`Config/AppInfo.plist` supplies Bonjour declarations to the app Info.plists; it is not a privacy manifest. Required-reason API declarations are in `Config/PrivacyInfo.xcprivacy`. See the [submission packet](docs/SUBMISSION.md) for archive validation and outstanding release gates.
+
 ## Contributing
 
 Bug reports, device compatibility reports, and pull requests are welcome. Include reproduction steps and OS versions. Do not commit signing certificates, provisioning profiles, pairing codes, personal layout exports, or device logs containing private information.

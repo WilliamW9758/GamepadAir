@@ -25,6 +25,7 @@ public struct PortableProfile: Codable, Equatable {
                 slots.count <= 16 && Set(slots).count == slots.count && slots.allSatisfy { (0..<16).contains($0) }
             }
         }) else { throw ProtocolError.invalidState }
+        guard value.layout.gamepadProfile == nil || value.layout.gamepadProfile?.version == 1 else { throw ProtocolError.invalidState }
         value.keyboard = value.keyboard ?? value.layout.keyboardProfile
         guard value.keyboard == nil || value.keyboard?.version == 1 else { throw ProtocolError.invalidState }
         value.keyboard = value.keyboard?.sanitized
@@ -54,6 +55,17 @@ public struct LayoutHistory {
 }
 
 extension SavedLayout {
+    /// Enabling cursor switching starts with the current arrangement, avoiding a
+    /// surprise jump to the untouched second canvas in newly created layouts.
+    public mutating func setCursorSwitching(_ enabled: Bool) {
+        if enabled && cursorSwitching == false {
+            let alternateID = modes[1].id
+            modes[1] = modes[0]
+            modes[1].id = alternateID; modes[1].name = "Cursor"; modes[1].cursor = true
+            linkedControls = Set(MappedControl.allCases.map(\.canvasID)).union(["radial"])
+        }
+        cursorSwitching = enabled
+    }
     /// Linking is explicit; old layouts remain independent until the user opts in.
     public mutating func place(_ placement: ControlPlacement, control: String, mode index: Int) {
         modes[index].controls.set(placement, control: control, style: style)

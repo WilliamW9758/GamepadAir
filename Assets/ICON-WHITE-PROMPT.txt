@@ -1,0 +1,2 @@
+Generated using built-in image_gen, editing PocketPad-icon-coral.png.
+Create the white alternate app icon by recoloring ONLY this icon. Background clean very light warm white (#FAFAFA to #ECEDEF subtle gradient). Controller solid graphite (#353538), cutout cross and two circles match the light background. Preserve EXACT silhouette, proportions, centering, margins and simple flat native app aesthetic. No text or extra decoration. Opaque square full-bleed asset, no rounded outer corners.

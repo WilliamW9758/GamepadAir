@@ -4,6 +4,7 @@ import CoreBluetooth
 /// Foreground-only BLE peripheral. Notifications carry the same framed stream
 /// as USB; split at the negotiated MTU without dropping button edges.
 final class BluetoothServer: NSObject, CBPeripheralManagerDelegate {
+    var onCommandData: ((Data) -> Void)?
     var onConnected: (() -> Void)?
     var onDisconnected: (() -> Void)?
     var onStatus: ((String) -> Void)?
@@ -56,6 +57,13 @@ final class BluetoothServer: NSObject, CBPeripheralManagerDelegate {
     }
     func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
         for request in requests {
+            if authenticated, !stopped, central?.identifier == request.central.identifier,
+               request.characteristic.uuid == CBUUID(string: WirelessSettings.controlCharacteristic),
+               request.offset == 0, let data = request.value {
+                peripheral.respond(to: request, withResult: .success)
+                onCommandData?(data)
+                continue
+            }
             guard !stopped, !authenticated, central?.identifier == request.central.identifier,
                   request.characteristic.uuid == CBUUID(string: WirelessSettings.controlCharacteristic),
                   request.offset == 0, let value = request.value, hello.count + value.count <= StateFrame.hello.count + code.utf8.count + 1 else {

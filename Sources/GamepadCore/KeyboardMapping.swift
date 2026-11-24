@@ -1,7 +1,7 @@
 import Foundation
 
 public enum MappedControl: String, Codable, CaseIterable, Sendable {
-    case south, east, west, north, leftShoulder, rightShoulder, back, start, leftClick, rightClick
+    case south, east, west, north, leftShoulder, rightShoulder, back, start, leftClick, rightClick, guide
     case leftTrigger, rightTrigger, dpadUp, dpadRight, dpadDown, dpadLeft
     case leftUp, leftRight, leftDown, leftLeft, rightUp, rightRight, rightDown, rightLeft
     case autoRun
@@ -12,7 +12,7 @@ public enum MappedControl: String, Codable, CaseIterable, Sendable {
         if let index = Self.customControls.firstIndex(of: self) { return "Custom \(index + 1)" }
         return ["autoRun": "Left stick auto-run", "south": "A / ×", "east": "B / ○", "west": "X / □", "north": "Y / △",
          "leftShoulder": "LB / L1", "rightShoulder": "RB / R1", "back": "View / Share", "start": "Menu / Options",
-         "leftClick": "L3", "rightClick": "R3", "leftTrigger": "LT / L2", "rightTrigger": "RT / R2",
+         "guide": "Xbox / PS (Guide)", "leftClick": "L3", "rightClick": "R3", "leftTrigger": "LT / L2", "rightTrigger": "RT / R2",
          "dpadUp": "D-pad ↑", "dpadRight": "D-pad →", "dpadDown": "D-pad ↓", "dpadLeft": "D-pad ←",
          "leftUp": "Left stick ↑", "leftRight": "Left stick →", "leftDown": "Left stick ↓", "leftLeft": "Left stick ←",
          "rightUp": "Right stick ↑", "rightRight": "Right stick →", "rightDown": "Right stick ↓", "rightLeft": "Right stick ←"][rawValue]!
@@ -145,7 +145,7 @@ public struct KeyboardProfile: Codable, Equatable, Sendable {
     public func activeControls(_ state: GamepadState, previous: Set<MappedControl>) -> Set<MappedControl> {
         guard !state.isPaused else { return [] }
         var active = Set<MappedControl>()
-        for (index, control) in MappedControl.allCases.prefix(10).enumerated() where state.buttons & (1 << index) != 0 { active.insert(control) }
+        for (index, control) in MappedControl.allCases.prefix(PadButton.allCases.count).enumerated() where state.buttons & (1 << index) != 0 { active.insert(control) }
         for (slot, control) in MappedControl.customControls.enumerated() where state.customButtons & (UInt16(1) << slot) != 0 { active.insert(control) }
         if state.leftTrigger > 0 { active.insert(.leftTrigger) }
         if state.rightTrigger > 0 { active.insert(.rightTrigger) }

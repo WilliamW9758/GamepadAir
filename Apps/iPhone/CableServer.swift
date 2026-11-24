@@ -7,6 +7,7 @@ import Darwin
 final class CableServer: ObservableObject {
     @Published private(set) var status = "Connect your iPhone to your Mac"
     @Published private(set) var connected = false
+    @Published private(set) var setupStage: SetupStage?
     @Published private(set) var transport = LinkTransport.usb
     @Published private(set) var pairingCode: String = {
         if let code = UserDefaults.standard.string(forKey: "wireless-pairing-code"), WirelessSettings.validCode(code) { return code }
@@ -29,6 +30,9 @@ final class CableServer: ObservableObject {
         return "Join a Wi-Fi network"
     }
     func selectTransport(_ value: LinkTransport) { stop(); transport = value; start() }
+    func renameDevice(_ name: String) {
+        stop(); WirelessSettings.setDeviceName(name); objectWillChange.send(); start()
+    }
     func newPairingCode() {
         stop(); pairingCode = WirelessSettings.newCode(); UserDefaults.standard.set(pairingCode, forKey: "wireless-pairing-code"); start()
     }
@@ -36,10 +40,25 @@ final class CableServer: ObservableObject {
     private var client: NWConnection?
     private var timer: Timer?
     private var handshakeTimeout: DispatchWorkItem?
+    private let gameRumble = GameRumble()
     private var state = GamepadState.neutral
     private var pointerMode = PointerMode.aim
     private var sequence: UInt32 = 0
     private var pending: [Data] = []
+    var onLayoutCommand: ((LayoutCommand) -> Void)?
+    private var commandBuffer = Data()
+    private var commandReceiver = LayoutCommandReceiver()
+    private var snapshot: ControllerSnapshot?
+    private var layoutChunks: [Data] = []
+    func updateLayout(_ value: ControllerSnapshot) {
+        guard snapshot != value else { return }
+        snapshot = value
+        layoutChunks = (try? LayoutTelemetry.chunks(value)) ?? []
+    }
+    private func restartLayoutTelemetry() {
+        commandBuffer.removeAll(); commandReceiver = LayoutCommandReceiver()
+        layoutChunks = snapshot.flatMap { try? LayoutTelemetry.chunks($0) } ?? []
+    }
     private var sending = false
     private var sendStarted: TimeInterval = 0
 
@@ -48,9 +67,10 @@ final class CableServer: ObservableObject {
         if transport == .bluetooth {
             let bluetooth = BluetoothServer(code: pairingCode); self.bluetooth = bluetooth
             bluetooth.onConnected = { [weak self] in
-                guard let self else { return }; self.sequence = 0; self.connected = true; self.status = "Bluetooth connected"; self.enqueue()
+                guard let self else { return }; self.sequence = 0; self.restartLayoutTelemetry(); self.connected = true; self.status = "Bluetooth connected"; self.enqueue()
             }
-            bluetooth.onDisconnected = { [weak self] in self?.connected = false; self?.status = "Bluetooth ready · reconnect on Mac" }
+            bluetooth.onDisconnected = { [weak self] in self?.gameRumble.stop(); self?.connected = false; self?.setupStage = nil; self?.status = "Bluetooth ready · reconnect on Mac" }
+            bluetooth.onCommandData = { [weak self] in self?.receiveCommands($0) }
             bluetooth.onStatus = { [weak self] in self?.status = $0 }
             startHeartbeat(); return
         }
@@ -103,6 +123,7 @@ final class CableServer: ObservableObject {
         update(.neutral) // Changing modes releases all inputs immediately.
     }
     func update(_ next: GamepadState) {
+        if next.isPaused { gameRumble.stop() }
         var next = next; next.pointerMode = pointerMode
         guard state != next else { return }
         state = next
@@ -143,30 +164,59 @@ final class CableServer: ObservableObject {
             guard let self, let connection, self.client === connection else { return }
             guard data == StateFrame.hello, !complete, error == nil else { self.dropClient(); return }
             self.handshakeTimeout?.cancel(); self.handshakeTimeout = nil
-            self.sequence = 0
+            self.sequence = 0; self.restartLayoutTelemetry()
             self.pairingAttempts.succeeded()
             self.connected = true
             self.status = "\(self.transport.rawValue) connected"
             self.enqueue()
-            // Any data after the hello violates v1; EOF releases the session too.
-            connection.receive(minimumIncompleteLength: 1, maximumLength: 1) { [weak self, weak connection] _, _, _, _ in
-                guard let self, self.client === connection else { return }
-                self.dropClient()
+            self.readSetup(connection)
+        }
+    }
+
+    private func readSetup(_ connection: NWConnection) {
+        connection.receive(minimumIncompleteLength: SetupStage.byteCount, maximumLength: SetupStage.byteCount) { [weak self, weak connection] data, _, complete, error in
+            guard let self, let connection, self.client === connection else { return }
+            guard error == nil, let data else { self.dropClient(); return }
+            self.receiveCommands(data)
+            if complete { self.dropClient() } else { self.readSetup(connection) }
+        }
+    }
+
+    private func receiveCommands(_ data: Data) {
+        commandBuffer.append(data)
+        while commandBuffer.count >= 4 {
+            let frame = Data(commandBuffer.prefix(4)); commandBuffer.removeFirst(4)
+            do {
+                if let rumble = RumbleFrame(data: frame) { gameRumble.apply(state.isPaused ? RumbleFrame() : rumble) }
+                else if let stage = try? SetupStage(data: frame) { setupStage = stage }
+                else if let command = try commandReceiver.accept(frame) { onLayoutCommand?(command) }
+            } catch {
+                commandBuffer.removeAll(); commandReceiver = LayoutCommandReceiver()
+                status = "Layout command could not be read"
             }
         }
     }
 
     private func enqueue(_ pointerData: Data? = nil) {
         guard connected else { return }
-        if let bluetooth {
-            let data = pointerData ?? StateFrame(sequence: sequence, state: state).encode()
-            sequence &+= 1; bluetooth.send(data); return
+        var safeState = state
+        if !layoutChunks.isEmpty { safeState.isPaused = true }
+        var data = layoutChunks.isEmpty ? (pointerData ?? StateFrame(sequence: sequence, state: safeState).encode()) : StateFrame(sequence: sequence, state: safeState).encode()
+        sequence &+= 1
+        // Keep input gated until the complete layout is applied, but do not
+        // throttle USB/TCP metadata to 16 payload bytes per heartbeat. BLE keeps
+        // its conservative pacing to respect notification backpressure.
+        for _ in 0..<min(layoutChunks.count, bluetooth == nil ? 16 : 1) {
+            var chunk = layoutChunks.removeFirst()
+            for i in 0..<4 { chunk[8 + i] = UInt8(truncatingIfNeeded: sequence >> (8 * i)) }
+            sequence &+= 1
+            data.append(chunk)
         }
+        if let bluetooth { bluetooth.send(data); return }
         guard pending.count < 64, !sending || ProcessInfo.processInfo.systemUptime - sendStarted < 0.2 else {
             dropClient(); status = "Connection stalled · reconnecting"; return
         }
-        pending.append(pointerData ?? StateFrame(sequence: sequence, state: state).encode())
-        sequence &+= 1
+        pending.append(data)
         flush()
     }
 
@@ -183,9 +233,10 @@ final class CableServer: ObservableObject {
     }
 
     private func dropClient() {
+        gameRumble.stop()
         handshakeTimeout?.cancel(); handshakeTimeout = nil
         let old = client; client = nil; old?.cancel()
-        connected = false; sending = false; pending.removeAll()
+        connected = false; setupStage = nil; sending = false; pending.removeAll()
         status = "Ready for \(transport.rawValue) · open the Mac companion"
     }
 }

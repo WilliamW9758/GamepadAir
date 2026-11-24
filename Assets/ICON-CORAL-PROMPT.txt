@@ -1,0 +1,2 @@
+Built-in image_gen edit of the existing minimal icon.
+Preserve the centered rounded rectangular controller, left rounded D-pad cross and two diagonal circular holes. Apple Games-inspired coral/pink-to-red gradient (#FF526C to #E92345), luminous white controller, red cutouts. Subtle highlights; no text, rocket, added controls, border, grain or outer rounded clipping. Opaque square app-icon artwork.

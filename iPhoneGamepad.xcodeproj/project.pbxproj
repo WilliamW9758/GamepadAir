@@ -5,152 +5,25 @@
 "objectVersion" = "56";
 "archiveVersion" = "1";
 "objects" = {
-"F8347CD91F2B2D9036440752" = {
-"path" = "Apps/iPhone/BluetoothServer.swift";
+"F1D6D15691552CC7A2B95610" = {
+"path" = "Apps/Shared/PadAppearance.swift";
 "isa" = "PBXFileReference";
 "lastKnownFileType" = "sourcecode.swift";
 "sourceTree" = "SOURCE_ROOT";
 };
-"59BE789FD2DD94D4F2E3BB74" = {
+"245FBCA2EBE732A28EE91D85" = {
 "isa" = "PBXBuildFile";
-"fileRef" = "431DF4B7C7D8D94477CD2A46";
+"fileRef" = "87008E92DC42864178C47163";
 };
-"0A8BE43099074798B3CB2362" = {
-"path" = "Assets/AppIcon.xcassets";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "folder.assetcatalog";
-"sourceTree" = "SOURCE_ROOT";
-};
-"6AEEF38C189FFEFC3105B1C2" = {
-"baseConfigurationReference" = "CAE662172FD450BB0CD710A7";
-"isa" = "XCBuildConfiguration";
-"buildSettings" = {
-"MARKETING_VERSION" = "0.1.0";
-"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
-"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.games";
-"PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).iphone";
-"CURRENT_PROJECT_VERSION" = "1";
-"INFOPLIST_KEY_CFBundleDisplayName" = "Pocket Pad";
-"SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD" = "YES";
-"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
-"SUPPORTS_MACCATALYST" = "NO";
-"TARGETED_DEVICE_FAMILY" = "1";
-"CODE_SIGN_STYLE" = "Automatic";
-"SWIFT_OPTIMIZATION_LEVEL" = "-O";
-"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
-"INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Pocket Pad on your iPhone and Mac over your local Wi-Fi network.";
-"SDKROOT" = "iphoneos";
-"PRODUCT_NAME" = "PhoneGamepad";
-"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
-"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents" = "YES";
-"INFOPLIST_KEY_UISupportedInterfaceOrientations" = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-"INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Pocket Pad controls between your iPhone and Mac using Bluetooth.";
-"SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD" = "NO";
-"CLANG_ENABLE_OBJC_WEAK" = "YES";
-"INFOPLIST_FILE" = "Config/PrivacyInfo.plist";
-"GENERATE_INFOPLIST_FILE" = "YES";
-};
-"name" = "Gamepad";
-};
-"135E186222DA682A7624CEFF" = {
+"82C986A0CF6BB5FAFFFD8430" = {
 "isa" = "PBXBuildFile";
-"fileRef" = "2BEDF066B16A99D931966240";
+"fileRef" = "3349AC2B04B15DA797DDBECD";
 };
-"CF5339235CEA48FD829E4498" = {
-"baseConfigurationReference" = "CAE662172FD450BB0CD710A7";
-"isa" = "XCBuildConfiguration";
-"buildSettings" = {
-"MARKETING_VERSION" = "0.1.0";
-"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
-"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.games";
-"PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).iphone";
-"CURRENT_PROJECT_VERSION" = "1";
-"INFOPLIST_KEY_CFBundleDisplayName" = "Pocket Pad";
-"SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD" = "YES";
-"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
-"SUPPORTS_MACCATALYST" = "NO";
-"TARGETED_DEVICE_FAMILY" = "1";
-"CODE_SIGN_STYLE" = "Automatic";
-"SWIFT_OPTIMIZATION_LEVEL" = "-O";
-"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
-"INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Pocket Pad on your iPhone and Mac over your local Wi-Fi network.";
-"SDKROOT" = "iphoneos";
-"PRODUCT_NAME" = "PhoneGamepad";
-"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
-"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents" = "YES";
-"INFOPLIST_KEY_UISupportedInterfaceOrientations" = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-"INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Pocket Pad controls between your iPhone and Mac using Bluetooth.";
-"SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD" = "NO";
-"CLANG_ENABLE_OBJC_WEAK" = "YES";
-"INFOPLIST_FILE" = "Config/PrivacyInfo.plist";
-"GENERATE_INFOPLIST_FILE" = "YES";
-};
-"name" = "Release";
-};
-"ABFE77AFEB37E309C20B8BBC" = {
-"path" = "Apps/Mac/MacGamepadApp.swift";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"sourceTree" = "SOURCE_ROOT";
-};
-"2BEDF066B16A99D931966240" = {
-"path" = "Sources/GamepadCore/KeyboardMapping.swift";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"sourceTree" = "SOURCE_ROOT";
-};
-"18D8B2BDB451FF4B07F0DA7F" = {
+"A8E34AD8D747DD5A65F5C58F" = {
 "isa" = "PBXBuildFile";
-"fileRef" = "9F4C0639F91E135C19CE02A5";
+"fileRef" = "4BACAFEEE7F56B8738C397F9";
 };
-"BADB184D74523941B42A2DB3" = {
-"baseConfigurationReference" = "CAE662172FD450BB0CD710A7";
-"isa" = "XCBuildConfiguration";
-"buildSettings" = {
-"MARKETING_VERSION" = "0.1.0";
-"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
-"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.games";
-"PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).iphone";
-"CURRENT_PROJECT_VERSION" = "1";
-"INFOPLIST_KEY_CFBundleDisplayName" = "Pocket Pad";
-"SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD" = "YES";
-"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
-"SUPPORTS_MACCATALYST" = "NO";
-"TARGETED_DEVICE_FAMILY" = "1";
-"CODE_SIGN_STYLE" = "Automatic";
-"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
-"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
-"INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Pocket Pad on your iPhone and Mac over your local Wi-Fi network.";
-"SDKROOT" = "iphoneos";
-"PRODUCT_NAME" = "PhoneGamepad";
-"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
-"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents" = "YES";
-"INFOPLIST_KEY_UISupportedInterfaceOrientations" = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-"INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Pocket Pad controls between your iPhone and Mac using Bluetooth.";
-"SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD" = "NO";
-"CLANG_ENABLE_OBJC_WEAK" = "YES";
-"INFOPLIST_FILE" = "Config/PrivacyInfo.plist";
-"GENERATE_INFOPLIST_FILE" = "YES";
-};
-"name" = "Debug";
-};
-"9F4C0639F91E135C19CE02A5" = {
-"path" = "Sources/GamepadCore/WirelessSettings.swift";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"sourceTree" = "SOURCE_ROOT";
-};
-"334AE4E066DEF1B658910A92" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "ADE2188AB0C254BEC7AEBA09";
-};
-"56A874FF451CB109A4795DCC" = {
-"isa" = "PBXResourcesBuildPhase";
-"buildActionMask" = "2147483647";
-"files" = ("9B4BDAB983228916F4EA7280");
-"runOnlyForDeploymentPostprocessing" = "0";
-};
-"35B1014F135DE9B45529B733" = {
+"75E9A99EA01EE7D85A0EECBC" = {
 "isa" = "XCBuildConfiguration";
 "buildSettings" = {
 "CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING" = "YES";
@@ -168,10 +41,9 @@
 "CLANG_WARN_INT_CONVERSION" = "YES";
 "CLANG_WARN_STRICT_PROTOTYPES" = "YES";
 "CLANG_WARN_CONSTANT_CONVERSION" = "YES";
-"SWIFT_COMPILATION_MODE" = "wholemodule";
 "DEAD_CODE_STRIPPING" = "YES";
-"CLANG_WARN_OBJC_LITERAL_CONVERSION" = "YES";
 "GCC_WARN_UNDECLARED_SELECTOR" = "YES";
+"CLANG_WARN_OBJC_LITERAL_CONVERSION" = "YES";
 "CLANG_WARN__DUPLICATE_METHOD_MATCH" = "YES";
 "CLANG_WARN_EMPTY_BODY" = "YES";
 "GCC_WARN_64_TO_32_BIT_CONVERSION" = "YES";
@@ -186,59 +58,87 @@
 "ENABLE_STRICT_OBJC_MSGSEND" = "YES";
 "GCC_WARN_UNUSED_VARIABLE" = "YES";
 };
-"name" = "Release";
+"name" = "Gamepad";
 };
-"CAE662172FD450BB0CD710A7" = {
-"path" = "Config/Base.xcconfig";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "text.xcconfig";
-"sourceTree" = "SOURCE_ROOT";
-};
-"C610A4A9ADA3DFD710BBEA14" = {
+"1AEDE742FDEEE05A605F41F2" = {
 "isa" = "PBXBuildFile";
-"fileRef" = "2BEDF066B16A99D931966240";
+"fileRef" = "5B3A614FEC46DD837B8459EB";
 };
-"5F672E1D90DD8174D6333FC0" = {
+"2C5705939A94744300E7A0DE" = {
+"baseConfigurationReference" = "CAE662172FD450BB0CD710A7";
+"isa" = "XCBuildConfiguration";
+"buildSettings" = {
+"CODE_SIGN_ENTITLEMENTS" = "Config/Gamepad.entitlements";
+"MARKETING_VERSION" = "1.0";
+"GENERATE_INFOPLIST_FILE" = "YES";
+"CURRENT_PROJECT_VERSION" = "1";
+"PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).mac";
+"INFOPLIST_KEY_CFBundleDisplayName" = "Pocket Pad";
+"MACOSX_DEPLOYMENT_TARGET" = "15.0";
+"DEAD_CODE_STRIPPING" = "YES";
+"CODE_SIGN_STYLE" = "Automatic";
+"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+"INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Pocket Pad on your iPhone and Mac over your local Wi-Fi network.";
+"SDKROOT" = "macosx";
+"PRODUCT_NAME" = "MacGamepad";
+"CODE_SIGN_IDENTITY" = "Apple Development";
+"INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Pocket Pad controls between your iPhone and Mac using Bluetooth.";
+"ENABLE_APP_SANDBOX" = "NO";
+"CLANG_ENABLE_OBJC_WEAK" = "YES";
+"ENABLE_HARDENED_RUNTIME" = "YES";
+"INFOPLIST_FILE" = "Config/AppInfo.plist";
+"COMBINE_HIDPI_IMAGES" = "YES";
+};
+"name" = "Gamepad";
+};
+"95212F9595541CBF10711283" = {
 "isa" = "PBXBuildFile";
-"fileRef" = "16CA0C6D6E6060C9FE8AADFB";
+"fileRef" = "020A3CACC83771C43CB63C8B";
 };
-"ADE2188AB0C254BEC7AEBA09" = {
-"path" = "Sources/GamepadCore/WireProtocol.swift";
+"49541CD6E3CF940B9A116018" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "6354D273B477B4DC2A2E3D96";
+};
+"DEC014006670CF953714AAA1" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "598DB22D6002ABB1A112DFF9";
+};
+"9C967550478535B9ED78F7EA" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "59D1B8D158AA842CA6E4BEA0";
+};
+"0EE947C8580A61796E98133B" = {
+"path" = "Sources/GamepadCore/XboxHIDReport.swift";
 "isa" = "PBXFileReference";
 "lastKnownFileType" = "sourcecode.swift";
 "sourceTree" = "SOURCE_ROOT";
 };
-"84CF1F1F62B8413349735B51" = {
-"path" = "Sources/GamepadCore/HIDReport.swift";
+"215E2B46B00F566233FB2F88" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "63ABC31CE034C27D0E751993";
+};
+"D7F6F1D240CBEB56E55596BD" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "2A1B8E506E45EB0C267E8AE4";
+};
+"72CB3CC964A1FAF20D293999" = {
+"path" = "Sources/GamepadCore/GamepadMapping.swift";
 "isa" = "PBXFileReference";
 "lastKnownFileType" = "sourcecode.swift";
 "sourceTree" = "SOURCE_ROOT";
 };
-"F79A6ACE90D6A46A9C629E54" = {
-"isa" = "PBXResourcesBuildPhase";
-"buildActionMask" = "2147483647";
-"files" = ("8E39B50AA5E1D87F330EFD34");
-"runOnlyForDeploymentPostprocessing" = "0";
+"446C1E35C79FCCDB6B73B381" = {
+"path" = "Apps/Mac/RowDisclosureStyle.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
 };
-"454613D3D4A62F495C00B4E7" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "800300D04F981688D7B0B4D7";
-};
-"E647A879F12E47AEC1A54042" = {
-"productType" = "com.apple.product-type.application";
-"productReference" = "DE68317CB34E7D3AE2232B77";
-"buildConfigurationList" = "B293FD6C5185ED5A711310E3";
-"productName" = "PhoneGamepad";
-"isa" = "PBXNativeTarget";
-"buildPhases" = ("53F120D5B8D1E7039A17452E",
-"F79A6ACE90D6A46A9C629E54");
-"dependencies" = ();
-"name" = "PhoneGamepad";
-"buildRules" = ();
-};
-"1FDEE07435C074F443D18C5B" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "F8347CD91F2B2D9036440752";
+"87008E92DC42864178C47163" = {
+"path" = "Sources/MacSupport/GamepadOutput.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
 };
 "B4E10CAA9C5E22150B71559C" = {
 "isa" = "XCConfigurationList";
@@ -248,17 +148,218 @@
 "35B1014F135DE9B45529B733",
 "75E9A99EA01EE7D85A0EECBC");
 };
-"C541C8033EE3E756EA484AD5" = {
-"path" = "Apps/Mac/MappingEditor.swift";
+"F79A6ACE90D6A46A9C629E54" = {
+"isa" = "PBXResourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ("8E39B50AA5E1D87F330EFD34",
+"CE59DCB415F819516D7A2375");
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"4164A048AE41803362DBDF44" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "C03D9C0CAA01588602B8EBF2";
+};
+"CAE662172FD450BB0CD710A7" = {
+"path" = "Config/Base.xcconfig";
 "isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
+"lastKnownFileType" = "text.xcconfig";
 "sourceTree" = "SOURCE_ROOT";
+};
+"088C551047D64DD0B642F304" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "9B5F4C411E1EDB17403D3513";
 };
 "DE68317CB34E7D3AE2232B77" = {
 "path" = "PhoneGamepad.app";
 "isa" = "PBXFileReference";
 "explicitFileType" = "wrapper.application";
 "sourceTree" = "BUILT_PRODUCTS_DIR";
+};
+"ABFE77AFEB37E309C20B8BBC" = {
+"path" = "Apps/Mac/MacGamepadApp.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"A6078E515C6E43178F15C145" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "84CF1F1F62B8413349735B51";
+};
+"8CE9ECD68D85FC93F9C3EB37" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "C541C8033EE3E756EA484AD5";
+};
+"F8347CD91F2B2D9036440752" = {
+"path" = "Apps/iPhone/BluetoothServer.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"E9D44D2A902DF3A48267B1AC" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "56B45895791346565A5B09B6";
+};
+"5863F721E5D0EF676387EA7A" = {
+"path" = "MacGamepad.app";
+"isa" = "PBXFileReference";
+"explicitFileType" = "wrapper.application";
+"sourceTree" = "BUILT_PRODUCTS_DIR";
+};
+"9B1506B75FCCB6023D35C488" = {
+"path" = "Apps/Shared/PracticeControls.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"56A874FF451CB109A4795DCC" = {
+"isa" = "PBXResourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ("9B4BDAB983228916F4EA7280",
+"AD8EFA95C63695E0266D96ED");
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"6EAF279EA19B90C3755789CC" = {
+"isa" = "PBXSourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ("59BE789FD2DD94D4F2E3BB74",
+"A6078E515C6E43178F15C145",
+"334AE4E066DEF1B658910A92",
+"2C4D66AE74A7638E8B3A49B2",
+"245FBCA2EBE732A28EE91D85",
+"4164A048AE41803362DBDF44",
+"F19BF3DF50010D5C7300A793",
+"135E186222DA682A7624CEFF",
+"E9D44D2A902DF3A48267B1AC",
+"8CE9ECD68D85FC93F9C3EB37",
+"18D8B2BDB451FF4B07F0DA7F",
+"5F672E1D90DD8174D6333FC0",
+"9DEAD4F5CC2EB5A36DF87F4B",
+"DEC014006670CF953714AAA1",
+"1AEDE742FDEEE05A605F41F2",
+"C41E10EDF66B59A21D20E882",
+"626E67DEA8A7A42B45593EAC",
+"D7F6F1D240CBEB56E55596BD",
+"A67A2547352BB96544C2E040",
+"9C967550478535B9ED78F7EA",
+"5FA60A3B83D7A007A802F3E4",
+"AAF256298D590C81EE039607",
+"D16C4AA1F380487F72B504F5",
+"A8E34AD8D747DD5A65F5C58F",
+"67E8B0B87C2086470F8294D7",
+"051022397F4B2A56962EA83A",
+"333F87674B5AC0D8330EEEAC",
+"CB10672BB98BAD8B6B7362E7",
+"9734F644A4FDB64B820A4369",
+"4C72D0659D604347A40D2529",
+"FBC27681F32DB55717AF21B5",
+"0FA5F00118E48484C9727FB3",
+"215E2B46B00F566233FB2F88",
+"14294E86D99B545630B8356A",
+"4BA9A39BB1A2B901CF437CEF",
+"12C09DAE318F3B41193FF2C3");
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"AD8EFA95C63695E0266D96ED" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "0B1C71BDAFA77CCA663D0969";
+};
+"0E0746544EF61A0358F43D95" = {
+"path" = "Apps/iPhone/CableServer.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"333F87674B5AC0D8330EEEAC" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "7894D3D23A651B1DC876886C";
+};
+"77B36D8B114A9BE92D48D4EE" = {
+"path" = "Apps/Mac/LayoutEditor.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"59BE789FD2DD94D4F2E3BB74" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "431DF4B7C7D8D94477CD2A46";
+};
+"D335CF7CE2B39FA2AA70D528" = {
+"baseConfigurationReference" = "CAE662172FD450BB0CD710A7";
+"isa" = "XCBuildConfiguration";
+"buildSettings" = {
+"GENERATE_INFOPLIST_FILE" = "YES";
+"MARKETING_VERSION" = "1.0";
+"CURRENT_PROJECT_VERSION" = "1";
+"PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).mac";
+"INFOPLIST_KEY_CFBundleDisplayName" = "Pocket Pad";
+"MACOSX_DEPLOYMENT_TARGET" = "15.0";
+"DEAD_CODE_STRIPPING" = "YES";
+"CODE_SIGN_STYLE" = "Automatic";
+"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+"INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Pocket Pad on your iPhone and Mac over your local Wi-Fi network.";
+"SDKROOT" = "macosx";
+"CODE_SIGNING_REQUIRED" = "NO";
+"PRODUCT_NAME" = "MacGamepad";
+"CODE_SIGN_IDENTITY" = "-";
+"INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Pocket Pad controls between your iPhone and Mac using Bluetooth.";
+"ENABLE_APP_SANDBOX" = "NO";
+"CLANG_ENABLE_OBJC_WEAK" = "YES";
+"ENABLE_HARDENED_RUNTIME" = "YES";
+"INFOPLIST_FILE" = "Config/AppInfo.plist";
+"COMBINE_HIDPI_IMAGES" = "YES";
+};
+"name" = "Release";
+};
+"67E8B0B87C2086470F8294D7" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "6354D273B477B4DC2A2E3D96";
+};
+"CF5339235CEA48FD829E4498" = {
+"baseConfigurationReference" = "CAE662172FD450BB0CD710A7";
+"isa" = "XCBuildConfiguration";
+"buildSettings" = {
+"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES" = "AppIconWhite AppIconGraphite";
+"MARKETING_VERSION" = "1.0";
+"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.games";
+"PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).iphone";
+"CURRENT_PROJECT_VERSION" = "1";
+"INFOPLIST_KEY_CFBundleDisplayName" = "Pocket Pad";
+"SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD" = "YES";
+"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
+"SUPPORTS_MACCATALYST" = "NO";
+"TARGETED_DEVICE_FAMILY" = "1";
+"CODE_SIGN_STYLE" = "Automatic";
+"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+"INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Pocket Pad on your iPhone and Mac over your local Wi-Fi network.";
+"SDKROOT" = "iphoneos";
+"PRODUCT_NAME" = "PhoneGamepad";
+"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents" = "YES";
+"INFOPLIST_KEY_UISupportedInterfaceOrientations" = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+"INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Pocket Pad controls between your iPhone and Mac using Bluetooth.";
+"SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD" = "NO";
+"CLANG_ENABLE_OBJC_WEAK" = "YES";
+"INFOPLIST_FILE" = "Config/AppInfo.plist";
+"GENERATE_INFOPLIST_FILE" = "YES";
+};
+"name" = "Release";
+};
+"B7ECF7F59819E7AE2C0F5D4B" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "92DE56F28EE87620E00DAB86";
+};
+"987142587E66ADF7882754CD" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "431DF4B7C7D8D94477CD2A46";
+};
+"4F0A7421EF19DA8198C31184" = {
+"path" = "Sources/MacSupport/RecentInputLog.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
 };
 "488864B3D19480A82F7F1786" = {
 "isa" = "XCBuildConfiguration";
@@ -299,342 +400,9 @@
 };
 "name" = "Debug";
 };
-"16CA0C6D6E6060C9FE8AADFB" = {
-"path" = "Sources/MacSupport/WirelessLink.swift";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"sourceTree" = "SOURCE_ROOT";
-};
-"75E9A99EA01EE7D85A0EECBC" = {
-"isa" = "XCBuildConfiguration";
-"buildSettings" = {
-"CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING" = "YES";
-"CLANG_WARN_ENUM_CONVERSION" = "YES";
-"CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF" = "YES";
-"CLANG_WARN_NON_LITERAL_NULL_CONVERSION" = "YES";
-"CLANG_WARN_RANGE_LOOP_ANALYSIS" = "YES";
-"GCC_WARN_ABOUT_RETURN_TYPE" = "YES";
-"CLANG_ENABLE_MODULES" = "YES";
-"GCC_WARN_UNINITIALIZED_AUTOS" = "YES";
-"CLANG_WARN_COMMA" = "YES";
-"STRING_CATALOG_GENERATE_SYMBOLS" = "YES";
-"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
-"GCC_NO_COMMON_BLOCKS" = "YES";
-"CLANG_WARN_INT_CONVERSION" = "YES";
-"CLANG_WARN_STRICT_PROTOTYPES" = "YES";
-"CLANG_WARN_CONSTANT_CONVERSION" = "YES";
-"DEAD_CODE_STRIPPING" = "YES";
-"GCC_WARN_UNUSED_VARIABLE" = "YES";
-"CLANG_WARN_OBJC_LITERAL_CONVERSION" = "YES";
-"CLANG_WARN__DUPLICATE_METHOD_MATCH" = "YES";
-"CLANG_WARN_EMPTY_BODY" = "YES";
-"GCC_WARN_64_TO_32_BIT_CONVERSION" = "YES";
-"CLANG_WARN_INFINITE_RECURSION" = "YES";
-"CLANG_WARN_BOOL_CONVERSION" = "YES";
-"GCC_WARN_UNUSED_FUNCTION" = "YES";
-"SWIFT_VERSION" = "5.0";
-"CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER" = "YES";
-"CLANG_WARN_SUSPICIOUS_MOVE" = "YES";
-"CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS" = "YES";
-"CLANG_WARN_UNREACHABLE_CODE" = "YES";
-"ENABLE_STRICT_OBJC_MSGSEND" = "YES";
-"GCC_WARN_UNDECLARED_SELECTOR" = "YES";
-};
-"name" = "Gamepad";
-};
-"6EAF279EA19B90C3755789CC" = {
-"isa" = "PBXSourcesBuildPhase";
-"buildActionMask" = "2147483647";
-"files" = ("59BE789FD2DD94D4F2E3BB74",
-"A6078E515C6E43178F15C145",
-"334AE4E066DEF1B658910A92",
-"2C4D66AE74A7638E8B3A49B2",
-"245FBCA2EBE732A28EE91D85",
-"4164A048AE41803362DBDF44",
-"F19BF3DF50010D5C7300A793",
-"135E186222DA682A7624CEFF",
-"E9D44D2A902DF3A48267B1AC",
-"8CE9ECD68D85FC93F9C3EB37",
-"18D8B2BDB451FF4B07F0DA7F",
-"5F672E1D90DD8174D6333FC0",
-"9DEAD4F5CC2EB5A36DF87F4B",
-"DEC014006670CF953714AAA1");
-"runOnlyForDeploymentPostprocessing" = "0";
-};
-"0A3E27B8CA818264D75C8D81" = {
-"isa" = "PBXGroup";
-"name" = "Products";
-"children" = ("DE68317CB34E7D3AE2232B77",
-"5863F721E5D0EF676387EA7A");
-"sourceTree" = "<group>";
-};
-"8102452A8B554A1CD1902B56" = {
-"isa" = "XCConfigurationList";
-"defaultConfigurationIsVisible" = "0";
-"defaultConfigurationName" = "Debug";
-"buildConfigurations" = ("789D74260742CA075E1B4B50",
-"D335CF7CE2B39FA2AA70D528",
-"2C5705939A94744300E7A0DE");
-};
-"D335CF7CE2B39FA2AA70D528" = {
-"baseConfigurationReference" = "CAE662172FD450BB0CD710A7";
-"isa" = "XCBuildConfiguration";
-"buildSettings" = {
-"COMBINE_HIDPI_IMAGES" = "YES";
-"MARKETING_VERSION" = "0.1.0";
-"CURRENT_PROJECT_VERSION" = "1";
-"PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).mac";
-"INFOPLIST_KEY_CFBundleDisplayName" = "Pocket Pad";
-"MACOSX_DEPLOYMENT_TARGET" = "15.0";
-"DEAD_CODE_STRIPPING" = "YES";
-"CODE_SIGN_STYLE" = "Automatic";
-"SWIFT_OPTIMIZATION_LEVEL" = "-O";
-"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
-"INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Pocket Pad on your iPhone and Mac over your local Wi-Fi network.";
-"SDKROOT" = "macosx";
-"CODE_SIGNING_REQUIRED" = "NO";
-"PRODUCT_NAME" = "MacGamepad";
-"CODE_SIGN_IDENTITY" = "-";
-"INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Pocket Pad controls between your iPhone and Mac using Bluetooth.";
-"ENABLE_APP_SANDBOX" = "NO";
-"CLANG_ENABLE_OBJC_WEAK" = "YES";
-"INFOPLIST_FILE" = "Config/PrivacyInfo.plist";
-"GENERATE_INFOPLIST_FILE" = "YES";
-};
-"name" = "Release";
-};
-"56B45895791346565A5B09B6" = {
-"path" = "Sources/MacSupport/KeyboardMouseOutput.swift";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"sourceTree" = "SOURCE_ROOT";
-};
-"987142587E66ADF7882754CD" = {
+"4C72D0659D604347A40D2529" = {
 "isa" = "PBXBuildFile";
-"fileRef" = "431DF4B7C7D8D94477CD2A46";
-};
-"244210E48437B6556980A702" = {
-"buildConfigurationList" = "B4E10CAA9C5E22150B71559C";
-"targets" = ("E647A879F12E47AEC1A54042",
-"28AD6EC4AAA5108BB6C6BDCB");
-"developmentRegion" = "en";
-"knownRegions" = ("en",
-"Base");
-"isa" = "PBXProject";
-"compatibilityVersion" = "Xcode 14.0";
-"productRefGroup" = "0A3E27B8CA818264D75C8D81";
-"projectDirPath" = "";
-"attributes" = {
-"LastUpgradeCheck" = "2650";
-"BuildIndependentTargetsInParallel" = "YES";
-};
-"hasScannedForEncodings" = "0";
-"projectRoot" = "";
-"mainGroup" = "19F479106CE8C3BA8C106518";
-};
-"F19BF3DF50010D5C7300A793" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "ABFE77AFEB37E309C20B8BBC";
-};
-"90BE72CD97D31BB1204D6EA4" = {
-"path" = "Apps/iPhone/TouchPadView.swift";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"sourceTree" = "SOURCE_ROOT";
-};
-"9DEAD4F5CC2EB5A36DF87F4B" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "79EB564D9BA99E701C564AEA";
-};
-"57111C3D0DB6EEABF9E6099A" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "9F4C0639F91E135C19CE02A5";
-};
-"245FBCA2EBE732A28EE91D85" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "87008E92DC42864178C47163";
-};
-"8CE9ECD68D85FC93F9C3EB37" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "C541C8033EE3E756EA484AD5";
-};
-"431DF4B7C7D8D94477CD2A46" = {
-"path" = "Sources/GamepadCore/GamepadState.swift";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"sourceTree" = "SOURCE_ROOT";
-};
-"0315882156FD6D1A75838664" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "0E0746544EF61A0358F43D95";
-};
-"8E39B50AA5E1D87F330EFD34" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "0A8BE43099074798B3CB2362";
-};
-"79EB564D9BA99E701C564AEA" = {
-"path" = "Apps/Mac/PhoneDiscovery.swift";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"sourceTree" = "SOURCE_ROOT";
-};
-"A6078E515C6E43178F15C145" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "84CF1F1F62B8413349735B51";
-};
-"789D74260742CA075E1B4B50" = {
-"baseConfigurationReference" = "CAE662172FD450BB0CD710A7";
-"isa" = "XCBuildConfiguration";
-"buildSettings" = {
-"COMBINE_HIDPI_IMAGES" = "YES";
-"MARKETING_VERSION" = "0.1.0";
-"CURRENT_PROJECT_VERSION" = "1";
-"PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).mac";
-"INFOPLIST_KEY_CFBundleDisplayName" = "Pocket Pad";
-"MACOSX_DEPLOYMENT_TARGET" = "15.0";
-"DEAD_CODE_STRIPPING" = "YES";
-"CODE_SIGN_STYLE" = "Automatic";
-"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
-"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
-"INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Pocket Pad on your iPhone and Mac over your local Wi-Fi network.";
-"SDKROOT" = "macosx";
-"CODE_SIGNING_REQUIRED" = "NO";
-"PRODUCT_NAME" = "MacGamepad";
-"CODE_SIGN_IDENTITY" = "-";
-"INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Pocket Pad controls between your iPhone and Mac using Bluetooth.";
-"ENABLE_APP_SANDBOX" = "NO";
-"CLANG_ENABLE_OBJC_WEAK" = "YES";
-"INFOPLIST_FILE" = "Config/PrivacyInfo.plist";
-"GENERATE_INFOPLIST_FILE" = "YES";
-};
-"name" = "Debug";
-};
-"42C72DB0112D62DA6326E7F8" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "90BE72CD97D31BB1204D6EA4";
-};
-"2C5705939A94744300E7A0DE" = {
-"baseConfigurationReference" = "CAE662172FD450BB0CD710A7";
-"isa" = "XCBuildConfiguration";
-"buildSettings" = {
-"CODE_SIGN_ENTITLEMENTS" = "Config/Gamepad.entitlements";
-"MARKETING_VERSION" = "0.1.0";
-"COMBINE_HIDPI_IMAGES" = "YES";
-"CURRENT_PROJECT_VERSION" = "1";
-"PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).mac";
-"INFOPLIST_KEY_CFBundleDisplayName" = "Pocket Pad";
-"MACOSX_DEPLOYMENT_TARGET" = "15.0";
-"DEAD_CODE_STRIPPING" = "YES";
-"CODE_SIGN_STYLE" = "Automatic";
-"SWIFT_OPTIMIZATION_LEVEL" = "-O";
-"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
-"INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Pocket Pad on your iPhone and Mac over your local Wi-Fi network.";
-"SDKROOT" = "macosx";
-"PRODUCT_NAME" = "MacGamepad";
-"CODE_SIGN_IDENTITY" = "Apple Development";
-"INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Pocket Pad controls between your iPhone and Mac using Bluetooth.";
-"ENABLE_APP_SANDBOX" = "NO";
-"CLANG_ENABLE_OBJC_WEAK" = "YES";
-"ENABLE_HARDENED_RUNTIME" = "YES";
-"INFOPLIST_FILE" = "Config/PrivacyInfo.plist";
-"GENERATE_INFOPLIST_FILE" = "YES";
-};
-"name" = "Gamepad";
-};
-"C03D9C0CAA01588602B8EBF2" = {
-"path" = "Sources/MacSupport/USBMux.swift";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"sourceTree" = "SOURCE_ROOT";
-};
-"0E0746544EF61A0358F43D95" = {
-"path" = "Apps/iPhone/CableServer.swift";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"sourceTree" = "SOURCE_ROOT";
-};
-"2C4D66AE74A7638E8B3A49B2" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "6F6B6631A1DFF037C0CFF31F";
-};
-"6F6B6631A1DFF037C0CFF31F" = {
-"path" = "Sources/MacSupport/CableSession.swift";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"sourceTree" = "SOURCE_ROOT";
-};
-"B293FD6C5185ED5A711310E3" = {
-"isa" = "XCConfigurationList";
-"defaultConfigurationIsVisible" = "0";
-"defaultConfigurationName" = "Debug";
-"buildConfigurations" = ("BADB184D74523941B42A2DB3",
-"CF5339235CEA48FD829E4498",
-"6AEEF38C189FFEFC3105B1C2");
-};
-"800300D04F981688D7B0B4D7" = {
-"path" = "Apps/iPhone/GamepadApp.swift";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"sourceTree" = "SOURCE_ROOT";
-};
-"28AD6EC4AAA5108BB6C6BDCB" = {
-"productType" = "com.apple.product-type.application";
-"productReference" = "5863F721E5D0EF676387EA7A";
-"buildConfigurationList" = "8102452A8B554A1CD1902B56";
-"productName" = "MacGamepad";
-"isa" = "PBXNativeTarget";
-"buildPhases" = ("6EAF279EA19B90C3755789CC",
-"56A874FF451CB109A4795DCC");
-"dependencies" = ();
-"name" = "MacGamepad";
-"buildRules" = ();
-};
-"5863F721E5D0EF676387EA7A" = {
-"path" = "MacGamepad.app";
-"isa" = "PBXFileReference";
-"explicitFileType" = "wrapper.application";
-"sourceTree" = "BUILT_PRODUCTS_DIR";
-};
-"4164A048AE41803362DBDF44" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "C03D9C0CAA01588602B8EBF2";
-};
-"B55753B510DD0AE2EBF81EEB" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "ADE2188AB0C254BEC7AEBA09";
-};
-"9B4BDAB983228916F4EA7280" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "0A8BE43099074798B3CB2362";
-};
-"E9D44D2A902DF3A48267B1AC" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "56B45895791346565A5B09B6";
-};
-"53F120D5B8D1E7039A17452E" = {
-"isa" = "PBXSourcesBuildPhase";
-"buildActionMask" = "2147483647";
-"files" = ("987142587E66ADF7882754CD",
-"EAD664DDC17E5728936199DB",
-"B55753B510DD0AE2EBF81EEB",
-"0315882156FD6D1A75838664",
-"454613D3D4A62F495C00B4E7",
-"42C72DB0112D62DA6326E7F8",
-"C610A4A9ADA3DFD710BBEA14",
-"57111C3D0DB6EEABF9E6099A",
-"1FDEE07435C074F443D18C5B",
-"1E3FB0E615EF14245B02A907");
-"runOnlyForDeploymentPostprocessing" = "0";
-};
-"87008E92DC42864178C47163" = {
-"path" = "Sources/MacSupport/GamepadOutput.swift";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"sourceTree" = "SOURCE_ROOT";
-};
-"EAD664DDC17E5728936199DB" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "84CF1F1F62B8413349735B51";
+"fileRef" = "4F0A7421EF19DA8198C31184";
 };
 "19F479106CE8C3BA8C106518" = {
 "isa" = "PBXGroup";
@@ -659,21 +427,658 @@
 "F8347CD91F2B2D9036440752",
 "79EB564D9BA99E701C564AEA",
 "0A8BE43099074798B3CB2362",
-"598DB22D6002ABB1A112DFF9");
+"598DB22D6002ABB1A112DFF9",
+"0B1C71BDAFA77CCA663D0969",
+"5B3A614FEC46DD837B8459EB",
+"72CB3CC964A1FAF20D293999",
+"D58378F2D596AC683EE359A3",
+"2A1B8E506E45EB0C267E8AE4",
+"9B5F4C411E1EDB17403D3513",
+"F1D6D15691552CC7A2B95610",
+"59D1B8D158AA842CA6E4BEA0",
+"EAD05F50CF6E0E565C57D43E",
+"9B1506B75FCCB6023D35C488",
+"1C5F9F0EE39E70A936BB75AE",
+"197A3996A5CD02461A86C8E4",
+"4BACAFEEE7F56B8738C397F9",
+"6354D273B477B4DC2A2E3D96",
+"77B36D8B114A9BE92D48D4EE",
+"3349AC2B04B15DA797DDBECD",
+"7894D3D23A651B1DC876886C",
+"FAA43059B4F8649FEE87083A",
+"446C1E35C79FCCDB6B73B381",
+"4F0A7421EF19DA8198C31184",
+"DC279541B59F8965EE76F323",
+"F6940105C4AEBE421482526B",
+"63ABC31CE034C27D0E751993",
+"0EE947C8580A61796E98133B",
+"020A3CACC83771C43CB63C8B",
+"9EB32E2044DE88A0CA01930F",
+"92DE56F28EE87620E00DAB86",
+"AC94B64CEC77CCC668EFD12F");
 };
-"598DB22D6002ABB1A112DFF9" = {
+"EAD05F50CF6E0E565C57D43E" = {
+"path" = "Apps/Mac/PairingCodeField.swift";
 "isa" = "PBXFileReference";
 "lastKnownFileType" = "sourcecode.swift";
-"path" = "Sources/GamepadCore/ProfileTransfer.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"79EB564D9BA99E701C564AEA" = {
+"path" = "Apps/Mac/PhoneDiscovery.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"42C72DB0112D62DA6326E7F8" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "90BE72CD97D31BB1204D6EA4";
+};
+"9DEAD4F5CC2EB5A36DF87F4B" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "79EB564D9BA99E701C564AEA";
+};
+"57111C3D0DB6EEABF9E6099A" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "9F4C0639F91E135C19CE02A5";
+};
+"16CA0C6D6E6060C9FE8AADFB" = {
+"path" = "Sources/MacSupport/WirelessLink.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"135E186222DA682A7624CEFF" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "2BEDF066B16A99D931966240";
+};
+"B293FD6C5185ED5A711310E3" = {
+"isa" = "XCConfigurationList";
+"defaultConfigurationIsVisible" = "0";
+"defaultConfigurationName" = "Debug";
+"buildConfigurations" = ("BADB184D74523941B42A2DB3",
+"CF5339235CEA48FD829E4498",
+"6AEEF38C189FFEFC3105B1C2");
+};
+"F19BF3DF50010D5C7300A793" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "ABFE77AFEB37E309C20B8BBC";
+};
+"B55753B510DD0AE2EBF81EEB" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "ADE2188AB0C254BEC7AEBA09";
+};
+"0FA5F00118E48484C9727FB3" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "F6940105C4AEBE421482526B";
+};
+"BADB184D74523941B42A2DB3" = {
+"baseConfigurationReference" = "CAE662172FD450BB0CD710A7";
+"isa" = "XCBuildConfiguration";
+"buildSettings" = {
+"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES" = "AppIconWhite AppIconGraphite";
+"MARKETING_VERSION" = "1.0";
+"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.games";
+"PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).iphone";
+"CURRENT_PROJECT_VERSION" = "1";
+"INFOPLIST_KEY_CFBundleDisplayName" = "Pocket Pad";
+"SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD" = "YES";
+"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
+"SUPPORTS_MACCATALYST" = "NO";
+"TARGETED_DEVICE_FAMILY" = "1";
+"CODE_SIGN_STYLE" = "Automatic";
+"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+"INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Pocket Pad on your iPhone and Mac over your local Wi-Fi network.";
+"SDKROOT" = "iphoneos";
+"PRODUCT_NAME" = "PhoneGamepad";
+"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents" = "YES";
+"INFOPLIST_KEY_UISupportedInterfaceOrientations" = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+"INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Pocket Pad controls between your iPhone and Mac using Bluetooth.";
+"SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD" = "NO";
+"CLANG_ENABLE_OBJC_WEAK" = "YES";
+"INFOPLIST_FILE" = "Config/AppInfo.plist";
+"GENERATE_INFOPLIST_FILE" = "YES";
+};
+"name" = "Debug";
+};
+"C03D9C0CAA01588602B8EBF2" = {
+"path" = "Sources/MacSupport/USBMux.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"EFE690086BD0AEE7C36F56CE" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "197A3996A5CD02461A86C8E4";
+};
+"CB10672BB98BAD8B6B7362E7" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "FAA43059B4F8649FEE87083A";
+};
+"FBC27681F32DB55717AF21B5" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "DC279541B59F8965EE76F323";
+};
+"14294E86D99B545630B8356A" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "0EE947C8580A61796E98133B";
+};
+"1C5F9F0EE39E70A936BB75AE" = {
+"path" = "Apps/Shared/PadActionStyle.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"9B4BDAB983228916F4EA7280" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "0A8BE43099074798B3CB2362";
+};
+"0A8BE43099074798B3CB2362" = {
+"path" = "Assets/AppIcon.xcassets";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "folder.assetcatalog";
+"sourceTree" = "SOURCE_ROOT";
+};
+"14610EE4779958040EEC8527" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "5B3A614FEC46DD837B8459EB";
+};
+"59D1B8D158AA842CA6E4BEA0" = {
+"path" = "Apps/Shared/ConnectionChoices.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"789D74260742CA075E1B4B50" = {
+"baseConfigurationReference" = "CAE662172FD450BB0CD710A7";
+"isa" = "XCBuildConfiguration";
+"buildSettings" = {
+"COMBINE_HIDPI_IMAGES" = "YES";
+"MARKETING_VERSION" = "1.0";
+"CURRENT_PROJECT_VERSION" = "1";
+"PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).mac";
+"INFOPLIST_KEY_CFBundleDisplayName" = "Pocket Pad";
+"MACOSX_DEPLOYMENT_TARGET" = "15.0";
+"DEAD_CODE_STRIPPING" = "YES";
+"CODE_SIGN_STYLE" = "Automatic";
+"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+"INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Pocket Pad on your iPhone and Mac over your local Wi-Fi network.";
+"SDKROOT" = "macosx";
+"CODE_SIGNING_REQUIRED" = "NO";
+"PRODUCT_NAME" = "MacGamepad";
+"CODE_SIGN_IDENTITY" = "-";
+"INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Pocket Pad controls between your iPhone and Mac using Bluetooth.";
+"ENABLE_APP_SANDBOX" = "NO";
+"CLANG_ENABLE_OBJC_WEAK" = "YES";
+"INFOPLIST_FILE" = "Config/AppInfo.plist";
+"GENERATE_INFOPLIST_FILE" = "YES";
+};
+"name" = "Debug";
+};
+"2A1B8E506E45EB0C267E8AE4" = {
+"path" = "Apps/Mac/MacOnboarding.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"9B5F4C411E1EDB17403D3513" = {
+"path" = "Apps/iPhone/PhoneOnboarding.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"11B048A1EFEB649D51F3595D" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "F1D6D15691552CC7A2B95610";
+};
+"84CF1F1F62B8413349735B51" = {
+"path" = "Sources/GamepadCore/HIDReport.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"C41E10EDF66B59A21D20E882" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "72CB3CC964A1FAF20D293999";
+};
+"454613D3D4A62F495C00B4E7" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "800300D04F981688D7B0B4D7";
+};
+"63ABC31CE034C27D0E751993" = {
+"path" = "Sources/GamepadCore/CompatibilityHIDReport.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"AAF256298D590C81EE039607" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "9B1506B75FCCB6023D35C488";
+};
+"18D8B2BDB451FF4B07F0DA7F" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "9F4C0639F91E135C19CE02A5";
+};
+"53E571512D9AA4B48C6C54E2" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "9EB32E2044DE88A0CA01930F";
+};
+"9734F644A4FDB64B820A4369" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "446C1E35C79FCCDB6B73B381";
+};
+"4BACAFEEE7F56B8738C397F9" = {
+"path" = "Apps/Mac/AccessibilityHelper.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
 "sourceTree" = "SOURCE_ROOT";
 };
 "1E3FB0E615EF14245B02A907" = {
 "isa" = "PBXBuildFile";
 "fileRef" = "598DB22D6002ABB1A112DFF9";
 };
-"DEC014006670CF953714AAA1" = {
+"92DE56F28EE87620E00DAB86" = {
+"path" = "Apps/iPhone/GameRumble.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"48989C74021B50DDE73E97FA" = {
 "isa" = "PBXBuildFile";
-"fileRef" = "598DB22D6002ABB1A112DFF9";
+"fileRef" = "59D1B8D158AA842CA6E4BEA0";
+};
+"0B1C71BDAFA77CCA663D0969" = {
+"path" = "Config/PrivacyInfo.xcprivacy";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "text.xml";
+"sourceTree" = "SOURCE_ROOT";
+};
+"FAA43059B4F8649FEE87083A" = {
+"path" = "Apps/Mac/LayoutMappingsView.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"431DF4B7C7D8D94477CD2A46" = {
+"path" = "Sources/GamepadCore/GamepadState.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"6AEEF38C189FFEFC3105B1C2" = {
+"baseConfigurationReference" = "CAE662172FD450BB0CD710A7";
+"isa" = "XCBuildConfiguration";
+"buildSettings" = {
+"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES" = "AppIconWhite AppIconGraphite";
+"MARKETING_VERSION" = "1.0";
+"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.games";
+"PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).iphone";
+"CURRENT_PROJECT_VERSION" = "1";
+"INFOPLIST_KEY_CFBundleDisplayName" = "Pocket Pad";
+"SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD" = "YES";
+"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
+"SUPPORTS_MACCATALYST" = "NO";
+"TARGETED_DEVICE_FAMILY" = "1";
+"CODE_SIGN_STYLE" = "Automatic";
+"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+"INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Pocket Pad on your iPhone and Mac over your local Wi-Fi network.";
+"SDKROOT" = "iphoneos";
+"PRODUCT_NAME" = "PhoneGamepad";
+"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents" = "YES";
+"INFOPLIST_KEY_UISupportedInterfaceOrientations" = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+"INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Pocket Pad controls between your iPhone and Mac using Bluetooth.";
+"SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD" = "NO";
+"CLANG_ENABLE_OBJC_WEAK" = "YES";
+"INFOPLIST_FILE" = "Config/AppInfo.plist";
+"GENERATE_INFOPLIST_FILE" = "YES";
+};
+"name" = "Gamepad";
+};
+"3C95DB000C5D8F552F867D7F" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "9B1506B75FCCB6023D35C488";
+};
+"56B45895791346565A5B09B6" = {
+"path" = "Sources/MacSupport/KeyboardMouseOutput.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"6936809E30E87A22A9949C16" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "0EE947C8580A61796E98133B";
+};
+"8E39B50AA5E1D87F330EFD34" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "0A8BE43099074798B3CB2362";
+};
+"DD2F12FAFAA028C466D68D94" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "7894D3D23A651B1DC876886C";
+};
+"2C4D66AE74A7638E8B3A49B2" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "6F6B6631A1DFF037C0CFF31F";
+};
+"334AE4E066DEF1B658910A92" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "ADE2188AB0C254BEC7AEBA09";
+};
+"8102452A8B554A1CD1902B56" = {
+"isa" = "XCConfigurationList";
+"defaultConfigurationIsVisible" = "0";
+"defaultConfigurationName" = "Debug";
+"buildConfigurations" = ("789D74260742CA075E1B4B50",
+"D335CF7CE2B39FA2AA70D528",
+"2C5705939A94744300E7A0DE");
+};
+"7894D3D23A651B1DC876886C" = {
+"path" = "Sources/GamepadCore/LayoutInput.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"020A3CACC83771C43CB63C8B" = {
+"path" = "Sources/GamepadCore/RumbleFrame.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"F6940105C4AEBE421482526B" = {
+"path" = "Apps/Mac/MarketplaceView.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"0315882156FD6D1A75838664" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "0E0746544EF61A0358F43D95";
+};
+"A67A2547352BB96544C2E040" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "F1D6D15691552CC7A2B95610";
+};
+"E647A879F12E47AEC1A54042" = {
+"productType" = "com.apple.product-type.application";
+"productReference" = "DE68317CB34E7D3AE2232B77";
+"buildConfigurationList" = "B293FD6C5185ED5A711310E3";
+"productName" = "PhoneGamepad";
+"isa" = "PBXNativeTarget";
+"buildPhases" = ("53F120D5B8D1E7039A17452E",
+"F79A6ACE90D6A46A9C629E54");
+"dependencies" = ();
+"name" = "PhoneGamepad";
+"buildRules" = ();
+};
+"0A3E27B8CA818264D75C8D81" = {
+"isa" = "PBXGroup";
+"name" = "Products";
+"children" = ("DE68317CB34E7D3AE2232B77",
+"5863F721E5D0EF676387EA7A");
+"sourceTree" = "<group>";
+};
+"90BE72CD97D31BB1204D6EA4" = {
+"path" = "Apps/iPhone/TouchPadView.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"2BAFDC5C9A7BF4CFC635782E" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "72CB3CC964A1FAF20D293999";
+};
+"C541C8033EE3E756EA484AD5" = {
+"path" = "Apps/Mac/MappingEditor.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"5FA60A3B83D7A007A802F3E4" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "EAD05F50CF6E0E565C57D43E";
+};
+"53F120D5B8D1E7039A17452E" = {
+"isa" = "PBXSourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ("987142587E66ADF7882754CD",
+"EAD664DDC17E5728936199DB",
+"B55753B510DD0AE2EBF81EEB",
+"0315882156FD6D1A75838664",
+"454613D3D4A62F495C00B4E7",
+"42C72DB0112D62DA6326E7F8",
+"C610A4A9ADA3DFD710BBEA14",
+"57111C3D0DB6EEABF9E6099A",
+"1FDEE07435C074F443D18C5B",
+"1E3FB0E615EF14245B02A907",
+"14610EE4779958040EEC8527",
+"2BAFDC5C9A7BF4CFC635782E",
+"088C551047D64DD0B642F304",
+"11B048A1EFEB649D51F3595D",
+"48989C74021B50DDE73E97FA",
+"3C95DB000C5D8F552F867D7F",
+"4862F172BCE5884D001025D1",
+"EFE690086BD0AEE7C36F56CE",
+"49541CD6E3CF940B9A116018",
+"82C986A0CF6BB5FAFFFD8430",
+"DD2F12FAFAA028C466D68D94",
+"C00589633EB3F4DC51FACC33",
+"6936809E30E87A22A9949C16",
+"95212F9595541CBF10711283",
+"53E571512D9AA4B48C6C54E2",
+"B7ECF7F59819E7AE2C0F5D4B",
+"56FBB67780B99E4509C6C314");
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"9EB32E2044DE88A0CA01930F" = {
+"path" = "Sources/GamepadCore/StickClickHold.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"626E67DEA8A7A42B45593EAC" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "D58378F2D596AC683EE359A3";
+};
+"197A3996A5CD02461A86C8E4" = {
+"path" = "Apps/iPhone/PracticeTouchButton.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"28AD6EC4AAA5108BB6C6BDCB" = {
+"productType" = "com.apple.product-type.application";
+"productReference" = "5863F721E5D0EF676387EA7A";
+"buildConfigurationList" = "8102452A8B554A1CD1902B56";
+"productName" = "MacGamepad";
+"isa" = "PBXNativeTarget";
+"buildPhases" = ("6EAF279EA19B90C3755789CC",
+"56A874FF451CB109A4795DCC");
+"dependencies" = ();
+"name" = "MacGamepad";
+"buildRules" = ();
+};
+"244210E48437B6556980A702" = {
+"buildConfigurationList" = "B4E10CAA9C5E22150B71559C";
+"targets" = ("E647A879F12E47AEC1A54042",
+"28AD6EC4AAA5108BB6C6BDCB");
+"developmentRegion" = "en";
+"knownRegions" = ("en",
+"Base");
+"isa" = "PBXProject";
+"compatibilityVersion" = "Xcode 14.0";
+"productRefGroup" = "0A3E27B8CA818264D75C8D81";
+"projectDirPath" = "";
+"attributes" = {
+"LastUpgradeCheck" = "2650";
+"BuildIndependentTargetsInParallel" = "YES";
+};
+"hasScannedForEncodings" = "0";
+"projectRoot" = "";
+"mainGroup" = "19F479106CE8C3BA8C106518";
+};
+"800300D04F981688D7B0B4D7" = {
+"path" = "Apps/iPhone/GamepadApp.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"598DB22D6002ABB1A112DFF9" = {
+"path" = "Sources/GamepadCore/ProfileTransfer.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"1FDEE07435C074F443D18C5B" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "F8347CD91F2B2D9036440752";
+};
+"6F6B6631A1DFF037C0CFF31F" = {
+"path" = "Sources/MacSupport/CableSession.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"12C09DAE318F3B41193FF2C3" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "9EB32E2044DE88A0CA01930F";
+};
+"5B3A614FEC46DD837B8459EB" = {
+"path" = "Sources/GamepadCore/AppInformation.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"4862F172BCE5884D001025D1" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "1C5F9F0EE39E70A936BB75AE";
+};
+"C610A4A9ADA3DFD710BBEA14" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "2BEDF066B16A99D931966240";
+};
+"3349AC2B04B15DA797DDBECD" = {
+"path" = "Apps/iPhone/PhoneConnectionView.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"051022397F4B2A56962EA83A" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "77B36D8B114A9BE92D48D4EE";
+};
+"35B1014F135DE9B45529B733" = {
+"isa" = "XCBuildConfiguration";
+"buildSettings" = {
+"CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING" = "YES";
+"CLANG_WARN_ENUM_CONVERSION" = "YES";
+"CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF" = "YES";
+"CLANG_WARN_NON_LITERAL_NULL_CONVERSION" = "YES";
+"CLANG_WARN_RANGE_LOOP_ANALYSIS" = "YES";
+"GCC_WARN_ABOUT_RETURN_TYPE" = "YES";
+"CLANG_ENABLE_MODULES" = "YES";
+"GCC_WARN_UNINITIALIZED_AUTOS" = "YES";
+"CLANG_WARN_COMMA" = "YES";
+"STRING_CATALOG_GENERATE_SYMBOLS" = "YES";
+"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
+"GCC_NO_COMMON_BLOCKS" = "YES";
+"CLANG_WARN_INT_CONVERSION" = "YES";
+"CLANG_WARN_STRICT_PROTOTYPES" = "YES";
+"CLANG_WARN_CONSTANT_CONVERSION" = "YES";
+"GCC_WARN_UNUSED_VARIABLE" = "YES";
+"DEAD_CODE_STRIPPING" = "YES";
+"CLANG_WARN_OBJC_LITERAL_CONVERSION" = "YES";
+"SWIFT_COMPILATION_MODE" = "wholemodule";
+"CLANG_WARN__DUPLICATE_METHOD_MATCH" = "YES";
+"CLANG_WARN_EMPTY_BODY" = "YES";
+"GCC_WARN_64_TO_32_BIT_CONVERSION" = "YES";
+"CLANG_WARN_INFINITE_RECURSION" = "YES";
+"CLANG_WARN_BOOL_CONVERSION" = "YES";
+"GCC_WARN_UNUSED_FUNCTION" = "YES";
+"SWIFT_VERSION" = "5.0";
+"CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER" = "YES";
+"CLANG_WARN_SUSPICIOUS_MOVE" = "YES";
+"CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS" = "YES";
+"CLANG_WARN_UNREACHABLE_CODE" = "YES";
+"ENABLE_STRICT_OBJC_MSGSEND" = "YES";
+"GCC_WARN_UNDECLARED_SELECTOR" = "YES";
+};
+"name" = "Release";
+};
+"ADE2188AB0C254BEC7AEBA09" = {
+"path" = "Sources/GamepadCore/WireProtocol.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"EAD664DDC17E5728936199DB" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "84CF1F1F62B8413349735B51";
+};
+"CE59DCB415F819516D7A2375" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "0B1C71BDAFA77CCA663D0969";
+};
+"5F672E1D90DD8174D6333FC0" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "16CA0C6D6E6060C9FE8AADFB";
+};
+"D58378F2D596AC683EE359A3" = {
+"path" = "Apps/Mac/GamepadMappingEditor.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"C00589633EB3F4DC51FACC33" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "63ABC31CE034C27D0E751993";
+};
+"DC279541B59F8965EE76F323" = {
+"path" = "Apps/Mac/ComboBindingEditor.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"6354D273B477B4DC2A2E3D96" = {
+"path" = "Apps/Shared/CompanionAppPrompt.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"4BA9A39BB1A2B901CF437CEF" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "020A3CACC83771C43CB63C8B";
+};
+"9F4C0639F91E135C19CE02A5" = {
+"path" = "Sources/GamepadCore/WirelessSettings.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"D16C4AA1F380487F72B504F5" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "1C5F9F0EE39E70A936BB75AE";
+};
+"2BEDF066B16A99D931966240" = {
+"path" = "Sources/GamepadCore/KeyboardMapping.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"AC94B64CEC77CCC668EFD12F" = {
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"path" = "Apps/iPhone/AppIconSettings.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"56FBB67780B99E4509C6C314" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "AC94B64CEC77CCC668EFD12F";
 };
 };
 "rootObject" = "244210E48437B6556980A702";

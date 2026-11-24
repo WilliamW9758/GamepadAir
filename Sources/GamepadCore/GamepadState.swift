@@ -1,7 +1,7 @@
 import Foundation
 
 public enum PadButton: Int, CaseIterable, Codable, Sendable {
-    case south, east, west, north, leftShoulder, rightShoulder, back, start, leftClick, rightClick
+    case south, east, west, north, leftShoulder, rightShoulder, back, start, leftClick, rightClick, guide
     public var mask: UInt16 { 1 << rawValue }
 }
 
@@ -15,6 +15,8 @@ public enum PointerMode: UInt8, Sendable {
 public struct GamepadState: Equatable, Sendable {
     public var isPaused = false
     public var pointerMode = PointerMode.profile
+    /// Preview only: 0 idle, 1 touching center, 2...9 selected radial direction.
+    public var radialPreview: UInt8 = 0
     public var hasActiveControls: Bool {
         buttons != 0 || customButtons != 0 || hat != 8 || leftX != 0 || leftY != 0 || rightX != 0 || rightY != 0 || leftTrigger != 0 || rightTrigger != 0
     }
@@ -60,8 +62,8 @@ public struct GamepadState: Equatable, Sendable {
 public enum PadStyle: String, CaseIterable, Codable, Sendable {
     case xbox = "Xbox", playStation = "PlayStation"
     public func label(_ button: PadButton) -> String {
-        let xbox = ["A", "B", "X", "Y", "LB", "RB", "View", "Menu", "L3", "R3"]
-        let ps = ["×", "○", "□", "△", "L1", "R1", "Share", "Options", "L3", "R3"]
+        let xbox = ["A", "B", "X", "Y", "LB", "RB", "View", "Menu", "L3", "R3", "Xbox"]
+        let ps = ["×", "○", "□", "△", "L1", "R1", "Share", "Options", "L3", "R3", "PS"]
         return (self == .xbox ? xbox : ps)[button.rawValue]
     }
 }
@@ -240,6 +242,7 @@ public struct LayoutMode: Codable, Equatable, Identifiable {
     public var radialSlots: [Int]?
     public var radialEnabled: Bool?
     public var radialTitle: String?
+    public var hiddenControls: Set<String>?
     public var buttonFeedback: [String: ButtonFeedback]?
     public init(name: String, cursor: Bool, controls: LayoutLibrary = LayoutLibrary()) {
         self.name = name; self.cursor = cursor; self.controls = controls
@@ -253,7 +256,18 @@ public struct SavedLayout: Codable, Equatable, Identifiable {
     public var modes: [LayoutMode]
     public var isPreset = false
     public var linkedControls: Set<String>?
+    /// Nil preserves the two-mode behavior of existing layouts.
+    public var cursorSwitching: Bool?
+    public var hasCursorSwitching: Bool { cursorSwitching ?? true }
+    /// Nil uses the starting template controller identity.
+    public var emulatedController: PadStyle?
+    public var effectiveControllerStyle: PadStyle { emulatedController ?? style }
+    /// Nil gives existing and new layouts the default medium press feedback.
+    public var touchHaptic: ButtonHaptic?
+    public var effectiveTouchHaptic: ButtonHaptic { touchHaptic ?? .medium }
     public var keyboardProfile: KeyboardProfile?
+    public var inputType: LayoutInputType?
+    public var gamepadProfile: GamepadProfile?
     public init(name: String, style: PadStyle, controls: LayoutLibrary = LayoutLibrary()) {
         self.name = name; self.style = style
         modes = [LayoutMode(name: "Aim", cursor: false, controls: controls), LayoutMode(name: "Cursor", cursor: true, controls: controls)]
@@ -306,6 +320,18 @@ public struct LayoutCatalog: Codable, Equatable {
 
 /// Direction zero is up; the remaining sectors proceed clockwise.
 public enum RadialInput {
+    /// Empty sectors are shared at the angular midpoint between mapped neighbors.
+    public static func direction(x: Double, y: Double, deadZone: Double, slots: [Int]) -> Int? {
+        guard x.isFinite, y.isFinite, hypot(x, y) >= max(1, deadZone) else { return nil }
+        let angle = atan2(x, -y)
+        let mapped = (0..<min(8, slots.count)).filter { (0..<16).contains(slots[$0]) }
+        func distance(_ index: Int) -> Double {
+            let delta = angle - Double(index) * .pi / 4
+            return abs(atan2(sin(delta), cos(delta)))
+        }
+        return mapped.min { distance($0) < distance($1) }
+    }
+
     public static func direction(x: Double, y: Double, deadZone: Double) -> Int? {
         guard x.isFinite, y.isFinite, hypot(x, y) >= max(1, deadZone) else { return nil }
         return (Int((atan2(x, -y) / (.pi / 4)).rounded()) + 8) % 8

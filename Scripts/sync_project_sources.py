@@ -27,7 +27,7 @@ for path in sorted(root.glob("Sources/**/*.swift")) + sorted(root.glob("Apps/**/
         if target.get("isa") != "PBXNativeTarget":
             continue
         name = target["name"]
-        include = relative.startswith("Sources/GamepadCore/") or (name == "MacGamepad" and relative.startswith(("Sources/MacSupport/", "Apps/Mac/"))) or (name == "PhoneGamepad" and relative.startswith("Apps/iPhone/"))
+        include = relative.startswith(("Sources/GamepadCore/", "Apps/Shared/")) or (name == "MacGamepad" and relative.startswith(("Sources/MacSupport/", "Apps/Mac/"))) or (name == "PhoneGamepad" and relative.startswith("Apps/iPhone/"))
         if not include:
             continue
         phase = next(objects[key] for key in target["buildPhases"] if objects[key]["isa"] == "PBXSourcesBuildPhase")

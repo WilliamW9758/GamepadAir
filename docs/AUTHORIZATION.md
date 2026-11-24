@@ -1,39 +1,40 @@
-# Virtual gamepad authorization — 2026-10-05
+# Virtual gamepad authorization
 
-USB input works. The remaining gate is macOS permission to create a system-wide virtual HID gamepad. The iPhone's free Personal Team profile does not grant this Mac capability. CoreHID and IOHIDUserDevice do not avoid the entitlement requirement. Apple also cautions that some GameController clients filter virtual devices, so authorization does not itself establish Valheim compatibility. [Apple entitlement reference](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.hid.virtual.device), [compatibility guidance](https://developer.apple.com/forums/thread/812774).
+Last verified in the Apple Developer portal: November 11, 2026.
 
-## Candidate: LizardByte's signed broker
+- Developer Program membership is active.
+- HID Virtual Device: **Assigned**. Enabled on the Mac App ID by the account owner.
+- HID Virtual Device (development): **Assigned**. The enabled HID Virtual Device capability is included in the generated Mac development profile.
+- The request was submitted October 14, 2026. Account-specific correspondence remains outside the repository.
 
-Reviewed release `v2026.1003.1215.38`, marked prerelease. Its universal Mac DMG is 10,826,773 bytes. Downloaded and mounted read-only for inspection; **not installed or executed**.
+PocketPad uses `IOHIDUserDevice` with `com.apple.developer.hid.virtual.device`. The Gamepad build configuration declares this entitlement; a declaration alone does not authorize it. Paid membership and development access do not establish distribution approval.
 
-Local verification of `VirtualHIDBroker.app` passed `codesign --verify --deep --strict`. The signature identifies **LizardByte LLC (F8XQ7XCN2R)** under Apple's Developer ID certificate chain. The binary carries `com.apple.developer.hid.virtual.device = true`. This verifies the package signature and entitlement claim, not successful runtime device creation on this Mac.
+## Next validation
 
-The vendor requires a purchased machine license; price was not verified. Their installer creates a privileged LaunchDaemon, installs two apps and a client library, and requires administrator authentication. Device-control/Accessibility permission is also required. The broker has periodic license validation; yearly licenses require online validation after restart, while previously activated lifetime licenses allow one gamepad offline. No purchase or activation has occurred.
+1. Enable the assigned HID Virtual Device capability on the Mac App ID and generate a matching development provisioning profile.
+2. Sign a development build and inspect its embedded profile and entitlements.
+3. Verify device creation, neutral input on disconnect, and device removal on stop.
+4. Test recognition and controls in native Valheim and another native Mac game, including Steam where applicable.
+5. Verify the distribution provisioning profile and a distributable signed build before advertising gamepad support.
 
-Pocket Pad needs a client adapter before it can use this broker. The packaged library provides the relevant interface; integration should preserve its response/error handling and close behavior. Next validation would be: licensed test-device creation, input report mapping, disconnect release, then Steam and native Valheim. This could avoid needing our own Apple Developer membership.
+Authorization does not guarantee that GameController, Steam, or individual games will recognize the descriptor. Xbox and PlayStation are touch-layout presets, not emulated hardware identities.
 
-Sources: [vendor's Mac guide](https://docs.lizardbyte.dev/projects/libvirtualhid/master/md_docs_2macos-gamepad.html), [release](https://github.com/LizardByte/libvirtualhid/releases/tag/v2026.1003.1215.38), [client implementation](https://github.com/LizardByte/libvirtualhid/blob/master/src/platform/macos/macos_broker_client.cpp).
+Keyboard/mouse input is an independent path using Accessibility permission. No third-party HID broker is bundled or required by that path.
 
-## Alternative: request our own entitlement
+References: [Apple entitlement reference](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.hid.virtual.device), [capability requests](https://developer.apple.com/help/account/capabilities/capability-requests/), [request portal](https://developer.apple.com/contact/request/system-extension/).
 
-Confirm eligibility with Apple before purchasing membership. Paid membership is not itself entitlement approval. Apple's [System Extension request portal](https://developer.apple.com/contact/request/system-extension/) requires sign-in; ask Apple which category applies to the app-level IOHIDUserDevice entitlement. DriverKit-family entitlements are not interchangeable with the app-level entitlement.
+## Local implementation and testing
 
-The project's Gamepad configuration is already prepared for an authorized profile. Once Apple approves a Mac App ID, create a matching provisioning profile, sign that configuration, verify HID input, and test game recognition.
+Select the shared **MacGamepad-HID** Xcode scheme to use the Gamepad signing configuration. In the Mac app, select Virtual gamepad on the control step. Gamepad mappings are saved separately under gamepad-profile-v1; existing keyboard mappings and phone layouts are unchanged. Custom/radial slots can map to standard controller buttons, triggers or D-pad directions. Gamepad mappings currently remain on this Mac and are not included in portable profile exports.
 
-### Draft inquiry (not submitted)
+Use Aim mode on the phone for analog right-stick input. Cursor trackpad packets are not controller axes and are ignored in gamepad mode. Games must support a generic HID gamepad; physical Xbox/PlayStation identities are not emulated.
 
-Subject: Virtual HID entitlement for an iPhone-to-Mac gamepad companion
+November 11 local checks: 84 Swift tests passed, including gamepad remapping, shared button ownership, paused-state release, and heartbeat expiration while pointer packets continue. The unsigned universal Mac Gamepad configuration built successfully. These checks do not validate signed virtual-device creation or game compatibility. No build was uploaded or published.
 
-I am developing Pocket Pad, a native iPhone and Mac companion project. The iPhone provides a customizable touch gamepad and sends its state to the Mac over a trusted USB connection. The Mac needs to expose that input as a system-wide HID gamepad for native macOS games, initially Valheim.
+## Signed runtime validation — November 11, 2026
 
-The implementation uses IOHIDUserDeviceCreateWithProperties and IOHIDUserDeviceHandleReportWithTimeStamp. Please confirm the membership, request category, App ID configuration, and provisioning steps needed for com.apple.developer.hid.virtual.device. The prototype Mac bundle ID is dev.pocketpad.prototype.mac.
+Xcode registered this Mac and generated a development provisioning profile containing com.apple.developer.hid.virtual.device. The universal Gamepad build succeeded and passed codesign verification. Installed locally at ~/Applications/Pocket Pad.app, with the previous app backed up as Pocket Pad.before-HID.app.
 
-The descriptor contains buttons, a D-pad hat, two sticks, and trigger axes, with no keyboard/mouse collections. The user explicitly enables gamepad output. The app neutralizes input on disconnect/timeouts and removes the device when stopped. The initial scope is personal development; distribution would be considered separately.
+Launching the installed app through Launch Services with --hid-self-test successfully created the device and submitted neutral reports. IORegistry listed PocketPad Gamepad with Generic Desktop/Gamepad usage (1/5) while running and no PocketPad device after exit. A direct executable launch through the automation shell was denied by local TCC attribution; launch the app normally.
 
-I understand authorization does not guarantee GameController or per-game recognition. Is this approach supported, and what additional compatibility requirements should we address?
-
-## Other candidates
-
-OpenJoystickDriver describes a signed physical-controller compatibility app, but a reusable external state-injection interface and suitable downloadable release were not established. SillyUtility/VirtualController documents a retro NES prototype and has no releases on the reviewed release page. Neither is a verified free backend for this project's dual-stick controller. [OpenJoystickDriver](https://github.com/xsyetopz/OpenJoystickDriver), [VirtualController](https://github.com/SillyUtility/VirtualController).
-
-No verified free, entitlement-free route has been found. No system security settings have been changed. Choosing a licensed broker or our own Apple authorization remains a user decision.
+Actual phone-to-game controls and native Valheim/Steam recognition still require gameplay testing. This development build is not a distributable release. Nothing was uploaded or published.

@@ -1,0 +1,2 @@
+Generated using built-in image_gen, editing PocketPad-icon-coral.png.
+Create the gray alternate app icon by recoloring ONLY this icon. Background neutral graphite gray (#606167 top to #414247 bottom), controller luminous white, cross and two circle cutouts match gray background. No pink/red hue. Preserve EXACT silhouette, proportions, centering, margins and simple flat native app aesthetic. No text or extra decoration. Opaque square full-bleed asset, no rounded outer corners.

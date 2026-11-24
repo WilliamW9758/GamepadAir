@@ -13,41 +13,48 @@ public enum InputDiagnostics {
 
 /// Records only Pocket Pad input edges/output decisions, never system keyboard activity.
 private final class InputTrace {
+    static let shared = InputTrace()
     private let writer = DispatchQueue(label: "gamepad.input-trace", qos: .utility)
-    private var file: FileHandle?
-    private var bytes = 0
-    init() {
+    private var recent = RecentInputLog()
+    private var timer: DispatchSourceTimer?
+    private var dirty = false
+    private let sessionStart = ProcessInfo.processInfo.systemUptime
+    private init() {
         let url = InputDiagnostics.url
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize, size > 512_000 {
-            let previous = url.deletingLastPathComponent().appendingPathComponent("input-trace.previous.log")
-            try? FileManager.default.removeItem(at: previous)
-            try? FileManager.default.moveItem(at: url, to: previous)
+        // Replace the former size-rotated history with a rolling diagnostic window.
+        try? FileManager.default.removeItem(at: url.deletingLastPathComponent().appendingPathComponent("input-trace.previous.log"))
+        if let text = try? String(contentsOf: url, encoding: .utf8) {
+            for line in text.split(separator: "\n") {
+                let fields = line.split(separator: " ", maxSplits: 2)
+                if fields.count > 1, let date = try? Date(String(fields[1]), strategy: .iso8601) {
+                    recent.append(String(line) + "\n", at: date)
+                }
+            }
         }
-        if !FileManager.default.fileExists(atPath: url.path) { FileManager.default.createFile(atPath: url.path, contents: nil) }
-        file = try? FileHandle(forWritingTo: url)
-        bytes = Int((try? file?.seekToEnd()) ?? 0)
+        recent.prune(at: Date())
+        try? recent.data.write(to: url, options: .atomic)
+        let timer = DispatchSource.makeTimerSource(queue: writer)
+        timer.schedule(deadline: .now() + 1, repeating: 1)
+        timer.setEventHandler { [weak self] in
+            guard let self else { return }
+            let expired = self.recent.prune(at: Date())
+            if self.dirty || expired {
+                try? self.recent.data.write(to: InputDiagnostics.url, options: .atomic)
+                self.dirty = false
+            }
+        }
+        self.timer = timer; timer.resume()
         record("SESSION \(Date())")
     }
     func record(_ text: String) {
-        let uptime = ProcessInfo.processInfo.systemUptime
+        let uptime = ProcessInfo.processInfo.systemUptime - sessionStart
         let date = Date()
-        writer.async { [self] in write(text, uptime: uptime, date: date) }
-    }
-    private func write(_ text: String, uptime: TimeInterval, date: Date) {
-        if bytes >= 512_000 {
-            try? file?.close()
-            let url = InputDiagnostics.url
-            let previous = url.deletingLastPathComponent().appendingPathComponent("input-trace.previous.log")
-            try? FileManager.default.removeItem(at: previous)
-            try? FileManager.default.moveItem(at: url, to: previous)
-            FileManager.default.createFile(atPath: url.path, contents: nil)
-            file = try? FileHandle(forWritingTo: url); bytes = 0
+        writer.async { [self] in
+            recent.append(String(format: "%.3f ", uptime) + date.ISO8601Format() + " " + text + "\n", at: date)
+            dirty = true
         }
-        let line = String(format: "%.3f ", uptime) + date.ISO8601Format() + " " + text + "\n"
-        let data = Data(line.utf8); try? file?.write(contentsOf: data); bytes += data.count
     }
-    deinit { try? file?.close() }
 }
 
 /// Passive observation of this process's tagged mouse clicks only. No physical
@@ -153,7 +160,7 @@ final class KeyboardMouseOutput: GamepadOutput {
     private var displayBounds: [CGRect] = []
     private var pointerActiveUntil = 0.0
     private var lastInput: TimeInterval?
-    private let trace = InputTrace()
+    private let trace = InputTrace.shared
     private var deliveryObserver: MouseDeliveryObserver?
     private var latest = GamepadState.neutral
     private var gate = KeyboardInputGate()

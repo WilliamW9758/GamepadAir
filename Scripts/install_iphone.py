@@ -23,6 +23,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", required=True, type=Path, help="Existing .mobileprovision for PhoneGamepad")
     parser.add_argument("--device", required=True, help="Connected device identifier from xcrun devicectl list devices")
+    parser.add_argument("--build-number", default="2", help="Development bundle version (increment when testing updated resources)")
     parser.add_argument("--build-only", action="store_true", help="Build and sign without installing")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
@@ -48,7 +49,7 @@ def main():
     output = Path(tempfile.mkdtemp(prefix="PocketPad-device-"))
     app = output / "PhoneGamepad.app"
     app.mkdir()
-    sources = sorted((root / "Sources/GamepadCore").glob("*.swift")) + sorted((root / "Apps/iPhone").glob("*.swift"))
+    sources = sorted((root / "Apps/Shared").glob("*.swift")) + sorted((root / "Sources/GamepadCore").glob("*.swift")) + sorted((root / "Apps/iPhone").glob("*.swift"))
     # File Provider may change source metadata in iCloud Documents during compilation.
     # Compile a stable snapshot outside the synced directory.
     source_dir = output / "Sources"
@@ -70,7 +71,7 @@ def main():
     info = {
         "CFBundleExecutable": "PhoneGamepad", "CFBundleIdentifier": bundle_id,
         "CFBundleName": "Pocket Pad", "CFBundleDisplayName": "Pocket Pad",
-        "CFBundlePackageType": "APPL", "CFBundleVersion": "1", "CFBundleShortVersionString": "0.1.0",
+        "CFBundlePackageType": "APPL", "CFBundleVersion": args.build_number, "CFBundleShortVersionString": "1.0",
         "CFBundleSupportedPlatforms": ["iPhoneOS"], "MinimumOSVersion": "17.0",
         "NSBonjourServices": ["_pocketpad._tcp"],
         "NSLocalNetworkUsageDescription": "Connect Pocket Pad to your Mac over your local Wi-Fi network.",
@@ -80,13 +81,29 @@ def main():
     }
     # Standalone PNG icons avoid actool's simulator-runtime dependency in this
     # SDK-only installer. Normal Xcode builds use the asset catalog.
-    for pixels, scale in [(120, 2), (180, 3)]:
-        shutil.copyfile(root / f"Assets/AppIcon.xcassets/AppIcon.appiconset/icon-{pixels}.png",
-                        app / f"AppIcon60x60@{scale}x.png")
-    info["CFBundleIcons"] = {"CFBundlePrimaryIcon": {
-        "CFBundleIconFiles": ["AppIcon60x60"], "UIPrerenderedIcon": True}}
+    icon_entries = {}
+    for name in ["Red", "White", "Graphite"]:
+        icon_set = "AppIcon" if name == "Red" else f"AppIcon{name}"
+        source = root / f"Assets/AppIcon.xcassets/{icon_set}.appiconset"
+        shutil.copyfile(source / "icon-180.png", app / f"IconPreview{name}.png")
+        # Content-specific resource names keep system icon caches from using a
+        # previous image when a development build replaces artwork in place.
+        revision = hashlib.sha256((source / "icon-1024.png").read_bytes()).hexdigest()[:10]
+        files = []
+        for points in [20, 29, 40, 60]:
+            basename = f"{icon_set}-{revision}-{points}x{points}"
+            files.append(basename)
+            for scale in [2, 3]:
+                pixels = points * scale
+                run("sips", "-z", str(pixels), str(pixels), str(source / "icon-1024.png"),
+                    "--out", str(app / f"{basename}@{scale}x.png"), stdout=subprocess.DEVNULL)
+        icon_entries[name] = {"CFBundleIconFiles": files, "UIPrerenderedIcon": True}
+    info["CFBundleIcons"] = {
+        "CFBundlePrimaryIcon": icon_entries["Red"],
+        "CFBundleAlternateIcons": {"AppIconWhite": icon_entries["White"], "AppIconGraphite": icon_entries["Graphite"]}}
     (app / "Info.plist").write_bytes(plistlib.dumps(info))
     (output / "Entitlements.plist").write_bytes(plistlib.dumps(entitlements))
+    shutil.copyfile(root / "Config/PrivacyInfo.xcprivacy", app / "PrivacyInfo.xcprivacy")
     shutil.copyfile(args.profile, app / "embedded.mobileprovision")
     run("codesign", "--force", "--sign", identity, "--entitlements", str(output / "Entitlements.plist"), str(app))
     run("codesign", "--verify", "--strict", str(app))

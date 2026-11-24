@@ -46,15 +46,22 @@ final class PhoneDiscovery: NSObject, ObservableObject, CBCentralManagerDelegate
     }
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         guard central === bluetooth, transport == .bluetooth else { return }
-        if central.state == .poweredOn { central.scanForPeripherals(withServices: [CBUUID(string: WirelessSettings.service)]) }
+        if central.state == .poweredOn { central.scanForPeripherals(withServices: [CBUUID(string: WirelessSettings.service)], options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]) }
         else if central.state == .unauthorized { status = "Allow Pocket Pad Bluetooth access in System Settings." }
         else if central.state == .poweredOff { status = "Turn Bluetooth on." }
     }
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
         guard central === bluetooth else { return }
-        let phone = NearbyPhone(id: "ble:" + peripheral.identifier.uuidString,
-            name: advertisementData[CBAdvertisementDataLocalNameKey] as? String ?? peripheral.name ?? "Pocket Pad iPhone")
-        if !phones.contains(where: { $0.id == phone.id }) { phones.append(phone); phones.sort { $0.name < $1.name } }
+        let id = "ble:" + peripheral.identifier.uuidString
+        // CBPeripheral.name can remain cached after a phone changes its advertising name.
+        let advertisedName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
+        let existing = phones.first { $0.id == id }?.name
+        let name = advertisedName ?? existing ?? "iPhone"
+        let phone = NearbyPhone(id: id, name: name.range(of: "^PocketPad-[0-9A-Fa-f]{4}$", options: .regularExpression) != nil ? "iPhone" : name)
+        if let index = phones.firstIndex(where: { $0.id == id }) {
+            if phones[index] != phone { phones[index] = phone }
+        } else { phones.append(phone) }
+        phones.sort { $0.name < $1.name }
         status = "Select the phone name shown on your iPhone."
     }
     deinit { browser?.cancel(); bluetooth?.stopScan() }

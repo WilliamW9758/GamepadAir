@@ -10,7 +10,7 @@ final class CustomButtonTests: XCTestCase {
         XCTAssertEqual(try StateFrame(data: frame.encode()), frame)
         XCTAssertEqual(Array(frame.encode().suffix(2)), [255, 255])
         state.isPaused = true
-        XCTAssertThrowsError(try StateFrame(data: StateFrame(sequence: 8, state: state).encode()))
+        XCTAssertEqual(try StateFrame(data: StateFrame(sequence: 8, state: state).encode()).state, state)
         state.isPaused = false
         for slot in 0..<16 { state.setCustom(slot, pressed: false) }
         state.setCustom(16, pressed: true); state.setCustom(-1, pressed: true)
