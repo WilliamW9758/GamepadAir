@@ -45,3 +45,7 @@ Copy resulting MacGamepad.app to existing installed Pocket Pad.app, verify signi
 
 ## Follow-up after initial checkpoint
 Phone build 3 now installed on Duo: disconnected wording, Settings title, no mode subtitle, right-aligned Edit layout, hold-to-edit firing on recognizer began. Mac assistant prototype added with real local sample edits through existing layout command/ack transport and preview-only free-form requests. Mac UI inspected; signed builds pass. Await user reopening phone to verify physical hold timing and assistant sync. Latest source checkpoint supersedes the original icon-only checkpoint.
+
+## Practice screen follow-up
+Removed redundant connected/success lines in Mac onboarding practice; retained disconnected feedback. Corrected practice stick Y display to negate wire Y (phone sends positive-up). Signed Mac build passed and was installed/relaunched; physical practice test pending. Initial Xcode invocation stalled in NSFileCoordinator reading project; building a temporary project copy in /tmp with source symlinks succeeded.
+User proposed final onboarding choices: AI assist, Marketplace game search, Build manually. Recommended placing that choice after practice, with manual leading to Choose controls and preview features clearly labeled. This navigation change is not implemented yet.

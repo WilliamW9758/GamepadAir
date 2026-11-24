@@ -724,12 +724,14 @@ struct HostView: View {
     private var onboardingTest: some View {
         VStack(alignment: .leading, spacing: 22) {
             heading("Get a feel for it.", "Drag the stick and press A on your phone. Watch them respond here.")
-            Label(model.update.connected ? "Phone connected" : model.update.message, systemImage: model.update.connected ? "checkmark.circle.fill" : "iphone")
+            if !model.update.connected {
+                Label(model.update.message, systemImage: "iphone").foregroundStyle(.secondary)
+            }
             VStack(spacing: 24) {
                 HStack(spacing: 28) {
                     PracticeStick(offset: CGSize(
                         width: Double(model.update.state.leftX) / 32767 * 35,
-                        height: Double(model.update.state.leftY) / 32767 * 35))
+                        height: -Double(model.update.state.leftY) / 32767 * 35))
                         .accessibilityLabel("Live practice stick")
                     PracticeButton(pressed: practiceFlash || model.update.state.buttons & PadButton.south.mask != 0)
                         .accessibilityLabel("Live A button")
@@ -739,7 +741,7 @@ struct HostView: View {
                     Label("Press A", systemImage: sawButton ? "checkmark.circle.fill" : "circle")
                 }.foregroundStyle(.secondary)
             }.frame(maxWidth: .infinity).padding(.vertical, 12)
-            Text(sawStick && sawButton ? "Your controls are reaching this Mac." : "Practice only. No input is sent to your game.")
+            Text("Practice only. No input is sent to your game.")
                 .foregroundStyle(.secondary)
             if !model.running { Button("Try again") { model.start() } }
             HStack {
