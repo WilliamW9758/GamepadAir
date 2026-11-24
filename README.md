@@ -2,7 +2,7 @@
 
 **Turn your iPhone into a customizable controller for your Mac.** Free and open source under the MIT license, built with Swift, SwiftUI, and UIKit. No third-party package dependencies.
 
-PocketPad is a working prototype. Keyboard/mouse control is the usable path today; virtual gamepad output requires separate Apple authorization and further compatibility testing.
+PocketPad is in release preparation. Keyboard/mouse and virtual gamepad output work in local testing; the Mac companion has passed Developer ID signing and notarization. Clean-install testing and broader game compatibility checks remain before public release.
 
 ![Mac setup](docs/design/mac-connect.png)
 

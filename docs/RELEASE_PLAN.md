@@ -19,7 +19,7 @@ Apple requires sandboxing for Mac App Store apps: [distribution guidance](https:
 | Area | Evidence / outstanding work |
 | --- | --- |
 | Regression baseline | See SUBMISSION.md for current archive/export evidence. Xcode 27.2 and iOS SDK 27.2 are installed. Clean-machine distribution testing remains outstanding. |
-| Gamepad | Signed local gameplay exercised in Valheim and Stardew. Developer ID automatic export failed; explicit certificate/profile now issued with HID. Finishing signed export and notarization. See AUTHORIZATION.md. |
+| Gamepad | Signed local gameplay exercised in Valheim and Stardew. Developer ID automatic export failed; explicit certificate/profile now issued with HID. Developer ID export and notarization now passed; clean-machine testing remains. See AUTHORIZATION.md. |
 | Privacy manifest | Config/AppInfo.plist contains Bonjour configuration, not a privacy manifest. PrivacyInfo.xcprivacy now declares app UserDefaults and elapsed-time API use and is included in both targets. Both Mac and iPhone archive resource checks passed on November 23. |
 | Privacy disclosures | Publish privacy policy and support contact; add in-app links. Verify actual data flows before completing App Store privacy labels. Revisit when accounts or AI ship. |
 | Security | Review pairing-secret storage, rate limits, wireless authentication, malformed input handling, and permission/focus gates. Keep server and signing secrets out of clients and Git. |

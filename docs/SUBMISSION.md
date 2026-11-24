@@ -6,7 +6,8 @@ Updated November 23, 2026. This is a preparation packet, not an approval or publ
 
 - App Store Connect record 6831873832, PocketPad Remote Controller: iOS 1.0, Prepare for Submission; manual release selected, no build selected. Rechecked November 23.
 - iPhone Release archive 1.0 (6) and App Store Connect export succeeded using Xcode 27.2 / iOS SDK 27.2. Exported IPA has Apple Distribution signing, beta-reports-active enabled, get-task-allow disabled, and no registered-device restriction. This is a rehearsal build; it has not been uploaded or reviewed.
-- Mac Gamepad archive 1.0 (6) succeeded with hardened runtime. Portal inspection confirms HID Virtual Device is enabled and its development-only variant is unchecked. No Developer ID certificates are available for a manual profile. Automatic Developer ID export failed: “The HID Virtual Device (development) capability is not available for Developer ID provisioning profiles.” Do not remove HID just to get an apparently successful controller release.
+- Mac Gamepad archive 1.0 (6), explicit Developer ID export, Apple notarization, and stapled export succeeded. Gatekeeper reports accepted / Notarized Developer ID. A drag-to-Applications DMG was created and its checksum verified.
+- Initial automatic signing failed with a misleading development-HID profile error. The portal already had distribution HID enabled. Creating a Developer ID Application certificate and explicit profile resolved it; the app retains HID support.
 - All 122 Swift package tests passed. Both archives pass Scripts/check_release_bundle.py resource checks. Those checks do not validate distribution signing or App Review acceptance.
 - User confirmed native Duo display mode and layered icon appearances; broader clean-install and distribution-build testing remains outstanding.
 
@@ -14,7 +15,7 @@ Updated November 23, 2026. This is a preparation packet, not an approval or publ
 
 - iPhone: App Store / TestFlight, free, iOS 17+, landscape. Preserve dev.pocketpad.prototype.iphone.
 - Mac: Developer ID signed, notarized standalone download, macOS 15+. Preserve dev.pocketpad.prototype.mac. Use MacGamepad-HID, not the keyboard-only MacGamepad release configuration.
-- Explicit Developer ID certificate/profile are now created; downloaded profile includes HID. Finish export after keychain authentication, then notarize, staple, and test on another Mac before publishing a companion download.
+- Explicit Developer ID certificate/profile are now created; downloaded profile includes HID. Manual-profile Mac export succeeded with verified Developer ID signature, hardened runtime, timestamp, HID enabled, and debug entitlement absent. Notarization and stapling passed; test the packaged app on another Mac before publishing a companion download.
 - Build 6 is reserved for this local rehearsal, not confirmed on App Store Connect. Check uploaded build numbers before the next upload. Never reuse an already-uploaded build number.
 - Keep manual release. Production submission must include working AI/Marketplace or remove their preview entry points. TestFlight previews must be clearly described in beta notes.
 
@@ -89,7 +90,7 @@ Internal beta first: install through TestFlight and install the notarized Mac co
 
 ## Repeatable build commands
 
-Use Scripts/prepare_release.sh with a new build number and destination. It archives and exports locally, never uploads or submits. The initial automatic Mac export failed; the explicit profile now includes HID, and signing authentication is being completed. iPhone output is still useful for validation. Do not treat archive success as successful distribution.
+Use Scripts/prepare_release.sh with a new build number and destination. It archives and exports locally, never uploads or submits. The initial automatic Mac export failed; the explicit profile now includes HID and the manual-profile export succeeded. iPhone output is still useful for validation. Do not treat archive success as successful distribution.
 
 After signing is resolved: notarize the Developer ID app, staple it, create the drag-to-Applications DMG with Scripts/package_mac_release.sh, then verify Gatekeeper on a clean Mac. The packaging script deliberately refuses an unstapled or incorrectly signed app.
 
@@ -104,9 +105,22 @@ After signing is resolved: notarize the Developer ID app, staple it, create the 
 
 ## Local rehearsal artifacts
 
-Saved outside Git at `~/PocketPad Backups/Release Prep 2026-11-23/`: iPhone and Mac archives, App Store IPA, export summary, and build/export/test logs. Build 6 was archived from commit 718b83e before this preparation pass updated the embedded privacy text. Rebuild the final version after the planned services and disclosure changes. No binary has been uploaded to TestFlight, notarization, or production.
+Saved outside Git at `~/PocketPad Backups/Release Prep 2026-11-23/`: iPhone and Mac archives, App Store IPA, export summary, and build/export/test logs. Build 6 was archived from commit 718b83e before this preparation pass updated the embedded privacy text. Rebuild the final version after the planned services and disclosure changes. No binary has been uploaded to TestFlight or production. The Mac artifact was uploaded only to Apple’s notarization service and accepted; no App Store review or public release was submitted.
 
-## Notarization handoff after signed export
+## Repeat notarization with Xcode
+
+The signed-in Xcode account completed notarization without an additional API key or app-specific password:
+
+```sh
+xcodebuild -exportArchive -archivePath /path/to/MacGamepad.xcarchive -exportOptionsPlist Config/ExportOptions-Notarize.plist -allowProvisioningUpdates
+xcodebuild -exportNotarizedApp -archivePath /path/to/MacGamepad.xcarchive -exportPath /path/to/mac-notarized
+xcrun stapler validate /path/to/mac-notarized/MacGamepad.app
+spctl --assess --type execute --verbose=2 /path/to/mac-notarized/MacGamepad.app
+```
+
+The first command uploads to Apple’s notarization service. Wait for acceptance before exporting the notarized app; processing may take longer than this rehearsal.
+
+## Alternative notarytool route
 
 Use an authorized Apple notarytool keychain credential profile (or Xcode Organizer's Developer ID distribution flow). Keep passwords and API private keys out of this repository and chat. Example commands below assume a credential profile named PocketPad-Notary has already been configured by the account owner:
 
@@ -119,4 +133,12 @@ xcrun stapler validate '/path/to/export/MacGamepad.app'
 Scripts/package_mac_release.sh '/path/to/export/MacGamepad.app' '/path/to/PocketPad-1.0.dmg'
 ```
 
-These are future steps, not a record of completed notarization. An App Store Connect upload and a notarization submission are different operations; neither publishes the app on its own.
+The notarytool commands above are an alternative route. This rehearsal instead succeeded through Xcode’s signed-in account: exportArchive with method developer-id and destination upload, followed by exportNotarizedApp. An App Store Connect upload and a notarization submission are different operations; neither publishes the app on its own.
+
+## Completed distribution rehearsal
+
+- `~/PocketPad Backups/Release Prep 2026-11-23/iphone/PhoneGamepad.ipa`: Apple Distribution signed, TestFlight-enabled profile. Not uploaded.
+- `~/PocketPad Backups/Release Prep 2026-11-23/mac-notarized/MacGamepad.app`: Developer ID signed, notarized and stapled. HID entitlement true; debug entitlement absent.
+- `~/PocketPad Backups/Release Prep 2026-11-23/PocketPad-1.0-build6.dmg`: drag app to Applications; disk image verified. SHA-256: dfbc1549bc7697d8d33e412d670e4ccc50eb0310c7bbc137643f9656c483b197.
+- Signing certificate private key is in the login keychain. Temporary raw key and PKCS#12 copies were removed after successful import/signing. No private signing material is in Git.
+- Remaining: clean-machine HID/permission and installer test, internal TestFlight upload/testing, live privacy page and Mac download, final screenshots, review contact and compliance answers, finished game-first marketplace/generation flow or exclusion of placeholders from production.
