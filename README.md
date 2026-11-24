@@ -10,15 +10,15 @@ PocketPad is a working prototype. Keyboard/mouse control is the usable path toda
 
 - USB cable, local Wi-Fi, and Bluetooth transports. USB is the most exercised path; wireless needs broader device/network testing.
 - Xbox and PlayStation touch-layout presets, named layouts, and independent Aim/Cursor modes.
-- Move, resize, rename, and color controls; optional per-button haptics.
+- Move, resize, rename, and color controls; optional per-layout haptics.
 - Optional linked positions across modes, copy-position, ghost outlines, and editor undo/redo.
 - Analog sticks with optional floating centers, stick-tap actions, hold-to-aim attack buttons, and a cursor trackpad.
 - Custom buttons and an eight-direction radial quick bar.
 - Keyboard/mouse mappings with hold/tap behavior, combinations, scroll inputs, mouse sensitivity, and automatic running.
 - App-scoped or global input, with release on stale connection/disconnect.
-- Layout backups and portable JSON profiles that can bundle Mac mappings. Profile transfer is manual.
+- Layout backups and portable JSON profiles that can bundle Mac mappings. Layout edits and selection sync between connected devices.
 
-The Xbox/PlayStation presets describe touch layouts, not emulated hardware identities. Steam and individual games may handle generic HID controllers differently.
+Controller layouts can select Xbox or PlayStation emulation. Recognition, prompts, and Steam Input requirements vary by game; public distribution signing is still being validated.
 
 ## Build and run
 
@@ -51,7 +51,7 @@ After adding Swift files, run `python3 Scripts/sync_project_sources.py`. Avoid r
 
 ## Release preparation
 
-See [release readiness and product roadmap](docs/RELEASE_PLAN.md) for launch blockers, the guided setup redesign, Community Layouts, and the proposed AI layout assistant. These planned features are not yet implemented.
+See [release readiness and product roadmap](docs/RELEASE_PLAN.md) for launch blockers, the guided setup redesign, Community Layouts, and the proposed AI layout assistant. AI and Marketplace currently have local preview interfaces; the online services are not implemented.
 
 `Config/AppInfo.plist` supplies Bonjour declarations to the app Info.plists; it is not a privacy manifest. Required-reason API declarations are in `Config/PrivacyInfo.xcprivacy`. See the [submission packet](docs/SUBMISSION.md) for archive validation and outstanding release gates.
 
@@ -61,4 +61,4 @@ Bug reports, device compatibility reports, and pull requests are welcome. Includ
 
 ## License
 
-[MIT](LICENSE). App icon artwork was generated with an AI image tool; the source assets and generation prompts are included in `Assets/`. PocketPad is not affiliated with Apple, Microsoft, Sony, or the games used with it.
+[MIT](LICENSE). The native layered app icons use a clean vector controller symbol; source assets are included in `Assets/LayeredIcons/`. PocketPad is not affiliated with Apple, Microsoft, Sony, or the games used with it.

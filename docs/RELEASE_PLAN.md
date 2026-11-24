@@ -1,6 +1,6 @@
 # PocketPad release plan
 
-Audit date: November 6, 2026. This is a proposal and release checklist, not a claim of App Store readiness. Community Layouts and AI assistance are not implemented.
+Updated November 23, 2026. Live Community Layouts and AI services are not implemented; local preview interfaces exist. The current release evidence and blockers are in SUBMISSION.md. The older milestone-1 items below are historical planning, not an implementation status report.
 
 ## Product goal
 
@@ -18,9 +18,9 @@ Apple requires sandboxing for Mac App Store apps: [distribution guidance](https:
 
 | Area | Evidence / outstanding work |
 | --- | --- |
-| Regression baseline | 78 Swift package tests and unsigned universal Mac Release build passed locally on November 6. iPhone Xcode build blocked by missing iOS platform component. Added CI for tests and unsigned Release builds; hosted execution not yet verified. |
-| Gamepad | Development capability assigned; distribution request submitted. Signed runtime and game compatibility tests outstanding. See AUTHORIZATION.md. |
-| Privacy manifest | Config/AppInfo.plist contains Bonjour configuration, not a privacy manifest. PrivacyInfo.xcprivacy now declares app UserDefaults and elapsed-time API use and is included in both targets. Mac archive resource checks passed; iPhone archive inspection remains blocked by its missing platform component. |
+| Regression baseline | See SUBMISSION.md for current archive/export evidence. Xcode 27.2 and iOS SDK 27.2 are installed. Clean-machine distribution testing remains outstanding. |
+| Gamepad | Signed local gameplay exercised in Valheim and Stardew. Developer ID automatic export fails despite the non-development HID capability being enabled in the portal; resolving explicit distribution provisioning. See AUTHORIZATION.md. |
+| Privacy manifest | Config/AppInfo.plist contains Bonjour configuration, not a privacy manifest. PrivacyInfo.xcprivacy now declares app UserDefaults and elapsed-time API use and is included in both targets. Both Mac and iPhone archive resource checks passed on November 23. |
 | Privacy disclosures | Publish privacy policy and support contact; add in-app links. Verify actual data flows before completing App Store privacy labels. Revisit when accounts or AI ship. |
 | Security | Review pairing-secret storage, rate limits, wireless authentication, malformed input handling, and permission/focus gates. Keep server and signing secrets out of clients and Git. |
 | Physical testing | USB/Wi-Fi/BLE on multiple devices; reconnect, sleep/wake, phone lock, backgrounding, permission denial/revocation, held-input release, menu pointer behavior, and sustained play. Record observed results. |
@@ -57,21 +57,25 @@ Journey: choose game → browse previews → inspect bindings/compatibility → 
 
 Acceptance: unauthorized users cannot edit another author's profile; malformed uploads fail safely; removed content stops appearing; imported layouts remain usable offline; account deletion is tested end to end.
 
-## Milestone 3: optional AI layout assistant
+## Milestone 3: game-first layout discovery and generation
 
-Treat AI as a proposal editor built on the same action/profile system, not a separate controller engine.
+Product direction confirmed November 23, 2026: do not make AI chat a headline feature. The main entry is “Find a layout” on Mac. Search and filter Marketplace by game or scenario; if no suitable result exists, offer “Create a layout for this game.” No persistent chat or round-by-round editing assistant is needed for the initial release.
 
-Journey: choose game/template → describe needs (for example, larger attack button and one-thumb hotbar) → answer only missing binding questions → preview proposed changes → try → accept or undo.
+1. Accept a game name or scenario and optional input type/preferences.
+2. Search existing Marketplace layouts first. Present real results with compatibility and source information; never invent listings or downloads.
+3. If results are unsuitable, let the user request a generated layout. Research the game's controls online, prefer official/current sources, and record citations plus platform/version and assumed in-game bindings.
+4. Ask a short, structured clarification only when necessary (for example, custom bindings or handedness). Avoid a conversational loop for small edits.
+5. Generate a new local draft with validated controls and mappings. Show unverified bindings clearly, let the user preview/test, then save a personal copy.
+6. Hand off to the existing Layout & mappings editor for resizing, positioning, renaming, and fine mapping changes. Keep normal Mac-to-phone sync responsive. Generated drafts must not overwrite an existing tuned layout.
 
-- Start from curated or user-selected bindings. Never present guessed game bindings as verified. Mark uncertain actions and ask the user to confirm them.
-- Model output is a constrained profile/change document, checked by deterministic validators. No scripts, shell commands, arbitrary URLs, or direct input execution.
-- Generate into a draft; show additions, removals, changed bindings, and placement changes. Preserve the prior layout and require user acceptance.
-- Keep generated controls within reach and bounds, detect overlaps, and honor selected handedness/control sizes. Geometry validation is independent of model output.
-- Optional and failure-tolerant: manual editing and presets work when AI is unavailable or quota is exhausted.
-- Before cloud AI, choose provider, retention, spending caps, and abuse limits. Keep provider credentials server-side. Show what will be sent; obtain explicit permission before sharing personal data with third-party AI. Do not send raw input history, device identifiers, or private layout libraries by default.
-- Evaluate against a fixed set of game/action requirements, invalid output cases, and user editing tasks before exposing the feature publicly.
+Implementation constraints:
+- Use constrained profile data and deterministic schema, mapping, bounds, and overlap validation. Web content is evidence, never instructions to execute. No model-generated scripts or direct input execution.
+- Cache research and reuse suitable layouts to reduce latency and cost. Keep credentials server-side; enforce usage limits and spending caps. If quota is exhausted, say layout generation is temporarily unavailable rather than falsely claiming traffic problems.
+- Manual creation and downloaded layouts remain usable without AI. Do not require a cloud round trip for small edits or play.
+- Before cloud requests, disclose what is sent and third-party processing; exclude raw input logs, device identifiers, and unrelated private layouts. Update privacy policy and Store disclosures for the actual service.
+- Marketing emphasizes finding a useful layout and playing quickly. Avoid a separate chat-centric onboarding destination once the integrated flow is ready. Current AI helper is a local mockup, not the final UX.
 
-Acceptance: a model failure cannot corrupt a saved profile or emit input. Every accepted change can be undone. Uncertain bindings remain distinguishable from confirmed bindings.
+Acceptance: game/scenario search finds actual catalog results; a missing layout can become a source-informed editable draft; uncertain bindings are marked; failure or quota exhaustion preserves existing layouts; no chat is needed for manual refinement.
 
 ## Implementation order
 

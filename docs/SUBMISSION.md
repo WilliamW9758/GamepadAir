@@ -1,102 +1,107 @@
-# Existing-feature submission packet
+# Pocket Pad release preparation
 
-Prepared November 6, 2026. App Store Connect record created: 6831873832 (PocketPad Remote Controller), iOS 1.0, Prepare for Submission. No Community Layouts, account system, or AI features are included. This document does not assert approval or successful upload.
+Updated November 23, 2026. This is a preparation packet, not an approval or public release. AI and Marketplace remain local previews; the combined launch is intended after their services are complete.
+
+## Current evidence
+
+- App Store Connect record 6831873832, PocketPad Remote Controller: iOS 1.0, Prepare for Submission; manual release selected, no build selected. Rechecked November 23.
+- iPhone Release archive 1.0 (6) and App Store Connect export succeeded using Xcode 27.2 / iOS SDK 27.2. Exported IPA has Apple Distribution signing, beta-reports-active enabled, get-task-allow disabled, and no registered-device restriction. This is a rehearsal build; it has not been uploaded or reviewed.
+- Mac Gamepad archive 1.0 (6) succeeded with hardened runtime. Portal inspection confirms HID Virtual Device is enabled and its development-only variant is unchecked. No Developer ID certificates are available for a manual profile. Automatic Developer ID export failed: “The HID Virtual Device (development) capability is not available for Developer ID provisioning profiles.” Do not remove HID just to get an apparently successful controller release.
+- All 122 Swift package tests passed. Both archives pass Scripts/check_release_bundle.py resource checks. Those checks do not validate distribution signing or App Review acceptance.
+- User confirmed native Duo display mode and layered icon appearances; broader clean-install and distribution-build testing remains outstanding.
 
 ## Distribution and identity
 
-- iPhone: App Store, free, iOS 17+, iPhone only, landscape.
-- Mac companion: separate Developer ID signed/notarized download, macOS 15+; not a Mac App Store build.
-- Keep the existing bundle identifiers to preserve installed data: `dev.pocketpad.prototype.iphone` and `dev.pocketpad.prototype.mac` for this project's owner. Contributors use their own prefix.
-- Current version/build: 1.0 (1). Do not increment or reuse build numbers blindly after an upload; check App Store Connect first.
-- First release claims keyboard/mouse output. Do not claim authorized virtual gamepad distribution or verified game compatibility until independently validated.
-- Release remains blocked until there is a downloadable, notarized Mac companion and a working iPhone archive. Source-only setup is not an adequate consumer/reviewer installation flow.
+- iPhone: App Store / TestFlight, free, iOS 17+, landscape. Preserve dev.pocketpad.prototype.iphone.
+- Mac: Developer ID signed, notarized standalone download, macOS 15+. Preserve dev.pocketpad.prototype.mac. Use MacGamepad-HID, not the keyboard-only MacGamepad release configuration.
+- Resolve the Developer ID HID profile first. Then export, notarize, staple, and test on another Mac before publishing a companion download.
+- Build 6 is reserved for this local rehearsal, not confirmed on App Store Connect. Check uploaded build numbers before the next upload. Never reuse an already-uploaded build number.
+- Keep manual release. Production submission must include working AI/Marketplace or remove their preview entry points. TestFlight previews must be clearly described in beta notes.
 
-## Store copy (draft, ready for entry after name availability check)
+## Store copy draft
 
 Name: PocketPad Remote Controller
-
 Subtitle: Your iPhone controls your Mac
-
-Promotional text: Create a touch controller for your Mac with movable buttons, sticks, saved layouts, and keyboard and mouse mappings. Requires the free PocketPad Mac companion.
-
-Keywords: controller,remote,keyboard,mouse,layout,custom,buttons,trackpad,mac
-
-Suggested primary category: Utilities. Price: Free. No in-app purchases.
+Keywords: controller,gamepad,remote,keyboard,mouse,layout,custom,buttons,trackpad,mac
+Promotional text: Turn your iPhone into a customizable controller for your Mac. Arrange your controls, save layouts, and connect with the free Pocket Pad Mac companion.
+Suggested category: Utilities. Price: Free. No in-app purchases currently implemented.
 
 Description:
 
-Turn your iPhone into a customizable touch controller for your Mac.
+Turn your iPhone into a touch controller built around the way you play.
 
-PocketPad works with its free Mac companion to send the keyboard and mouse controls you configure. Connect by USB cable, local Wi-Fi, or Bluetooth, then build a controller that fits the way you play.
+Connect to the free Pocket Pad Mac companion using a USB cable, local Wi-Fi, or Bluetooth. Create layouts with buttons, joysticks, a D-pad, and radial controls, then arrange them on your phone or Mac.
 
-- Arrange, resize, rename, and color your buttons.
-- Save separate layouts for your games.
-- Use analog-style touch sticks, optional D-pad controls, and a trackpad for menus.
-- Map buttons to keys, mouse buttons, scrolling, or combinations.
-- Add custom buttons and an eight-direction radial quick bar.
-- Adjust stick sensitivity, hold gestures, and optional haptic feedback.
-- Export profiles and backups as files you control.
+• Move, resize, and rename controls.
+• Save separate layouts for your games and switch between them from either device.
+• Map keyboard and mouse actions, including combinations and hold or tap behavior.
+• Use controller layouts with Xbox or PlayStation button styles and emulation.
+• See your phone layout and live input on your Mac.
+• Adjust stick behavior and per-layout haptic feedback.
+• Export layouts and backups as files you control.
 
-Requires an iPhone running iOS 17 or later and a Mac running macOS 15 or later with the PocketPad companion installed. Keyboard and mouse output requires Accessibility permission on the Mac. Keep the iPhone app open while playing. Wireless connections require Bluetooth permission or a network that allows devices to communicate; hotel and guest networks may block Wi-Fi connections.
+Requires an iPhone running iOS 17 or later and a Mac running macOS 15 or later with the free Pocket Pad companion installed. Keep the phone app open during play. Keyboard and mouse output requires Accessibility permission on the Mac. Wireless connections require the relevant system permissions; some guest networks prevent devices from communicating.
 
-PocketPad does not stream games. Your game runs on your Mac, and compatibility depends on its keyboard and mouse controls and your mappings. Touch-layout presets do not emulate branded controller hardware.
+Your games run on your Mac. Pocket Pad does not stream games. Controller support and button prompts depend on the game and its input settings. Pocket Pad is not affiliated with Apple, Microsoft, Sony, or individual game publishers.
 
-No account or subscription is required. PocketPad is free and open source.
+Editorial gate: the controller sentence above is conditional on successful Developer ID HID distribution validation. Add AI/Marketplace copy only when those services are implemented and tested; do not describe preview examples as a live catalog.
 
 ## URLs and contact
 
 - Support: https://github.com/WilliamW9758/PocketPad/issues
 - Project: https://github.com/WilliamW9758/PocketPad
-- Intended privacy URL after publishing: https://github.com/WilliamW9758/PocketPad/blob/main/docs/PRIVACY.md
-- Mac download URL: must point to the actual signed/notarized release before submission; do not substitute an unbuilt source archive.
-- Reviewer contact: account owner must confirm current name, email, and phone before entry. Do not publish private contact details in this repository.
+- Privacy policy intended URL: https://github.com/WilliamW9758/PocketPad/blob/main/docs/PRIVACY.md
+- Public checks on November 23: project and Issues URLs load without sign-in; the intended privacy URL returns 404. Publish the updated policy before using that URL for submission.
+- Mac download: pending a signed, notarized release; a source archive is not an installer.
+- Review contact and copyright holder need account-owner confirmation. Do not copy private contact details into this repository.
 
-## Reviewer notes
+## Reviewer instructions draft
 
-PocketPad is an iPhone input controller for a Mac companion. It does not download or stream games. No account/login is required.
+Pocket Pad turns iPhone touch controls into input on a separate Mac companion. No app account is required for the current core features. It does not stream or download games.
 
-Prerequisites: iPhone and Mac, Mac companion installed from the release URL, and a USB data cable. The companion requires macOS 15 or later. Grant Accessibility permission to the Mac companion to test keyboard/mouse output.
+Prerequisites: an iPhone, a Mac running macOS 15 or later, and a USB data cable. Install the Mac companion from the final download URL supplied here before submission. No Xcode, Developer Mode, or development provisioning should be required for the distributed apps.
 
-1. Open PocketPad on the iPhone. Open the Mac companion.
-2. Select USB cable on both devices. Unlock the iPhone and trust the Mac if prompted.
-3. On the Mac, choose an app to receive keyboard/mouse input, such as TextEdit for keyboard mapping verification. Connect and focus that app.
-4. Move the left stick to generate mapped movement keys. Switch the iPhone to Cursor mode to test pointer movement and tap clicks.
-5. On the iPhone, open Settings, save a layout copy, and choose Move and resize controls. Move a button, finish editing, and verify the saved layout.
-6. Disconnect. Held outputs must release. Reconnect to resume.
+1. Open Pocket Pad on both devices. Select USB cable, unlock the iPhone, and trust the Mac if prompted. Complete pairing.
+2. In the Mac practice step, move a phone stick and press the indicated button. The Mac visualization should respond in the same direction.
+3. Select Build manually, choose keyboard and mouse input, and grant Mac Accessibility permission. Keep Active app selected and start playing.
+4. Open a blank TextEdit document on the Mac and focus it. Check the layout mappings in Pocket Pad; press a control mapped to a printable key and confirm the corresponding text appears in TextEdit.
+5. Return to Pocket Pad. Open Layout & mappings, duplicate the layout, move/rename a control, and save. Verify the connected phone updates. Editing pauses game output while keeping the connection alive.
+6. Return to the main screen and check live input. Disconnect while holding a control; held output should release. Reconnect and verify the saved layout remains.
+7. Controller test, after distribution authorization: select a controller layout and use a compatible Mac game. Valheim was exercised with Steam Input disabled. Recognition and prompts vary by game. Do not require the reviewer to purchase a game to verify the basic connection and editing features.
 
-The development-only virtual gamepad backend is not a claimed feature of this release. Test keyboard/mouse output. Provide an actual companion release URL with the submission, not this draft instruction alone.
+Before submission, append exact AI and Marketplace review steps and service availability details if those features ship. Supply a review account only if the finished experience requires one.
 
-## Privacy and encryption
+## Privacy and compliance
 
-- Privacy policy is available offline inside both apps. Publish docs/PRIVACY.md before entering its URL in App Store Connect.
-- No developer backend, advertising SDK, analytics SDK, accounts, or automatic diagnostic uploads were found in the current source audit. The manifest declares no tracking or developer collection. Review the final App Store privacy answers against Apple's definitions and actual release behavior.
-- Required-reason API declarations: UserDefaults CA92.1 for app settings; system boot time 35F9.1 for elapsed input/timer calculations. Mac logs record session elapsed time rather than raw system uptime.
-- Wi-Fi uses TLS through Apple's Network/Security frameworks; Bluetooth uses platform transport/security. Complete Apple's export-compliance questionnaire accurately for the final binary and distribution territories. No exemption flag has been guessed or hardcoded.
-- There is no public user-generated content service in this version. Local editable labels and file import/export are not a community marketplace.
+See PRIVACY.md for current local-only behavior. The offline policy is also embedded in AppInformation.swift. The Mac input log is a rolling five-minute window capped at 512,000 bytes; the last saved file can remain after quit. No automatic upload is implemented.
 
-## Release commands
+Current source audit found no advertising, analytics SDK, account service, AI API calls, or marketplace backend. Proposed current privacy-label answer: no data collected by the developer, subject to final review under Apple's definitions. This answer MUST be reassessed when AI/server features are added, including prompts, layouts, identifiers, server request logs, third-party processing, and retention. TestFlight feedback/crash information is a separate beta-testing channel managed by Apple.
 
-Run from the repository root with the appropriate Xcode platform components installed. Set your team in ignored Config/Local.xcconfig. Do not commit certificates, provisioning profiles, or signing credentials.
+Required-reason APIs: UserDefaults CA92.1; system boot time 35F9.1. Wi-Fi uses Apple's Network/Security TLS APIs. Export-compliance answers remain pending; no exemption flag has been guessed. Finish age rating, content rights, availability, accessibility declarations, and contact information using the final app's behavior. The current Connect page displays China mainland compliance notices; check applicability and intended territories before selecting availability.
 
-```sh
-swift test
-xcodebuild -project iPhoneGamepad.xcodeproj -scheme PhoneGamepad -configuration Release -destination 'generic/platform=iOS' -archivePath build/submission/PhoneGamepad.xcarchive archive
-xcodebuild -exportArchive -archivePath build/submission/PhoneGamepad.xcarchive -exportPath build/submission/iphone -exportOptionsPlist Config/ExportOptions-AppStore.plist
-xcodebuild -project iPhoneGamepad.xcodeproj -scheme MacGamepad -configuration Release -destination 'generic/platform=macOS' -archivePath build/submission/MacGamepad.xcarchive CODE_SIGNING_REQUIRED=YES CODE_SIGN_IDENTITY='Developer ID Application' archive
-xcodebuild -exportArchive -archivePath build/submission/MacGamepad.xcarchive -exportPath build/submission/mac -exportOptionsPlist Config/ExportOptions-DeveloperID.plist
-python3 Scripts/check_release_bundle.py build/submission/mac/MacGamepad.app
-```
+## Screenshots and beta plan
 
-Export is local, not an upload. Use Xcode Organizer to validate the iPhone archive before uploading. Notarize the exported Mac package, staple the result, and test Gatekeeper on a clean Mac before publishing it. The SDK-only development installer is not an App Store archive workflow.
+Capture the final iPhone UI, not the Mac window, in landscape at sizes currently accepted by App Store Connect. Keep original PNGs. The store now offers a Duo screenshot group; include actual native Duo captures. Do not scale a normal phone capture and present it as Duo UI.
 
-## Final manual gates
+Suggested screenshots: controller layout; layout editing with a selected control; saved layout choices; connection screen; AI/Marketplace only after working implementation. Exclude personal names, pairing codes, private game data, and unfinished preview states from production marketing.
 
-- Accept App Store Connect's terms and create/check the app record.
-- Obtain appropriate distribution certificates and profiles; validate signed archives.
-- Complete export compliance, age rating, content rights, availability, and privacy questionnaires from actual facts; confirm reviewer contact details.
-- Capture real screenshots of the final iPhone build at Apple's accepted device sizes. Do not use Mac mockups as iPhone screenshots or advertise unbuilt features.
-- Verify first install, permission denial/recovery, all three transports, sleep/lock/reconnect, held-input release, profile import/export, and upgrading the tuned existing layout.
-- Publish a signed/notarized companion and live support/privacy URLs.
-- Run archive validation, upload, inspect processing warnings, select the build, and only then send for review.
+Internal beta first: install through TestFlight and install the notarized Mac companion on a clean Mac; verify no developer setup is needed. External testers require the first external build's Beta App Review. Test USB/Wi-Fi/Bluetooth, denied-permission recovery, sleep/lock/reconnect, input release, edit sync, both controller identities, and layout preservation during updates. Exercise both phones and Duo resizing. Record failures as release blockers, not assumptions of support.
 
-Apple references: [required-reason APIs](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacyaccessedapitypes/nsprivacyaccessedapitype), [privacy disclosures](https://developer.apple.com/app-store/app-privacy-details/), [distribution](https://developer.apple.com/documentation/xcode/preparing-your-app-for-distribution).
+## Repeatable build commands
+
+Use Scripts/prepare_release.sh with a new build number and destination. It archives and exports locally, never uploads or submits. The Mac export currently fails at the HID distribution gate. iPhone output is still useful for validation. Do not treat archive success as successful distribution.
+
+After signing is resolved: notarize the Developer ID app, staple it, create the drag-to-Applications DMG with Scripts/package_mac_release.sh, then verify Gatekeeper on a clean Mac. The packaging script deliberately refuses an unstapled or incorrectly signed app.
+
+## Apple references
+
+- https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds/
+- https://developer.apple.com/testflight/
+- https://developer.apple.com/app-store/app-privacy-details/
+- https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/
+- https://developer.apple.com/help/account/capabilities/capability-requests/
+- https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution
+
+## Local rehearsal artifacts
+
+Saved outside Git at `~/PocketPad Backups/Release Prep 2026-11-23/`: iPhone and Mac archives, App Store IPA, export summary, and build/export/test logs. Build 6 was archived from commit 718b83e before this preparation pass updated the embedded privacy text. Rebuild the final version after the planned services and disclosure changes. No binary has been uploaded to TestFlight, notarization, or production.

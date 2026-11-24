@@ -1,6 +1,6 @@
 # Virtual gamepad authorization
 
-Last verified in the Apple Developer portal: November 11, 2026.
+Historical portal check: November 11, 2026. See the November 23 distribution gate below; development authorization is not sufficient for shipping.
 
 - Developer Program membership is active.
 - HID Virtual Device: **Assigned**. Enabled on the Mac App ID by the account owner.
@@ -38,3 +38,13 @@ Xcode registered this Mac and generated a development provisioning profile conta
 Launching the installed app through Launch Services with --hid-self-test successfully created the device and submitted neutral reports. IORegistry listed PocketPad Gamepad with Generic Desktop/Gamepad usage (1/5) while running and no PocketPad device after exit. A direct executable launch through the automation shell was denied by local TCC attribution; launch the app normally.
 
 Actual phone-to-game controls and native Valheim/Steam recognition still require gameplay testing. This development build is not a distributable release. Nothing was uploaded or published.
+
+## Developer ID distribution gate — November 23, 2026
+
+The signed MacGamepad-HID archive 1.0 (6) succeeds. Export with Config/ExportOptions-DeveloperID.plist and automatic provisioning fails: “The HID Virtual Device (development) capability is not available for Developer ID provisioning profiles.” No matching Developer ID provisioning profile can be created.
+
+Check the Mac App ID's distribution HID capability assignment and enablement, then obtain a Developer ID profile containing com.apple.developer.hid.virtual.device. A prior Assigned status is not proof of a usable distribution profile. If the portal does not offer the distribution capability, ask Apple Developer Support to clarify distribution authorization for this App ID. Do not delete the entitlement or ship a development profile to bypass this gate.
+
+Runtime implementation has advanced since the historical notes above: layouts now carry controller style and profiles, Xbox/PlayStation emulation is implemented, and the user exercised Valheim and Stardew Valley. These gameplay observations do not establish public distribution approval or universal game compatibility.
+
+Portal recheck November 23: the Mac App ID has HID Virtual Device checked and HID Virtual Device (development) unchecked. A manual Developer ID profile flow permits choosing the Mac App ID but stops at “No Certificates are available.” Create an authorized Developer ID Application certificate, then retry a manual profile before assuming distribution permission is missing.
