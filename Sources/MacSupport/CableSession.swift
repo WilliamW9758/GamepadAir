@@ -26,20 +26,11 @@ public final class CableSession {
         lock.lock(); defer { lock.unlock() }; return setupStage
     }
     private var outputPaused = false
-    private var pendingMappings: (KeyboardProfile, GamepadProfile)?
     public func setOutputPaused(_ paused: Bool) {
         lock.lock(); outputPaused = paused; lock.unlock()
     }
-    public func updateMappings(keyboard: KeyboardProfile, gamepad: GamepadProfile) {
-        lock.lock(); pendingMappings = (keyboard, gamepad); lock.unlock()
-    }
     private var isOutputPaused: Bool {
         lock.lock(); defer { lock.unlock() }; return outputPaused
-    }
-    private func takeMappings() -> (KeyboardProfile, GamepadProfile)? {
-        lock.lock(); defer { lock.unlock() }
-        guard !outputPaused else { return nil }
-        let value = pendingMappings; pendingMappings = nil; return value
     }
     private var commandBytes = Data()
     public func sendLayoutCommand(_ command: LayoutCommand) throws {
@@ -59,17 +50,15 @@ public final class CableSession {
     private let pairingCode: String
     private let mode: OutputMode
     private let serial: String?
-    private let keyboardProfile: KeyboardProfile
-    private let gamepadProfile: GamepadProfile
     private let globalInput: Bool
     private let targetPID: Int32?
     private let update: (HostUpdate) -> Void
     private var connectOverride: (() throws -> StreamSocket)?
     private var outputOverride: (() throws -> GamepadOutput)?
 
-    public init(mode: OutputMode, transport: LinkTransport = .usb, wirelessHost: String = "", pairingCode: String = "", serial: String? = nil, keyboardProfile: KeyboardProfile = .starter, gamepadProfile: GamepadProfile = GamepadProfile(), targetPID: Int32? = nil, globalInput: Bool = false, update: @escaping (HostUpdate) -> Void) {
+    public init(mode: OutputMode, transport: LinkTransport = .usb, wirelessHost: String = "", pairingCode: String = "", serial: String? = nil, targetPID: Int32? = nil, globalInput: Bool = false, update: @escaping (HostUpdate) -> Void) {
         self.transport = transport; self.wirelessHost = wirelessHost; self.pairingCode = pairingCode
-        self.mode = mode; self.serial = serial; self.keyboardProfile = keyboardProfile; self.gamepadProfile = gamepadProfile; self.targetPID = targetPID; self.globalInput = globalInput; self.update = update
+        self.mode = mode; self.serial = serial; self.targetPID = targetPID; self.globalInput = globalInput; self.update = update
     }
     convenience init(connect: @escaping () throws -> StreamSocket, output: @escaping () throws -> GamepadOutput, update: @escaping (HostUpdate) -> Void) {
         self.init(mode: .monitor, update: update)
@@ -87,16 +76,15 @@ public final class CableSession {
         var output: GamepadOutput
         do {
             if let outputOverride { output = try outputOverride() }
-            // Wait for the phone layout before publishing its controller identity.
-            else if mode == .gamepad || isOutputPaused { output = MonitorOutput() }
-            else if mode == .keyboardMouse { output = try KeyboardMouseOutput(profile: keyboardProfile, targetPID: targetPID, global: globalInput) }
+            // No output is enabled until the validated phone document arrives.
             else { output = MonitorOutput() }
         }
         catch { announce(error.localizedDescription, finished: true); return }
         var activeMode = mode
-        var activeGamepad = gamepadProfile
+        var activeGamepad = GamepadProfile()
         var activeStyle: PadStyle = .xbox
-        var appliedLayout: SavedLayout?
+        var appliedLayout: LocalLayout?
+        var appliedModeID: String?
         var outputFailure: String?
         var endMessage = "Stopped; controls released"
         defer { output.close(); announce(endMessage, finished: true) }
@@ -134,33 +122,26 @@ public final class CableSession {
                         try sequence.accept(number)
                         if let snapshot = try layoutReceiver.accept(data) {
                             phoneLayout = snapshot
-                            var resolved = snapshot.layout
-                            resolved.inputType = resolved.inputType ?? (mode == .gamepad ? .gamepad : .keyboardMouse)
-                            resolved.keyboardProfile = resolved.keyboardProfile ?? keyboardProfile
-                            resolved.gamepadProfile = resolved.gamepadProfile ?? gamepadProfile
-                            if mode != .monitor,
-                               (appliedLayout?.inputType != resolved.inputType || appliedLayout?.keyboardProfile != resolved.keyboardProfile || appliedLayout?.gamepadProfile != resolved.gamepadProfile || appliedLayout?.effectiveControllerStyle != resolved.effectiveControllerStyle) {
-                                try output.reset(); output.close()
-                                activeMode = resolved.effectiveInputType == .gamepad ? .gamepad : .keyboardMouse
-                                activeGamepad = resolved.gamepadProfile ?? GamepadProfile()
-                                activeStyle = resolved.effectiveControllerStyle
-                                do {
-                                    if activeMode == .gamepad { output = try VirtualGamepadOutput(profile: activeGamepad, style: activeStyle) }
-                                    else { output = try KeyboardMouseOutput(profile: resolved.keyboardProfile ?? .starter, targetPID: targetPID, global: globalInput) }
-                                    outputFailure = nil
-                                } catch {
-                                    output = MonitorOutput(); outputFailure = "Input unavailable: " + error.localizedDescription
+                            let resolved = snapshot.layout
+                            if appliedLayout != resolved || appliedModeID != snapshot.activeModeID {
+                                try output.reset()
+                                if mode != .monitor {
+                                    output.close()
+                                    activeMode = resolved.effectiveInputType == .gamepad ? .gamepad : .keyboardMouse
+                                    activeGamepad = resolved.gamepadProfile
+                                    activeStyle = resolved.effectiveControllerStyle
+                                    do {
+                                        if activeMode == .gamepad { output = try VirtualGamepadOutput(profile: activeGamepad, style: activeStyle) }
+                                        else { output = try KeyboardMouseOutput(profile: resolved.keyboardProfile, targetPID: targetPID, global: globalInput) }
+                                        outputFailure = nil
+                                    } catch {
+                                        output = MonitorOutput(); outputFailure = "Input unavailable: " + error.localizedDescription
+                                    }
                                 }
-                                appliedLayout = resolved
+                                appliedLayout = resolved; appliedModeID = snapshot.activeModeID
                             }
                         }
                         continue
-                    }
-                    if let mappings = takeMappings(), phoneLayout?.layout.inputType == nil {
-                        try output.reset()
-                        output.close()
-                        if mode == .gamepad { output = try VirtualGamepadOutput(profile: mappings.1, style: activeStyle) }
-                        else if mode == .keyboardMouse { output = try KeyboardMouseOutput(profile: mappings.0, targetPID: targetPID, global: globalInput) }
                     }
                     let paused = isOutputPaused
                     if data[5] == 2 {

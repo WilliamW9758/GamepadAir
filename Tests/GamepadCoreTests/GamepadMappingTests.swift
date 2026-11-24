@@ -13,16 +13,13 @@ final class GamepadMappingTests: XCTestCase {
             XCTAssertEqual(profile.apply(state), state)
         }
     }
-    func testGuidePresencePreservesBothTriggers() {
-        var layout = SavedLayout(name: "Guide", style: .xbox)
-        layout.inputType = .gamepad
-        XCTAssertTrue(layout.presentControls.contains(.guide))
-        XCTAssertTrue(layout.presentControls.contains(.leftTrigger))
-        XCTAssertTrue(layout.presentControls.contains(.rightTrigger))
-        layout.inputType = .keyboardMouse
-        XCTAssertFalse(layout.presentControls.contains(.guide))
-        XCTAssertTrue(layout.presentControls.contains(.rightTrigger))
-        XCTAssertEqual(layout.converted(to: .gamepad).gamepadProfile?[.guide], .guide)
+    func testGuidePresencePreservesBothTriggers() throws {
+        let doc = LayoutDocument.starter(name: "Guide", style: .xbox, input: .gamepad)
+        XCTAssertEqual(doc.compileInput().gamepad[.guide], .guide)
+        XCTAssertEqual(doc.compileInput().gamepad[.leftTrigger], .leftTrigger)
+        XCTAssertEqual(doc.compileInput().gamepad[.rightTrigger], .rightTrigger)
+        let keys = try doc.converted(to: .keyboardMouse, name: "Keys")
+        XCTAssertFalse(keys.controls.contains { $0.role == "guide" })
     }
 
     func testGuideRoundTripMappingAndRelease() throws {

@@ -1,37 +1,181 @@
-# Portable layout format proposal
+# Portable layout format — revised runtime contract
 
-Status: draft contract, November 23, 2026. Not yet a replacement for `PortableProfile` or the on-device catalog. The companion JSON Schema and example are design artifacts for implementing the marketplace importer/generator. Do not upload or import these examples through the existing v1 profile decoder yet.
+Status: **adopted by the Swift clients, November 24, 2026; physical-device acceptance pending.**
+`layout.schema.json` is the shared document for client editing, local persistence, file exchange,
+API downloads and server JSONB storage. Swift types are generated from the schema and both
+languages validate the shared fixtures. There is no SavedLayout conversion pipeline or mapping
+metadata sidecar. See [APP_ADOPTION.md](APP_ADOPTION.md) for the implementation and remaining check.
 
-## Separate three kinds of data
+## Versioning and development reset policy
 
-1. **Layout document:** human-readable JSON describing input type, actions, controls, and defaults. No account identity, local UUIDs, selected layout/mode, pairing information, device name/address, or diagnostic history.
-2. **Marketplace listing:** server-owned publication ID, author ID/public nickname, game ID, scenario tags, revision, moderation state, license, created/updated dates, compatibility claims and verification evidence. Source links from generated research belong here or in a private generation job, not executable layout fields.
-3. **Local saved instance:** device UUID, selected mode, edit history, imported publication/revision, personal modifications, and sync revision. Multiple personal copies may refer to the same publication.
+Use `format: pocketpad-layout`, `schemaVersion: 2`, and reject unsupported formats/versions.
+Only current full-canvas geometry is supported. No legacy coordinate migration, old profile
+import, old catalog conversion or experimental v1 compatibility is required. Development layouts
+may be discarded. The archived `layout-v1.schema.json` is historical material, not a supported
+input contract. Version numbers still matter for future evolution after launch.
 
-Use `format: pocketpad-layout` and integer `schemaVersion: 1` for this new format family. It is distinct from legacy `pocketpad-profile` version 1 and the local catalog version 2. Reject unknown major versions; introduce explicit migrations rather than silently ignoring semantics.
+The clients use `PocketPad/layout-documents-v1.json` in their Application Support directory,
+with fresh canonical starter documents. They do not read old layout keys. Old layout-only data can be removed during an explicit development
+reset. Do not reset pairing, credentials, permissions or unrelated settings. A corrupt new-format
+catalog must still report an error without silently overwriting it.
 
-## Why JSON
+Existing development API rows may still contain schema v1 and are rejected by the new client.
+A separate `pocketpad_canonical_test` database was seeded with v2 to verify actual API downloads;
+the original development database and its immutable revisions were left unchanged.
 
-Readable field names and short, meaningful action IDs are easy for people and models to write. Use `jump` instead of UUIDs or bitmasks. A control references an action so a name/binding is defined once. The model returns only the document, never source code or shell commands. Validate before converting to runtime controls.
+## One document, separate envelopes
 
-Keep default values implicit and positions normalized. Encode one base arrangement; a later optional mode-override extension should store only differences. Do not duplicate an inactive input backend or the whole Aim/Cursor layout. The initial draft schema covers single-mode layouts; alternate-mode overrides and advanced gesture/timing settings need a lossless design before migration. Existing two-mode layouts must remain in their original storage until that is available.
+- **LayoutDocument:** the canonical actions, controls, named modes, settings and presentation.
+  The app edits this document, exports it and stores it inside a local wrapper. The server stores
+  the same document as JSONB. Swift/Python types differ; JSON field names and semantics do not.
+- **Marketplace listing:** publication/revision identity, ownership, game, tags, licensing,
+  moderation and research sources remain server metadata outside the document.
+- **LocalLayout:** local UUID, document, optional source publication/revision/digest, preset/edit
+  state and local revision for conflict detection. A local catalog holds selection; active mode
+  is local/session state, distinct from the document's initialMode. Document-local action,
+  control and mode IDs are preserved on download and duplication; only wrapper IDs are renewed.
 
-Compress immutable documents with gzip/Brotli for transport/storage. Keep JSON as the canonical source rather than adopting an opaque binary format. Hash deterministic UTF-8 JSON (defined key ordering/number normalization) for deduplication, not arbitrary encoder output. Budget: 256 KiB uncompressed per document, 128 controls/actions maximum at schema level; the runtime adapter must enforce the actual current hardware/custom-slot limits too. Do not silently drop unsupported controls.
+Only the active input backend is stored in the document. Backend conversion creates an explicit
+new copy, with unresolved mappings reported. No hidden inactive profile or template-style store
+is maintained as a second source of truth. Runtime objects are derived, disposable views of the
+document and never independently saved or edited.
 
-## Geometry and mappings
+## Modes and future layout collections
 
-`x` and `y` are control centers in [0,1], relative to the actual phone canvas width and height. Y increases downwards. `size` is diameter/extent as a fraction of the shorter canvas edge. Placement validation must account for the full control bounds and safe areas, not just center points. Preserve the phone aspect ratio on Mac.
+A document has an ordered `modes` list with stable human-readable IDs, `initialMode`, and a
+control with role `modeSwitch` and command `cycleModes`. Names are user-defined: Combat and
+Building are valid names. The mode's `pointerMode` (`aim` or `cursor`) is a behavior setting,
+not its identity. List order defines the cycle; `initialMode` must name the first entry under
+the current runtime profile.
 
-Actions define ordered chords and Hold/Tap behavior. Control `bindings` maps press/directional/axis roles to action IDs. Empty directions are omitted, not mapped to a hidden default. Radials choose the nearest mapped direction by angular distance; opposite mappings divide the circle in half. Control labels are optional explicit overrides; otherwise use the action label or controller-style label. This preserves custom names when changing Xbox/PlayStation style.
+`runtimeProfile: pocketpad-fixed-v1` limits this draft to one or two modes. Two require exactly
+one switch, visible in both modes. One forbids a switch and remains a genuine one-element list; do not fabricate a second
+saved mode to satisfy the old SavedLayout structure. Control IDs and bindings are
+shared across modes under this initial capability profile. Mode overrides
+change presentation only; mode settings change gestures and pointer behavior. Overrides merge
+onto the base control; omitted fields inherit. Explicit null for label, placement or feedback
+clears that base override and restores the runtime default for that mode. No per-mode bindings
+are accepted.
 
-Beyond JSON Schema, the adapter must validate: unique control IDs; all action references exist; output family matches inputType; legal binding roles for each control kind; valid chord cardinality/type; complete control bounds; no unsupported slot count; and red/unusable indication for unresolved bindings. Duplicate into another backend with explicit conversion results rather than automatic guessed gameplay bindings.
+**The requested future feature is broader:** users download independent layouts, put them in a
+local ordered collection (Combat → Building → Travel), and cycle between them. Each member can
+have different mappings. Prefer local copies and provenance over live remote dependencies, so
+switching works offline and remote edits cannot unexpectedly change play. Collection membership,
+current selection and local IDs belong to local storage, not public UUID references inside a
+portable layout. A shareable collection/bundle format can be designed separately later.
 
-## Migration and implementation sequence
+The named-list and `cycleModes` vocabulary leaves room for expansion, but a new capability profile
+and runtime work are required for >2 modes, per-mode bindings, or cross-layout switching. Do not
+increase maxItems alone: replace two-mode indexing, define release of held inputs on transition,
+update sync/wire validation and editing, and define copying/updates of collection members first.
+Current validators deliberately reject third modes and remote layout targets.
 
-1. Freeze the draft after accounting for every current control and advanced preference; add fixtures for current exports, custom names, both modes, radials, linked positions, controller identities and haptics.
-2. Implement a pure importer/exporter between the versioned document and `SavedLayout`, with semantic validation and stable IDs local to the document.
-3. Prove full round-trip behavior before changing existing file export or catalog persistence. Back up the original catalog; never rewrite it on decode failure.
-4. Add the same schema and semantic checks to upload and AI generation on the server. Treat all generated/downloaded data as untrusted.
-5. Measure actual sizes and parse time on representative layouts. Optimize based on measurements; small JSON payloads are unlikely to dominate server costs compared with previews and model calls.
+## Controls, actions and allocation
 
-The existing local representation remains authoritative for this build. Deletion/reset changes do not migrate or compact users' layouts.
+Controls have stable document-local `id` and a `role`, not just a generic shape. Fixed roles are
+native face/shoulder/system buttons, triggers, left/right sticks, D-pad, radial and mode switch.
+Only one of each fixed role is allowed. `customButton` additionally declares a unique `customSlot`
+from 0 to 15. These are runtime slots, not device UUIDs. At most 34 controls fit the full profile.
+The adapter will map each role to the existing canvas ID; IDs themselves remain readable.
+
+`bindings` maps `press` or the four cardinal directions to action IDs. Actions contain ordered
+outputs, optional Hold/Tap (default Hold), and a descriptive label. Action labels are descriptive
+metadata; they do not implicitly override captions. Use a control's `label` for a visible custom
+caption (maximum 20 characters); otherwise preserve runtime identity/template captions. Action IDs, labels and bindings live directly in the canonical document. Moving/resizing a
+control or changing its caption does not change its action. Rebinding a unique action updates
+its outputs while retaining identity and descriptive label. Rebinding one of multiple references
+clones the action under a new document-local ID and repoints only the edited reference; other
+references remain unchanged. The editor must account for all references, including auto-run.
+Deleting a control removes its reference; retain an action while any references remain. Remove
+unreferenced actions only through a documented cleanup operation, not silently during decoding.
+Duplication preserves document-local IDs and metadata within a fresh local wrapper.
+
+All binding edits go through document edit commands, including Mac edits and undo/redo. There
+is no metadata sidecar and no reconciliation against a separately persisted runtime profile.
+New actions receive stable stored IDs and neutral descriptions unless the user supplies meaning;
+never infer that Space means Jump. Explicit shared-action editing, if added later, must be a
+separate operation from editing a single control binding.
+
+Keyboard/mouse supports up to four distinct outputs per action. Gamepad accepts zero or one
+button output with Hold only. Gamepad sticks use shared gamepad settings, not action bindings.
+Keyboard right-stick mouse behavior uses keyboard settings plus mode pointer behavior, not
+`pointer.*` pseudo-actions. Independent diagonal bindings and radial center-hold are unsupported.
+Four/eight-way D-pad behavior is a mode setting; diagonal activation combines cardinal outputs.
+
+Absent controls must be hidden/disabled, and absent bindings explicitly unmapped by the adapter.
+Never let native gamepad identity mappings, custom number-key defaults, or Shift auto-run leak
+into a loaded document. Empty action outputs explicitly mean unmapped. Required default
+materialization must happen before applying document bindings.
+
+A radial's `radialSlots` maps directions to **custom control IDs**, sharing their existing slot
+and binding. A custom control may be hidden while remaining usable through the radial. This
+preserves aliasing between an on-screen quick button and its radial direction. Missing radial
+directions use the existing nearest-mapped-direction rule. Selection occurs on release with a
+0.12-second custom input pulse; Hold on such a source does not mean holding the radial open.
+No new center-hold or arbitrary radial activation semantics are introduced.
+
+## Geometry and appearance
+
+`geometry: runtimePresetV1` deliberately replaces the old shorter-edge `size` field. Placement
+uses normalized `x`, `y`, and `scale` (0.65–1.8, default 1). Each mode has `sizeFactor` (default 1).
+Omitted placement uses that role's existing preset placement, including template-specific offsets.
+This preserves current resizing behavior instead of pretending two different sizing formulas
+are equivalent across phone aspect ratios.
+
+For a canvas W × H, radius is:
+
+    roleBaseRadius × min(H / 320, W / 800) × mode.sizeFactor × placement.scale
+
+Base radii: sticks 62; D-pad 50; radial 30; triggers/shoulders 27; mode switch 25;
+face buttons 23; back/start/stick-click buttons 22; guide 20; custom buttons 19.
+Use the existing full-bounds fitting rule with its 4-point margin on the actual playable canvas.
+Coordinates mean requested positions before that device-dependent fitting. Exact visible fit
+cannot be validated from JSON alone. Legacy-canvas coordinates are unsupported and rejected;
+no reference-device migration is needed. Shared geometry code and cross-device fixtures are
+required for consistent phone rendering and Mac previews.
+
+`templateStyle` chooses the Xbox/PlayStation geometry template. `controllerStyle` separately
+chooses gamepad emulation identity and is required only for gamepad documents. Global haptics
+default to medium. Per-control feedback carries explicit haptic/tint values; absent feedback
+means the runtime's inherited behavior. Mode overrides can supply placement, caption, visibility
+and feedback. `linkedControls` names controls whose future position edits propagate between
+modes using the runtime's size-factor compensation; it is not an assertion that existing
+positions are equal.
+
+## Settings and defaults
+
+JSON Schema `default` annotations document defaults; validators do not insert them. The adapter
+must materialize them explicitly, independently of starter profiles.
+
+- Keyboard: rightStickMouse true; speed 900; smoothing .025; relativeGameAim true;
+  mouseUpdateRate 1000; invertMouseY false; stickThreshold .35; comboGap .03; tapDuration .12.
+- Auto-run: disabled, threshold .8. Enabling requires an explicit Hold action; no implicit Shift.
+- Gamepad: swapSticks, disableLeftStick, disableRightStick, invertLeftY, invertRightY all false.
+- Mode: pointerMode aim; sizeFactor 1; dpadStyle eightWay; holdAimEnabled true;
+  holdAimDelay .3; trackpadHoldDelay .5; floatingLeft/Right false; leftTap/rightTap off.
+- Runtime stick center-hold behavior, gesture thresholds and radial pulse timing remain fixed.
+  Hold-to-aim belongs to rightTrigger and is inactive in cursor mode. No fields imply otherwise.
+
+The draft bounds gesture delays to 0–5 seconds. Existing values outside the representable range
+must produce an export diagnostic rather than truncation. Unknown properties, references,
+roles, output families and unsupported combinations are errors. Size limit: 256 KiB canonical
+JSON. Digests use SHA-256 over RFC 8785 canonical bytes; never hash arbitrary encoder output.
+
+## Fixtures and validation
+
+See `fixtures/README.md` for the four contracts and expected native mappings. They are authored
+examples, not captured production exports and not verified game presets. The Python tests
+exercise accepted fixtures and unsupported combinations. Swift document/runtime tests must independently
+verify mappings, slot allocation, geometry and input behavior; digest equality alone is not a
+round-trip test.
+
+The Mac and iPhone targets build with document-backed editors, shared geometry, derived input
+profiles, atomic catalog persistence and protocol-v2 sync. Swift tests cover action-sharing,
+undo, conflicts, transport framing and file/download boundaries. Python tests include PostgreSQL
+integration. A live local API download matches the file fixture in Swift. Physical iPhone/Mac
+create/edit/switch/retry/conflict acceptance still requires the unlocked connected phone.
+
+Export uses ordinary validated JSON. The Swift app does not generate publication digests;
+server digests use RFC 8785 and remain immutable origin metadata on local edits and duplicates.
+Run `python3 Scripts/generate_layout_types.py` after schema changes. The embedded-schema test
+fails if the app contract drifts from the checked-in schema.

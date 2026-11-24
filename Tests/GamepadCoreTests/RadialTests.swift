@@ -11,37 +11,22 @@ final class RadialTests: XCTestCase {
         XCTAssertNil(RadialInput.direction(x: 0, y: 0, deadZone: 24))
         XCTAssertNil(RadialInput.direction(x: .nan, y: 10, deadZone: 24))
     }
-    func testOldModesDecodeWithoutRadialSettingsAndPreserveControls() throws {
-        var mode = LayoutMode(name: "Valheim", cursor: false)
-        mode.controls.set(ControlPlacement(x: 0.2, y: 0.7, scale: 1.4), control: "right-stick", style: .xbox)
-        let old = try JSONEncoder().encode(mode)
-        let restored = try JSONDecoder().decode(LayoutMode.self, from: old)
-        XCTAssertNil(restored.radialEnabled); XCTAssertNil(restored.radialSlots)
-        XCTAssertEqual(restored.controls, mode.controls)
-        mode.radialEnabled = true; mode.radialSlots = Array((0..<8).reversed())
-        XCTAssertEqual(try JSONDecoder().decode(LayoutMode.self, from: JSONEncoder().encode(mode)), mode)
-    }
-    func testRadialSlotsUseExistingQuickbarMappingsEvenWithoutVisibleButtons() {
-        for slot in 0..<8 {
-            var mapper = KeyboardMapper(profile: .starter)
-            var state = GamepadState(); state.setCustom(slot, pressed: true)
-            let token: OutputToken = [.one, .two, .three, .four, .five, .six, .seven, .eight][slot]
-            XCTAssertEqual(mapper.receive(state, now: 0), [.down(token)])
-            XCTAssertEqual(mapper.activeOutputs, [token])
-            _ = mapper.receive(.neutral, now: 0.05)
-            XCTAssertEqual(mapper.tick(now: 0.2), [.up(token)])
-        }
-    }
-}
-
-extension RadialTests {
-    func testUnusedDirectionsAndInvalidSlotsAreValidated() throws {
-        var catalog = LayoutCatalog(legacy: LayoutLibrary(), style: .xbox, showDPad: true, holdAimEnabled: true, holdAimDelay: 0.3, trackpadHoldDelay: 0.5)
-        catalog.layouts[0].modes[0].radialSlots = [0, -1, 1, -1, 2, -1, 3, -1]
-        XCTAssertNoThrow(try LayoutCatalog.decode(JSONEncoder().encode(catalog)))
-        catalog.layouts[0].modes[0].radialSlots = [0, 1]
-        XCTAssertThrowsError(try LayoutCatalog.decode(JSONEncoder().encode(catalog)))
-        catalog.layouts[0].modes[0].radialSlots = Array(repeating: 16, count: 8)
-        XCTAssertThrowsError(try LayoutCatalog.decode(JSONEncoder().encode(catalog)))
+    func testHiddenCustomSourceAndSparseRadialUseOneBinding() throws {
+        var doc = LayoutDocument.starter(name: "Radial", style: .xbox)
+        let source = try doc.addControl(role: "customButton")
+        _ = try doc.addControl(role: "radial")
+        try doc.assignRadial(direction: 0, customSlot: 0)
+        try doc.assignRadial(direction: 4, customSlot: 0)
+        try doc.rebind(.control(id: source, direction: "press"), outputs: ["key.one"], behavior: "tap")
+        try doc.hideRadialSources(modeID: doc.initialMode)
+        XCTAssertEqual(doc.radialSlots(), [0, -1, -1, -1, 0, -1, -1, -1])
+        XCTAssertTrue(doc.resolvedControl(source, modeID: doc.initialMode)?.hidden == true)
+        var mapper = KeyboardMapper(profile: doc.compileInput().keyboard)
+        var state = GamepadState(); state.setCustom(0, pressed: true)
+        XCTAssertEqual(mapper.receive(state, now: 0), [.down(.one)])
+        XCTAssertEqual(mapper.tick(now: 0.2), [.up(.one)])
+        XCTAssertThrowsError(try doc.assignRadial(direction: 2, customSlot: 16))
+        try doc.removeControl(source)
+        XCTAssertEqual(doc.radialSlots(), Array(repeating: -1, count: 8))
     }
 }

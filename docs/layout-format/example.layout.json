@@ -1,8 +1,11 @@
 {
   "format": "pocketpad-layout",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "runtimeProfile": "pocketpad-fixed-v1",
   "name": "Movement and jump",
   "inputType": "keyboardMouse",
+  "templateStyle": "xbox",
+  "geometry": "runtimePresetV1",
   "actions": {
     "forward": {
       "label": "Forward",
@@ -38,10 +41,11 @@
   "controls": [
     {
       "id": "movement",
-      "kind": "stick",
-      "x": 0.2,
-      "y": 0.65,
-      "size": 0.3,
+      "role": "leftStick",
+      "placement": {
+        "x": 0.2,
+        "y": 0.65
+      },
       "bindings": {
         "up": "forward",
         "down": "backward",
@@ -51,13 +55,26 @@
     },
     {
       "id": "jump",
-      "kind": "button",
-      "x": 0.8,
-      "y": 0.65,
-      "size": 0.15,
+      "role": "south",
+      "label": "Jump",
+      "placement": {
+        "x": 0.8,
+        "y": 0.65
+      },
       "bindings": {
         "press": "jump"
       }
     }
-  ]
+  ],
+  "modes": [
+    {
+      "id": "explore",
+      "name": "Explore",
+      "holdAimEnabled": false
+    }
+  ],
+  "initialMode": "explore",
+  "keyboard": {
+    "rightStickMouse": false
+  }
 }

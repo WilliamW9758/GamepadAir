@@ -1,0 +1,48 @@
+{
+  "format": "pocketpad-layout",
+  "schemaVersion": 2,
+  "runtimeProfile": "pocketpad-fixed-v1",
+  "name": "Remapped controller",
+  "inputType": "gamepad",
+  "templateStyle": "xbox",
+  "geometry": "runtimePresetV1",
+  "actions": {
+    "interact": {
+      "label": "Interact",
+      "outputs": [
+        "gamepad.west"
+      ]
+    }
+  },
+  "controls": [
+    {
+      "id": "move",
+      "role": "leftStick"
+    },
+    {
+      "id": "look",
+      "role": "rightStick"
+    },
+    {
+      "id": "interact",
+      "role": "south",
+      "label": "Use",
+      "bindings": {
+        "press": "interact"
+      }
+    }
+  ],
+  "modes": [
+    {
+      "id": "explore",
+      "name": "Explore",
+      "holdAimEnabled": false
+    }
+  ],
+  "initialMode": "explore",
+  "controllerStyle": "playstation",
+  "gamepad": {
+    "swapSticks": true,
+    "invertRightY": true
+  }
+}

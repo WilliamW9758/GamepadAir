@@ -192,7 +192,7 @@ final class CableServer: ObservableObject {
                 else if let command = try commandReceiver.accept(frame) { onLayoutCommand?(command) }
             } catch {
                 commandBuffer.removeAll(); commandReceiver = LayoutCommandReceiver()
-                status = "Layout command could not be read"
+                status = "Layout update rejected: " + error.localizedDescription
             }
         }
     }

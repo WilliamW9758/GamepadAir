@@ -50,7 +50,7 @@ swift test
 swift run gamepad-host --monitor
 ```
 
-[Architecture](docs/ARCHITECTURE.md) · [Layout format draft](docs/layout-format/README.md) · [AWS plan](docs/AWS_LAYOUT_SERVICE.md) · [Validation](docs/VALIDATION.md) · [Privacy](docs/PRIVACY.md)
+[Architecture](docs/ARCHITECTURE.md) · [Layout format](docs/layout-format/README.md) · [AWS plan](docs/AWS_LAYOUT_SERVICE.md) · [Validation](docs/VALIDATION.md) · [Privacy](docs/PRIVACY.md)
 
 ---
 

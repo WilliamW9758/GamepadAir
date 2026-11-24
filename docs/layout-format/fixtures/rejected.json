@@ -1,0 +1,1868 @@
+[
+  {
+    "name": "third-mode",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Combat and building",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "key.space"
+          ]
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        },
+        {
+          "id": "switch",
+          "role": "modeSwitch",
+          "command": "cycleModes",
+          "placement": {
+            "x": 0.5,
+            "y": 0.15
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "combat",
+          "name": "Combat",
+          "holdAimEnabled": false
+        },
+        {
+          "id": "building",
+          "name": "Building",
+          "pointerMode": "cursor",
+          "holdAimEnabled": false,
+          "overrides": {
+            "jump": {
+              "placement": {
+                "x": 0.75,
+                "y": 0.6
+              },
+              "label": "Hop",
+              "feedback": {
+                "haptic": "light",
+                "tint": "blue"
+              }
+            }
+          }
+        },
+        {
+          "id": "travel",
+          "name": "Travel"
+        }
+      ],
+      "initialMode": "combat",
+      "keyboard": {
+        "rightStickMouse": false
+      },
+      "linkedControls": [
+        "movement"
+      ]
+    }
+  },
+  {
+    "name": "duplicate-mode",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Combat and building",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "key.space"
+          ]
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        },
+        {
+          "id": "switch",
+          "role": "modeSwitch",
+          "command": "cycleModes",
+          "placement": {
+            "x": 0.5,
+            "y": 0.15
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "combat",
+          "name": "Combat",
+          "holdAimEnabled": false
+        },
+        {
+          "id": "combat",
+          "name": "Building",
+          "pointerMode": "cursor",
+          "holdAimEnabled": false,
+          "overrides": {
+            "jump": {
+              "placement": {
+                "x": 0.75,
+                "y": 0.6
+              },
+              "label": "Hop",
+              "feedback": {
+                "haptic": "light",
+                "tint": "blue"
+              }
+            }
+          }
+        }
+      ],
+      "initialMode": "combat",
+      "keyboard": {
+        "rightStickMouse": false
+      },
+      "linkedControls": [
+        "movement"
+      ]
+    }
+  },
+  {
+    "name": "external-switch",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Combat and building",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "key.space"
+          ]
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        },
+        {
+          "id": "switch",
+          "role": "modeSwitch",
+          "command": "cycleModes",
+          "placement": {
+            "x": 0.5,
+            "y": 0.15
+          },
+          "targetLayout": "some-other-download"
+        }
+      ],
+      "modes": [
+        {
+          "id": "combat",
+          "name": "Combat",
+          "holdAimEnabled": false
+        },
+        {
+          "id": "building",
+          "name": "Building",
+          "pointerMode": "cursor",
+          "holdAimEnabled": false,
+          "overrides": {
+            "jump": {
+              "placement": {
+                "x": 0.75,
+                "y": 0.6
+              },
+              "label": "Hop",
+              "feedback": {
+                "haptic": "light",
+                "tint": "blue"
+              }
+            }
+          }
+        }
+      ],
+      "initialMode": "combat",
+      "keyboard": {
+        "rightStickMouse": false
+      },
+      "linkedControls": [
+        "movement"
+      ]
+    }
+  },
+  {
+    "name": "gamepad-chord",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Remapped controller",
+      "inputType": "gamepad",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "interact": {
+          "label": "Interact",
+          "outputs": [
+            "gamepad.west",
+            "gamepad.south"
+          ]
+        }
+      },
+      "controls": [
+        {
+          "id": "move",
+          "role": "leftStick"
+        },
+        {
+          "id": "look",
+          "role": "rightStick"
+        },
+        {
+          "id": "interact",
+          "role": "south",
+          "label": "Use",
+          "bindings": {
+            "press": "interact"
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "explore",
+          "name": "Explore",
+          "holdAimEnabled": false
+        }
+      ],
+      "initialMode": "explore",
+      "controllerStyle": "playstation",
+      "gamepad": {
+        "swapSticks": true,
+        "invertRightY": true
+      }
+    }
+  },
+  {
+    "name": "gamepad-tap",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Remapped controller",
+      "inputType": "gamepad",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "interact": {
+          "label": "Interact",
+          "outputs": [
+            "gamepad.west"
+          ],
+          "behavior": "tap"
+        }
+      },
+      "controls": [
+        {
+          "id": "move",
+          "role": "leftStick"
+        },
+        {
+          "id": "look",
+          "role": "rightStick"
+        },
+        {
+          "id": "interact",
+          "role": "south",
+          "label": "Use",
+          "bindings": {
+            "press": "interact"
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "explore",
+          "name": "Explore",
+          "holdAimEnabled": false
+        }
+      ],
+      "initialMode": "explore",
+      "controllerStyle": "playstation",
+      "gamepad": {
+        "swapSticks": true,
+        "invertRightY": true
+      }
+    }
+  },
+  {
+    "name": "diagonal",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Combat and building",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "key.space"
+          ]
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right",
+            "upRight": "forward"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        },
+        {
+          "id": "switch",
+          "role": "modeSwitch",
+          "command": "cycleModes",
+          "placement": {
+            "x": 0.5,
+            "y": 0.15
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "combat",
+          "name": "Combat",
+          "holdAimEnabled": false
+        },
+        {
+          "id": "building",
+          "name": "Building",
+          "pointerMode": "cursor",
+          "holdAimEnabled": false,
+          "overrides": {
+            "jump": {
+              "placement": {
+                "x": 0.75,
+                "y": 0.6
+              },
+              "label": "Hop",
+              "feedback": {
+                "haptic": "light",
+                "tint": "blue"
+              }
+            }
+          }
+        }
+      ],
+      "initialMode": "combat",
+      "keyboard": {
+        "rightStickMouse": false
+      },
+      "linkedControls": [
+        "movement"
+      ]
+    }
+  },
+  {
+    "name": "center-hold",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Quick slots and radial",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "key.space"
+          ]
+        },
+        "slot-one": {
+          "label": "Slot 1",
+          "outputs": [
+            "key.one"
+          ],
+          "behavior": "tap"
+        },
+        "slot-two": {
+          "label": "Slot 2",
+          "outputs": [
+            "key.two"
+          ],
+          "behavior": "tap"
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        },
+        {
+          "id": "slot-one",
+          "role": "customButton",
+          "customSlot": 0,
+          "label": "1",
+          "bindings": {
+            "press": "slot-one"
+          }
+        },
+        {
+          "id": "slot-two",
+          "role": "customButton",
+          "customSlot": 1,
+          "hidden": true,
+          "bindings": {
+            "press": "slot-two"
+          }
+        },
+        {
+          "id": "quick-select",
+          "role": "radial",
+          "label": "Quick select",
+          "radialSlots": {
+            "up": "slot-one",
+            "down": "slot-two"
+          },
+          "bindings": {
+            "centerHold": "jump"
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "explore",
+          "name": "Explore",
+          "holdAimEnabled": false
+        }
+      ],
+      "initialMode": "explore",
+      "keyboard": {
+        "rightStickMouse": false
+      }
+    }
+  },
+  {
+    "name": "duplicate-slot",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Quick slots and radial",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "key.space"
+          ]
+        },
+        "slot-one": {
+          "label": "Slot 1",
+          "outputs": [
+            "key.one"
+          ],
+          "behavior": "tap"
+        },
+        "slot-two": {
+          "label": "Slot 2",
+          "outputs": [
+            "key.two"
+          ],
+          "behavior": "tap"
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        },
+        {
+          "id": "slot-one",
+          "role": "customButton",
+          "customSlot": 0,
+          "label": "1",
+          "bindings": {
+            "press": "slot-one"
+          }
+        },
+        {
+          "id": "slot-two",
+          "role": "customButton",
+          "customSlot": 0,
+          "hidden": true,
+          "bindings": {
+            "press": "slot-two"
+          }
+        },
+        {
+          "id": "quick-select",
+          "role": "radial",
+          "label": "Quick select",
+          "radialSlots": {
+            "up": "slot-one",
+            "down": "slot-two"
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "explore",
+          "name": "Explore",
+          "holdAimEnabled": false
+        }
+      ],
+      "initialMode": "explore",
+      "keyboard": {
+        "rightStickMouse": false
+      }
+    }
+  },
+  {
+    "name": "bad-radial",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Quick slots and radial",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "key.space"
+          ]
+        },
+        "slot-one": {
+          "label": "Slot 1",
+          "outputs": [
+            "key.one"
+          ],
+          "behavior": "tap"
+        },
+        "slot-two": {
+          "label": "Slot 2",
+          "outputs": [
+            "key.two"
+          ],
+          "behavior": "tap"
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        },
+        {
+          "id": "slot-one",
+          "role": "customButton",
+          "customSlot": 0,
+          "label": "1",
+          "bindings": {
+            "press": "slot-one"
+          }
+        },
+        {
+          "id": "slot-two",
+          "role": "customButton",
+          "customSlot": 1,
+          "hidden": true,
+          "bindings": {
+            "press": "slot-two"
+          }
+        },
+        {
+          "id": "quick-select",
+          "role": "radial",
+          "label": "Quick select",
+          "radialSlots": {
+            "up": "movement",
+            "down": "slot-two"
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "explore",
+          "name": "Explore",
+          "holdAimEnabled": false
+        }
+      ],
+      "initialMode": "explore",
+      "keyboard": {
+        "rightStickMouse": false
+      }
+    }
+  },
+  {
+    "name": "unknown-override",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Combat and building",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "key.space"
+          ]
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        },
+        {
+          "id": "switch",
+          "role": "modeSwitch",
+          "command": "cycleModes",
+          "placement": {
+            "x": 0.5,
+            "y": 0.15
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "combat",
+          "name": "Combat",
+          "holdAimEnabled": false
+        },
+        {
+          "id": "building",
+          "name": "Building",
+          "pointerMode": "cursor",
+          "holdAimEnabled": false,
+          "overrides": {
+            "jump": {
+              "placement": {
+                "x": 0.75,
+                "y": 0.6
+              },
+              "label": "Hop",
+              "feedback": {
+                "haptic": "light",
+                "tint": "blue"
+              }
+            },
+            "missing": {
+              "hidden": true
+            }
+          }
+        }
+      ],
+      "initialMode": "combat",
+      "keyboard": {
+        "rightStickMouse": false
+      },
+      "linkedControls": [
+        "movement"
+      ]
+    }
+  },
+  {
+    "name": "missing-switch",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Combat and building",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "key.space"
+          ]
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "combat",
+          "name": "Combat",
+          "holdAimEnabled": false
+        },
+        {
+          "id": "building",
+          "name": "Building",
+          "pointerMode": "cursor",
+          "holdAimEnabled": false,
+          "overrides": {
+            "jump": {
+              "placement": {
+                "x": 0.75,
+                "y": 0.6
+              },
+              "label": "Hop",
+              "feedback": {
+                "haptic": "light",
+                "tint": "blue"
+              }
+            }
+          }
+        }
+      ],
+      "initialMode": "combat",
+      "keyboard": {
+        "rightStickMouse": false
+      },
+      "linkedControls": [
+        "movement"
+      ]
+    }
+  },
+  {
+    "name": "hidden-switch",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Combat and building",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "key.space"
+          ]
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        },
+        {
+          "id": "switch",
+          "role": "modeSwitch",
+          "command": "cycleModes",
+          "placement": {
+            "x": 0.5,
+            "y": 0.15
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "combat",
+          "name": "Combat",
+          "holdAimEnabled": false
+        },
+        {
+          "id": "building",
+          "name": "Building",
+          "pointerMode": "cursor",
+          "holdAimEnabled": false,
+          "overrides": {
+            "jump": {
+              "placement": {
+                "x": 0.75,
+                "y": 0.6
+              },
+              "label": "Hop",
+              "feedback": {
+                "haptic": "light",
+                "tint": "blue"
+              }
+            },
+            "switch": {
+              "hidden": true
+            }
+          }
+        }
+      ],
+      "initialMode": "combat",
+      "keyboard": {
+        "rightStickMouse": false
+      },
+      "linkedControls": [
+        "movement"
+      ]
+    }
+  },
+  {
+    "name": "unmapped-autorun",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Combat and building",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "key.space"
+          ]
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        },
+        {
+          "id": "switch",
+          "role": "modeSwitch",
+          "command": "cycleModes",
+          "placement": {
+            "x": 0.5,
+            "y": 0.15
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "combat",
+          "name": "Combat",
+          "holdAimEnabled": false
+        },
+        {
+          "id": "building",
+          "name": "Building",
+          "pointerMode": "cursor",
+          "holdAimEnabled": false,
+          "overrides": {
+            "jump": {
+              "placement": {
+                "x": 0.75,
+                "y": 0.6
+              },
+              "label": "Hop",
+              "feedback": {
+                "haptic": "light",
+                "tint": "blue"
+              }
+            }
+          }
+        }
+      ],
+      "initialMode": "combat",
+      "keyboard": {
+        "rightStickMouse": false,
+        "autoRunEnabled": true
+      },
+      "linkedControls": [
+        "movement"
+      ]
+    }
+  },
+  {
+    "name": "unknown-initial",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Combat and building",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "key.space"
+          ]
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        },
+        {
+          "id": "switch",
+          "role": "modeSwitch",
+          "command": "cycleModes",
+          "placement": {
+            "x": 0.5,
+            "y": 0.15
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "combat",
+          "name": "Combat",
+          "holdAimEnabled": false
+        },
+        {
+          "id": "building",
+          "name": "Building",
+          "pointerMode": "cursor",
+          "holdAimEnabled": false,
+          "overrides": {
+            "jump": {
+              "placement": {
+                "x": 0.75,
+                "y": 0.6
+              },
+              "label": "Hop",
+              "feedback": {
+                "haptic": "light",
+                "tint": "blue"
+              }
+            }
+          }
+        }
+      ],
+      "initialMode": "missing",
+      "keyboard": {
+        "rightStickMouse": false
+      },
+      "linkedControls": [
+        "movement"
+      ]
+    }
+  },
+  {
+    "name": "extra-stick",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Combat and building",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "key.space"
+          ]
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        },
+        {
+          "id": "switch",
+          "role": "modeSwitch",
+          "command": "cycleModes",
+          "placement": {
+            "x": 0.5,
+            "y": 0.15
+          }
+        },
+        {
+          "id": "extra",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "combat",
+          "name": "Combat",
+          "holdAimEnabled": false
+        },
+        {
+          "id": "building",
+          "name": "Building",
+          "pointerMode": "cursor",
+          "holdAimEnabled": false,
+          "overrides": {
+            "jump": {
+              "placement": {
+                "x": 0.75,
+                "y": 0.6
+              },
+              "label": "Hop",
+              "feedback": {
+                "haptic": "light",
+                "tint": "blue"
+              }
+            }
+          }
+        }
+      ],
+      "initialMode": "combat",
+      "keyboard": {
+        "rightStickMouse": false
+      },
+      "linkedControls": [
+        "movement"
+      ]
+    }
+  },
+  {
+    "name": "oversize",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Combat and building",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "key.space"
+          ]
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65,
+            "scale": 2
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        },
+        {
+          "id": "switch",
+          "role": "modeSwitch",
+          "command": "cycleModes",
+          "placement": {
+            "x": 0.5,
+            "y": 0.15
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "combat",
+          "name": "Combat",
+          "holdAimEnabled": false
+        },
+        {
+          "id": "building",
+          "name": "Building",
+          "pointerMode": "cursor",
+          "holdAimEnabled": false,
+          "overrides": {
+            "jump": {
+              "placement": {
+                "x": 0.75,
+                "y": 0.6
+              },
+              "label": "Hop",
+              "feedback": {
+                "haptic": "light",
+                "tint": "blue"
+              }
+            }
+          }
+        }
+      ],
+      "initialMode": "combat",
+      "keyboard": {
+        "rightStickMouse": false
+      },
+      "linkedControls": [
+        "movement"
+      ]
+    }
+  },
+  {
+    "name": "wrong-family",
+    "document": {
+      "format": "pocketpad-layout",
+      "schemaVersion": 2,
+      "runtimeProfile": "pocketpad-fixed-v1",
+      "name": "Combat and building",
+      "inputType": "keyboardMouse",
+      "templateStyle": "xbox",
+      "geometry": "runtimePresetV1",
+      "actions": {
+        "forward": {
+          "label": "Forward",
+          "outputs": [
+            "key.w"
+          ]
+        },
+        "backward": {
+          "label": "Backward",
+          "outputs": [
+            "key.s"
+          ]
+        },
+        "left": {
+          "label": "Left",
+          "outputs": [
+            "key.a"
+          ]
+        },
+        "right": {
+          "label": "Right",
+          "outputs": [
+            "key.d"
+          ]
+        },
+        "jump": {
+          "label": "Jump",
+          "outputs": [
+            "gamepad.south"
+          ]
+        }
+      },
+      "controls": [
+        {
+          "id": "movement",
+          "role": "leftStick",
+          "placement": {
+            "x": 0.2,
+            "y": 0.65
+          },
+          "bindings": {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+          }
+        },
+        {
+          "id": "jump",
+          "role": "south",
+          "label": "Jump",
+          "placement": {
+            "x": 0.8,
+            "y": 0.65
+          },
+          "bindings": {
+            "press": "jump"
+          }
+        },
+        {
+          "id": "switch",
+          "role": "modeSwitch",
+          "command": "cycleModes",
+          "placement": {
+            "x": 0.5,
+            "y": 0.15
+          }
+        }
+      ],
+      "modes": [
+        {
+          "id": "combat",
+          "name": "Combat",
+          "holdAimEnabled": false
+        },
+        {
+          "id": "building",
+          "name": "Building",
+          "pointerMode": "cursor",
+          "holdAimEnabled": false,
+          "overrides": {
+            "jump": {
+              "placement": {
+                "x": 0.75,
+                "y": 0.6
+              },
+              "label": "Hop",
+              "feedback": {
+                "haptic": "light",
+                "tint": "blue"
+              }
+            }
+          }
+        }
+      ],
+      "initialMode": "combat",
+      "keyboard": {
+        "rightStickMouse": false
+      },
+      "linkedControls": [
+        "movement"
+      ]
+    }
+  }
+]

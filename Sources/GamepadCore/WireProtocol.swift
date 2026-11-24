@@ -107,22 +107,11 @@ public enum SetupStage: UInt8, Sendable {
 }
 
 /// Read-only phone layout metadata, interleaved with controller heartbeats.
-public struct ControllerSnapshot: Codable, Equatable {
-    public var layout: SavedLayout
-    public var modeIndex: Int
-    public var screen: PhoneScreen?
-    public var layouts: [LayoutSummary]?
-    public var commandID: String?
-    public var commandError: String?
-    public var supportsLayoutDeletion: Bool?
-    public init(layout: SavedLayout, modeIndex: Int) {
-        self.layout = layout; self.modeIndex = modeIndex
-    }
-}
+public typealias ControllerSnapshot = DocumentLayoutSnapshot
 public enum LayoutTelemetry {
     public static func chunks(_ snapshot: ControllerSnapshot) throws -> [Data] {
-        let data = try JSONEncoder().encode(snapshot)
-        guard data.count <= 262144 else { throw ProtocolError.invalidLength }
+        let data = try snapshot.encodedPayload()
+        guard data.count <= DocumentLayoutTransport.maximumBytes else { throw ProtocolError.invalidLength }
         return stride(from: 0, to: data.count, by: 16).map { offset in
             let payload = data.subdata(in: offset..<min(offset + 16, data.count))
             var frame = Data(repeating: 0, count: 28)
@@ -142,18 +131,11 @@ public struct LayoutTelemetryReceiver {
         guard b.count == 28, Array(b[0..<6]) == [0x49,0x50,0x47,0x50,1,3],
               b[6] <= 3, b[7] > 0, b[7] <= 16 else { throw ProtocolError.invalidHeader }
         if b[6] & 1 != 0 { buffer.removeAll(keepingCapacity: true); receiving = true }
-        guard receiving, buffer.count + Int(b[7]) <= 262144 else { throw ProtocolError.invalidLength }
+        guard receiving, buffer.count + Int(b[7]) <= DocumentLayoutTransport.maximumBytes else { throw ProtocolError.invalidLength }
         buffer.append(contentsOf: b[12..<(12 + Int(b[7]))])
         guard b[6] & 2 != 0 else { return nil }
         receiving = false
-        let snapshot = try JSONDecoder().decode(ControllerSnapshot.self, from: buffer)
-        // Reuse profile validation before exposing untrusted geometry to the UI.
-        _ = try PortableProfile.decode(JSONEncoder().encode(PortableProfile(layout: snapshot.layout)))
-        guard snapshot.layout.modes.indices.contains(snapshot.modeIndex) else { throw ProtocolError.invalidState }
-        if let screen = snapshot.screen {
-            guard screen.width.isFinite, screen.height.isFinite,
-                  (200...3000).contains(screen.width), (200...3000).contains(screen.height) else { throw ProtocolError.invalidState }
-        }
+        let snapshot = try DocumentLayoutTransport.decodeSnapshot(buffer)
         return snapshot
     }
 }
@@ -166,25 +148,12 @@ public struct PhoneScreen: Codable, Equatable {
         self.model = model; self.width = width; self.height = height
     }
 }
-public struct LayoutSummary: Codable, Equatable, Identifiable {
-    public var id: String
-    public var name: String
-    public var isPreset: Bool
-    public init(_ layout: SavedLayout) { id = layout.id; name = layout.name; isPreset = layout.isPreset }
-}
-public struct LayoutCommand: Codable, Equatable {
-    public enum Action: String, Codable { case select, create, save, bindLegacy, delete, clear }
-    public var id = UUID().uuidString
-    public var action: Action
-    public var layoutID: String?
-    public var layout: SavedLayout?
-    public var base: SavedLayout?
-    public init(action: Action, layoutID: String? = nil, layout: SavedLayout? = nil, base: SavedLayout? = nil) {
-        self.action = action; self.layoutID = layoutID; self.layout = layout; self.base = base
-    }
+public typealias LayoutSummary = DocumentLayoutSummary
+public typealias LayoutCommand = DocumentLayoutCommand
+extension DocumentLayoutCommand {
     public func encode() throws -> Data {
-        let payload = try JSONEncoder().encode(self)
-        guard payload.count <= 262144 else { throw ProtocolError.invalidLength }
+        let payload = try encodedPayload()
+        guard payload.count <= DocumentLayoutTransport.maximumBytes else { throw ProtocolError.invalidLength }
         var result = Data([0x49, 0x50, 3, 0])
         for byte in payload { result.append(contentsOf: [0x49, 0x50, 2, byte]) }
         result.append(contentsOf: [0x49, 0x50, 3, 1])
@@ -201,11 +170,11 @@ public struct LayoutCommandReceiver {
         if b[2] == 3 && b[3] == 0 { buffer.removeAll(keepingCapacity: true); receiving = true; return nil }
         guard receiving else { throw ProtocolError.invalidState }
         if b[2] == 2 {
-            guard buffer.count < 262144 else { throw ProtocolError.invalidLength }
+            guard buffer.count < DocumentLayoutTransport.maximumBytes else { throw ProtocolError.invalidLength }
             buffer.append(b[3]); return nil
         }
         guard b[2] == 3 && b[3] == 1 else { throw ProtocolError.invalidHeader }
         receiving = false
-        return try JSONDecoder().decode(LayoutCommand.self, from: buffer)
+        return try DocumentLayoutTransport.decodeCommand(buffer)
     }
 }

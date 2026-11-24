@@ -6,8 +6,8 @@ struct LayoutAssistantView: View {
     let openMarketplace: () -> Void
     @State private var request = ""
     @State private var response = "Describe the layout you want, or try a sample edit below."
-    @State private var draft: SavedLayout?
-    @State private var base: SavedLayout?
+    @State private var draft: LocalLayout?
+    @State private var base: LocalLayout?
     @State private var summary: String?
     private var snapshot: ControllerSnapshot? { model.update.layout }
     private var canApply: Bool {
@@ -26,7 +26,7 @@ struct LayoutAssistantView: View {
                 if let layout = draft ?? snapshot?.layout {
                     Text(layout.name).font(.title3).padding(.horizontal, 24)
                     LayoutEditor(layout: layout, embedded: true, liveState: draft == nil ? model.update.state : .neutral,
-                                 modeIndex: snapshot?.modeIndex ?? 0, screen: snapshot?.screen) { _, _ in }
+                                 modeID: snapshot?.activeModeID, screen: snapshot?.screen) { _, _ in }
                     if let summary {
                         Text(summary).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 24)
                         HStack {
@@ -89,10 +89,10 @@ struct LayoutAssistantView: View {
         }
         var next = source
         if larger {
-            for index in next.modes.indices { next.modes[index].sizeFactor = min(3, next.modes[index].sizeFactor * 1.15) }
+            for index in next.document.modes.indices { next.document.modes[index].sizeFactor = min(3, (next.document.modes[index].sizeFactor ?? 1) * 1.15) }
             summary = "Increase all control sizes by 15% (up to the size limit). Positions and mappings stay the same."
         } else {
-            next.touchHaptic = .light
+            next.document.haptics = "light"
             summary = "Use Light touch feedback for this layout. Game rumble stays the same."
         }
         base = source; draft = next
@@ -102,9 +102,9 @@ struct LayoutAssistantView: View {
         guard canApply, var draft, let base else { return }
         if base.isPreset {
             draft.name += " Custom"; draft.isPreset = false
-            model.sendLayout(LayoutCommand(action: .create, layout: draft))
+            model.sendLayout(LayoutCommand(action: .create, document: draft.document, provenance: draft.provenance))
         } else {
-            model.sendLayout(LayoutCommand(action: .save, layout: draft, base: base))
+            model.sendLayout(LayoutCommand(action: .save, layoutID: base.id, baseEditRevision: base.editRevision, document: draft.document))
         }
         guard model.layoutCommandID != nil else { return }
         self.draft = nil; self.base = nil; summary = nil

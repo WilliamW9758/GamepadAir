@@ -1,396 +1,247 @@
 import SwiftUI
 
-/// Edits a draft only. Saving and importing on the phone never replace its existing layout.
+/// Drafts contain only the canonical document. Runtime mappings are read-only projections.
 struct LayoutEditor: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var layout: SavedLayout
-    @State private var baseLayout: SavedLayout
-    @State private var modeIndex = 0
+    @State private var layout: LocalLayout
+    @State private var baseLayout: LocalLayout
+    @State private var modeID: String
     @State private var selected: String?
-    @State private var past: [SavedLayout] = []
-    @State private var future: [SavedLayout] = []
+    @State private var past: [LayoutDocument] = []
+    @State private var future: [LayoutDocument] = []
     @State private var dragOrigin: ControlPlacement?
-    var embedded = false
-    var liveState: GamepadState?
-    var sourceLayout: SavedLayout
-    var sourceMode: Int
-    var screen: PhoneScreen?
-    private var canvasWidth: Double { screen?.width ?? 800 }
-    private var canvasHeight: Double { screen?.height ?? 360 }
-    private var unit: Double { min(canvasHeight / 320, canvasWidth / 800) * mode.sizeFactor }
+    @State private var error: String?
     @State private var saved = false
-    @State private var advancedMappings = false
-    @State private var mappingDirection = MappedControl.leftUp
-    let save: (SavedLayout, SavedLayout) -> Void
-    init(layout: SavedLayout, embedded: Bool = false, liveState: GamepadState? = nil, modeIndex: Int = 0, screen: PhoneScreen? = nil, save: @escaping (SavedLayout, SavedLayout) -> Void) {
-        _layout = State(initialValue: layout); _baseLayout = State(initialValue: layout); self.embedded = embedded; self.save = save
-        self.liveState = liveState; self.screen = screen; sourceLayout = layout; sourceMode = modeIndex
-        _modeIndex = State(initialValue: modeIndex)
+    @State private var advanced = false
+    let embedded: Bool
+    let liveState: GamepadState?
+    let sourceLayout: LocalLayout
+    let sourceMode: String
+    let screen: PhoneScreen?
+    let selectMode: ((String) -> Void)?
+    let save: (LocalLayout, LocalLayout) -> Void
+    init(layout: LocalLayout, embedded: Bool = false, liveState: GamepadState? = nil, modeID: String? = nil, screen: PhoneScreen? = nil, selectMode: ((String) -> Void)? = nil, save: @escaping (LocalLayout, LocalLayout) -> Void) {
+        _layout = State(initialValue: layout); _baseLayout = State(initialValue: layout)
+        let mode = modeID ?? layout.document.initialMode
+        _modeID = State(initialValue: mode); sourceMode = mode
+        sourceLayout = layout; self.embedded = embedded; self.liveState = liveState; self.screen = screen; self.selectMode = selectMode; self.save = save
     }
-    private var mode: LayoutMode { layout.modes[modeIndex] }
-    private struct Item: Identifiable {
-        let id: String; let label: String; let x: Double; let y: Double; let radius: Double
+    private var width: Double { screen?.width ?? 800 }
+    private var height: Double { screen?.height ?? 360 }
+    private var mode: DocumentMode { layout.document.modes.first { $0.id == modeID } ?? layout.document.modes[0] }
+    private var items: [ResolvedLayoutControl] { LayoutGeometry.resolve(layout.document, modeID: mode.id, width: width, height: height).filter { !$0.hidden } }
+    private func change(record: Bool = true, _ edit: (inout LayoutDocument) throws -> Void) {
+        do {
+            var next = layout.document; try edit(&next); try next.validate()
+            guard next != layout.document else { return }
+            if record { past.append(layout.document); if past.count > 50 { past.removeFirst() }; future.removeAll() }
+            layout.document = next; saved = false; error = nil
+            if !next.modes.contains(where: { $0.id == modeID }) { modeID = next.initialMode }
+        } catch { self.error = error.localizedDescription }
     }
-    private var items: [Item] {
-        let ps = layout.style == .playStation
-        var result: [Item] = []
-        func add(_ id: String, _ label: String, _ x: Double, _ y: Double, _ radius: Double) {
-            result.append(Item(id: id, label: layout.displayLabels(modeIndex: modeIndex)[id] ?? label, x: x, y: y, radius: radius))
-        }
-        if layout.hasCursorSwitching { add("mode-toggle", mode.name, 0.5, 0.15, 25) }
-        add("left-trigger", ps ? "L2" : "LT", 0.12, 0.12, 27)
-        add("right-trigger", ps ? "R2" : "RT", 0.88, 0.12, 27)
-        add("left-stick", "L", ps ? 0.30 : 0.18, ps ? 0.69 : 0.43, 62)
-        add("right-stick", "R", 0.65, 0.70, 62)
-        for (b, x, y, r) in [(PadButton.leftShoulder, 0.26, 0.12, 27.0), (.rightShoulder, 0.74, 0.12, 27), (.back, 0.445, 0.24, 22), (.start, 0.545, 0.24, 22), (.leftClick, 0.435, 0.78, 22), (.rightClick, 0.525, 0.78, 22)] {
-            add("button-\(b.rawValue)", layout.style.label(b), x, y, r)
-        }
-        // The preview uses an 800 × 360 landscape canvas, matching the phone's sizing rules.
-        for (b, dx, dy) in [(PadButton.south, 0.0, 1.0), (.east, 1, 0), (.west, -1, 0), (.north, 0, -1)] {
-            add("button-\(b.rawValue)", layout.style.label(b), 0.85 + dx * 48 * unit / canvasWidth, 0.44 + dy * 48 * unit / canvasHeight, 23)
-        }
-        if layout.effectiveInputType == .gamepad { add("button-\(PadButton.guide.rawValue)", layout.effectiveControllerStyle.label(.guide), 0.5, 0.35, 20) }
-        if mode.showDPad { add("dpad", "✣", ps ? 0.14 : 0.355, ps ? 0.43 : 0.66, 50) }
-        for slot in mode.controls.customButtons(for: layout.style) {
-            add("custom-\(slot)", "C\(slot + 1)", 0.10 + Double(slot % 8) * 0.11, slot < 8 ? 0.91 : 0.51, 19)
-        }
-        if mode.radialEnabled == true { add("radial", mode.radialTitle ?? "Quick bar", 0.5, 0.5, 30) }
-        return result.filter { !(mode.hiddenControls ?? []).contains($0.id) }
-    }
-    private func isPressed(_ id: String) -> Bool {
+    private func pressed(_ item: ResolvedLayoutControl) -> Bool {
         guard let state = liveState else { return false }
-        if id == "radial" { return state.radialPreview != 0 || (mode.radialSlots ?? Array(0..<8)).contains { (0..<16).contains($0) && state.customButtons & (1 << $0) != 0 } }
-        if id == "left-trigger" { return state.leftTrigger > 0 }
-        if id == "right-trigger" { return state.rightTrigger > 0 }
-        if id == "dpad" { return state.hat != 8 }
-        if id.hasPrefix("button-"), let raw = Int(id.dropFirst(7)), let button = PadButton(rawValue: raw) { return state.buttons & button.mask != 0 }
-        if id.hasPrefix("custom-"), let slot = Int(id.dropFirst(7)) { return state.customButtons & (1 << slot) != 0 }
-        return false
+        switch item.role {
+        case "radial": return state.radialPreview != 0 || layout.document.radialSlots().contains { (0..<16).contains($0) && state.customButtons & (1 << $0) != 0 }
+        case "leftTrigger": return state.leftTrigger > 0
+        case "rightTrigger": return state.rightTrigger > 0
+        case "dpad": return state.hat != 8
+        case "customButton":
+            guard let slot = layout.document.controls.first(where: { $0.id == item.id })?.customSlot else { return false }
+            return state.customButtons & (1 << slot) != 0
+        default: return PadButton.allCases.first { String(describing: $0) == item.role }.map { state.buttons & $0.mask != 0 } ?? false
+        }
     }
-    private func placement(_ item: Item) -> ControlPlacement {
-        (mode.controls.controls(for: layout.style)[item.id] ?? ControlPlacement(x: item.x, y: item.y))
-            .fitting(width: canvasWidth, height: canvasHeight, baseRadius: item.radius * unit)
-    }
-    private func record() { past.append(layout); if past.count > 50 { past.removeFirst() }; future.removeAll() }
-    private func change(_ edit: (inout SavedLayout) -> Void) { record(); edit(&layout) }
     var body: some View {
         Group {
             if liveState != nil {
                 GeometryReader { geometry in
-                    let width = max(1, min(geometry.size.width - 48, (geometry.size.height - 48) * canvasWidth / canvasHeight))
-                    controllerCanvas
-                        .frame(width: width, height: width * canvasHeight / canvasWidth)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    let available = max(1, min(geometry.size.width - 48, (geometry.size.height - 48) * width / height))
+                    canvas.frame(width: available, height: available * height / width).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             } else {
-                editorContent
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        header
+                        if let error { Text(error).foregroundStyle(.red) }
+                        canvas.aspectRatio(width / height, contentMode: .fit).frame(maxWidth: .infinity)
+                        inspector
+                        mappingOverview
+                        HStack { Text(layout.effectiveInputType.title).foregroundStyle(.secondary); Spacer(); Button("Advanced settings") { advanced = true } }
+                    }.padding(24)
+                }.frame(width: embedded ? nil : 848)
             }
-        }
-        .onChange(of: sourceLayout) { _, value in if liveState != nil { layout = value }; if value == layout { baseLayout = value } }
-        .onChange(of: sourceMode) { _, value in if liveState != nil { modeIndex = value } }
-    }
-    private var controllerCanvas: some View {
-GeometryReader { geometry in
-            let scale = max(0.01, min(geometry.size.width / canvasWidth, geometry.size.height / canvasHeight))
-            ZStack {
-                RoundedRectangle(cornerRadius: 24).fill(PadAppearance.surface)
-                    .contentShape(Rectangle()).onTapGesture { selected = nil; dragOrigin = nil }
-                ForEach(items) { item in
-                    let p = placement(item)
-                    let diameter = item.radius * unit * p.scale * 2
-                    ZStack {
-                        if item.id == "dpad" && mode.effectiveDPadStyle == .fourWay {
-                            DPadCross().fill(.regularMaterial)
-                        } else { Circle().fill(.regularMaterial) }
-                        if item.id != "dpad" && isPressed(item.id) { Circle().fill(Color.accentColor.opacity(0.65)) }
-                        if let state = liveState, item.id == "left-stick" || item.id == "right-stick" {
-                            let left = item.id == "left-stick"
-                            Circle().fill(Color.accentColor).frame(width: diameter * 0.32, height: diameter * 0.32)
-                                .offset(x: CGFloat(left ? state.leftX : state.rightX) / 32767 * diameter * 0.3,
-                                        y: CGFloat(left ? state.leftY : state.rightY) / 32767 * diameter * 0.3)
-                        }
-                        if item.id == "radial", let state = liveState, state.radialPreview > 1 {
-                            let direction = Int(state.radialPreview) - 2
-                            let angle = Double(direction) * .pi / 4
-                            Circle().fill(Color.accentColor).frame(width: 18, height: 18)
-                                .offset(x: sin(angle) * diameter * 0.42, y: -cos(angle) * diameter * 0.42)
-                        }
-                        let borderColor = layout.unmappedControls.contains(where: { $0.canvasID == item.id }) ? Color.red : (selected == item.id ? Color.accentColor : Color.primary.opacity(0.16))
-                        if item.id == "dpad" && mode.effectiveDPadStyle == .fourWay {
-                            DPadCross().stroke(borderColor, style: StrokeStyle(lineWidth: 2, lineJoin: .round))
-                        } else { Circle().strokeBorder(borderColor, lineWidth: 2) }
-                        // Compensate for canvas scaling: labels remain 14 pt on screen.
-                        if item.id == "dpad" {
-                            DPadPreview(hat: liveState?.hat ?? 8, style: mode.effectiveDPadStyle)
-                        } else {
-                            Text(item.label).font(.system(size: 14 / scale, weight: .medium))
-                                .fixedSize().help(item.label)
-                        }
-                    }
-                    .frame(width: diameter, height: diameter)
-                    .position(x: p.x * canvasWidth, y: p.y * canvasHeight)
-                    .onTapGesture { selected = item.id }
-                    .gesture(DragGesture(minimumDistance: 2, coordinateSpace: .named("controllerCanvas")).onChanged { value in
-                        if dragOrigin == nil { record(); dragOrigin = p; selected = item.id }
-                        guard let origin = dragOrigin else { return }
-                        let next = ControlPlacement(x: origin.x + value.translation.width / canvasWidth, y: origin.y + value.translation.height / canvasHeight, scale: origin.scale)
-                            .fitting(width: canvasWidth, height: canvasHeight, baseRadius: item.radius * unit)
-                        layout.place(next, control: item.id, mode: modeIndex)
-                    }.onEnded { _ in dragOrigin = nil })
-                    .accessibilityLabel(item.label)
-                }
-            }.frame(width: canvasWidth, height: canvasHeight)
-                .coordinateSpace(name: "controllerCanvas")
-                .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(Color.primary.opacity(0.4), lineWidth: 2))
-                .clipShape(RoundedRectangle(cornerRadius: 24))
-                .scaleEffect(scale, anchor: .topLeading)
-                .allowsHitTesting(liveState == nil && !mode.legacyCanvas)
+        }.background { PadBackdrop() }.buttonStyle(PadActionStyle())
+            .onChange(of: sourceLayout) { _, value in
+                if liveState != nil || value.document == layout.document { layout = value; baseLayout = value }
             }
-    }
-    private var editorContent: some View {
-        ScrollView {
-        VStack(spacing: 14) {
-            if liveState == nil {
-            HStack {
-                addControlMenu
-                TextField("Layout name", text: $layout.name).textFieldStyle(.plain).font(.headline)
-                Spacer()
-                if layout.hasCursorSwitching { Picker("Mode", selection: $modeIndex) {
-                    ForEach(layout.modes.indices, id: \.self) { Text(layout.modes[$0].name).tag($0) }
-                }.frame(width: 180) }
-                Button { if let previous = past.popLast() { future.append(layout); layout = previous } } label: { Image(systemName: "arrow.uturn.backward") }.disabled(past.isEmpty).help("Undo")
-                Button { if let next = future.popLast() { past.append(layout); layout = next } } label: { Image(systemName: "arrow.uturn.forward") }.disabled(future.isEmpty).help("Redo")
-                if !embedded { Button("Cancel") { dismiss() } }
-                Button(saved ? "Saved" : "Save") { save(layout, baseLayout); saved = true; if !embedded { dismiss() } }
-                    .buttonStyle(PadActionStyle(prominent: true)).disabled(mode.legacyCanvas)
-            }
-            if layout.effectiveInputType == .gamepad {
-                HStack {
-                    Picker("Emulate controller", selection: Binding(get: { layout.effectiveControllerStyle }, set: { value in
-                        change { $0.emulatedController = value }
-                    })) {
-                        ForEach(PadStyle.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }.frame(width: 300)
-                    Text("Applies when you save. Restart your game if it doesn't detect the change.")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-            }
-            if mode.legacyCanvas {
-                Text("Open this layout on your iPhone once, then export it again to update its canvas coordinates.").foregroundStyle(.secondary)
-            }
-            }
-            controllerCanvas.aspectRatio(canvasWidth / canvasHeight, contentMode: .fit).frame(maxWidth: 600)
-            if liveState == nil {
-            HStack(spacing: 20) {
-                if let selected, let item = items.first(where: { $0.id == selected }) {
-                    TextField("Control name", text: Binding(get: { item.label }, set: { name in
-                        let style = layout.style
-                        change {
-                            if selected == "mode-toggle" { $0.modes[modeIndex].name = String(name.prefix(20)) }
-                            else { $0.modes[modeIndex].controls.rename(selected, to: name, style: style) }
-                        }
-                    })).frame(width: 160)
-                    Button("Remove", role: .destructive) { removeControl(selected) }
-                    Text("Size").foregroundStyle(.secondary)
-                    Slider(value: Binding(get: { placement(item).scale }, set: { scale in
-                        var p = placement(item); p.scale = scale; layout.place(p, control: selected, mode: modeIndex)
-                    }), in: 0.65...1.8, onEditingChanged: { if $0 { record() } }).frame(width: 160)
-                    if layout.hasCursorSwitching { Toggle("Keep position in both modes", isOn: Binding(get: { layout.linkedControls?.contains(selected) == true }, set: { linked in
-                        let current = placement(item)
-                        change { value in
-                            if value.linkedControls == nil { value.linkedControls = [] }
-                            if linked { value.linkedControls?.insert(selected); value.place(current, control: selected, mode: modeIndex) }
-                            else { value.linkedControls?.remove(selected) }
-                        }
-                    })) }
-                } else { Text("Select a control to edit it.").foregroundStyle(.secondary) }
-                Spacer()
-            }.frame(height: 36)
-            if selected == "dpad" {
-                HStack {
-                    Picker("D-pad style", selection: Binding(get: { mode.effectiveDPadStyle }, set: { value in
-                        change { $0.modes[modeIndex].dpadStyle = value }
-                    })) {
-                        ForEach(DPadStyle.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }.pickerStyle(.segmented).frame(width: 320)
-                    Text("4 directions excludes diagonals.").foregroundStyle(.secondary)
-                    Spacer()
-                }
-            }
-            mappingInspector
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], alignment: .leading, spacing: 12) {
-                ForEach(items.filter { mappingSummary($0.id) != nil }) { item in
-                    Button { selected = item.id } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(item.label).fontWeight(.semibold)
-                            Text(mappingSummary(item.id) ?? "Unmapped")
-                                .foregroundStyle(layout.unmappedControls.contains(where: { $0.canvasID == item.id }) ? Color.red : Color.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }.font(.system(size: 14)).frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(12).background(selected == item.id ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
-                            .contentShape(Rectangle())
-                    }.buttonStyle(.plain)
-                }
-            }
-            HStack {
-                Text(layout.effectiveInputType.title).foregroundStyle(.secondary)
-                Spacer()
-                Button("Advanced settings") { advancedMappings = true }
-            }
-            }
-        }.padding(24)
-        }.frame(width: embedded ? nil : 848).background { PadBackdrop() }.buttonStyle(PadActionStyle())
-            .sheet(isPresented: $advancedMappings) {
+            .onChange(of: sourceMode) { _, value in if liveState != nil { modeID = value } }
+            .onChange(of: modeID) { _, value in selected = nil; dragOrigin = nil; if liveState == nil { selectMode?(value) } }
+            .sheet(isPresented: $advanced) {
                 VStack {
-                    HStack { Text("Advanced settings").font(.headline); Spacer(); Button("Done") { advancedMappings = false } }.padding()
-                    if layout.effectiveInputType == .gamepad {
-                        GamepadMappingEditor(profile: gamepadBinding, embedded: true, advancedOnly: true, labels: controlLabels)
-                    } else { MappingEditor(profile: keyboardBinding, embedded: true, advancedOnly: true, labels: controlLabels) }
+                    HStack { Text("Advanced settings").font(.headline); Spacer(); Button("Done") { advanced = false } }.padding()
+                    DocumentAdvancedSettings(document: Binding(get: { layout.document }, set: { value in change { $0 = value } }))
                 }.frame(width: 760, height: 640).buttonStyle(PadActionStyle())
             }
-            .onChange(of: sourceLayout) { _, value in if liveState != nil { layout = value }; if value == layout { baseLayout = value } }
-            .onChange(of: sourceMode) { _, value in if liveState != nil { modeIndex = value } }
-            .onChange(of: layout) { _, _ in saved = false }
-            .onChange(of: modeIndex) { _, _ in selected = nil; dragOrigin = nil }
     }
-    private var addControlMenu: some View {
-        Menu("Add control") {
-            Button("Button") {
-                record()
-                if let slot = layout.modes[modeIndex].controls.addCustom(style: layout.style) {
-                    let id = "custom-\(slot)"
-                    layout.modes[modeIndex].hiddenControls?.remove(id)
-                    layout.modes[modeIndex].controls.set(ControlPlacement(x: 0.5, y: 0.5), control: id, style: layout.style)
-                    selected = id
-                }
-            }.disabled(mode.controls.customButtons(for: layout.style).count >= 16)
-            Menu("Joystick") {
-                Button("Left joystick") { restoreControl("left-stick") }.disabled(items.contains { $0.id == "left-stick" })
-                Button("Right joystick") { restoreControl("right-stick") }.disabled(items.contains { $0.id == "right-stick" })
-            }
-            Button("D-pad") { restoreControl("dpad") }.disabled(items.contains { $0.id == "dpad" })
-            Button("Radial") { restoreControl("radial") }.disabled(items.contains { $0.id == "radial" })
-            if !(mode.hiddenControls ?? []).isEmpty {
-                Menu("Restore removed control") {
-                    ForEach(Array(mode.hiddenControls ?? []).sorted(), id: \.self) { id in
-                        Button(layout.displayLabels(modeIndex: modeIndex)[id] ?? id) { restoreControl(id) }
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Menu("Add control") {
+                    ForEach(["customButton", "leftStick", "rightStick", "dpad", "radial"], id: \.self) { role in
+                        Button(["customButton": "Button", "leftStick": "Left joystick", "rightStick": "Right joystick", "dpad": "D-pad", "radial": "Radial"][role]!) {
+                            change { selected = try $0.addControl(role: role) }
+                        }.disabled(role != "customButton" && layout.document.controls.contains { $0.role == role })
                     }
                 }
+                TextField("Layout name", text: Binding(get: { layout.name }, set: { value in change { $0.name = value } })).font(.headline)
+                if layout.document.modes.count > 1 { Picker("Mode", selection: $modeID) { ForEach(layout.document.modes, id: \.id) { Text($0.name).tag($0.id) } }.frame(width: 180) }
+                Button { if let value = past.popLast() { future.append(layout.document); layout.document = value; saved = false } } label: { Image(systemName: "arrow.uturn.backward") }.disabled(past.isEmpty)
+                Button { if let value = future.popLast() { past.append(layout.document); layout.document = value; saved = false } } label: { Image(systemName: "arrow.uturn.forward") }.disabled(future.isEmpty)
+                if !embedded { Button("Cancel") { dismiss() } }
+                Button(saved ? "Saved" : "Save") { save(layout, baseLayout); saved = true; if !embedded { dismiss() } }.buttonStyle(PadActionStyle(prominent: true))
+            }
+            if layout.effectiveInputType == .gamepad {
+                Picker("Emulate controller", selection: Binding(get: { layout.document.controllerStyle ?? "xbox" }, set: { value in change { $0.controllerStyle = value } })) {
+                    Text("Xbox").tag("xbox"); Text("PlayStation").tag("playstation")
+                }.frame(width: 320)
             }
         }
     }
-    private func restoreControl(_ id: String) {
-        record()
-        layout.modes[modeIndex].hiddenControls?.remove(id)
-        if id == "dpad" { layout.modes[modeIndex].showDPad = true }
-        if id == "radial" { layout.modes[modeIndex].radialEnabled = true }
-        layout.modes[modeIndex].controls.set(ControlPlacement(x: 0.5, y: 0.5), control: id, style: layout.style)
-        selected = id
-    }
-    private func removeControl(_ id: String) {
-        record()
-        if id.hasPrefix("custom-"), let slot = Int(id.dropFirst(7)) {
-            layout.modes[modeIndex].controls.removeCustom(slot, style: layout.style)
-        } else {
-            if layout.modes[modeIndex].hiddenControls == nil { layout.modes[modeIndex].hiddenControls = [] }
-            layout.modes[modeIndex].hiddenControls?.insert(id)
-        }
-        selected = nil; dragOrigin = nil
-    }
-    private var controlLabels: [MappedControl: String] {
-        Dictionary(uniqueKeysWithValues: MappedControl.allCases.map { ($0, layout.controlLabel($0, modeIndex: modeIndex)) })
-    }
-    private var keyboardBinding: Binding<KeyboardProfile> {
-        Binding(get: { layout.keyboardProfile ?? .starter }, set: { layout.keyboardProfile = $0 })
-    }
-    private var gamepadBinding: Binding<GamepadProfile> {
-        Binding(get: { layout.gamepadProfile ?? GamepadProfile() }, set: { layout.gamepadProfile = $0 })
-    }
-    private func mappingSummary(_ id: String) -> String? {
-        let controls = MappedControl.allCases.filter { $0.canvasID == id && $0 != .autoRun }
-        if id == "right-stick", layout.effectiveInputType == .keyboardMouse, keyboardBinding.wrappedValue.rightStickMouse { return "Mouse" }
-        if layout.effectiveInputType == .gamepad {
-            if id == "left-stick" { return gamepadBinding.wrappedValue.disableLeftStick == true ? "Unmapped" : "Left stick" }
-            if id == "right-stick" { return gamepadBinding.wrappedValue.disableRightStick == true ? "Unmapped" : "Right stick" }
-            return controls.isEmpty ? nil : controls.map { gamepadBinding.wrappedValue[$0]?.label ?? "Unmapped" }.joined(separator: " / ")
-        }
-        return controls.isEmpty ? nil : controls.map { keyboardBinding.wrappedValue[$0].summary }.joined(separator: " / ")
-    }
-    @ViewBuilder private var mappingInspector: some View {
-        if let selected {
-            let controls = MappedControl.allCases.filter { $0.canvasID == selected && $0 != .autoRun }
-            VStack(alignment: .leading, spacing: 16) {
-                if selected == "right-stick", layout.effectiveInputType == .keyboardMouse {
-                    Toggle("Move the mouse", isOn: Binding(get: { keyboardBinding.wrappedValue.rightStickMouse }, set: { keyboardBinding.wrappedValue.rightStickMouse = $0 }))
-                    Toggle("Allow cursor switching", isOn: Binding(get: { layout.hasCursorSwitching }, set: { enabled in
-                        change { $0.setCursorSwitching(enabled) }
-                        if !enabled { modeIndex = 0 }
-                    }))
-                    Text("Adds an Aim / Cursor button to the phone. Aim moves the camera; Cursor works like a trackpad. Other controls keep their mappings.")
-                        .foregroundStyle(.secondary)
+    private var canvas: some View {
+        GeometryReader { geometry in
+            let scale = max(0.01, min(geometry.size.width / width, geometry.size.height / height))
+            let unmapped = Set(layout.unmappedControls.map(\.canvasID))
+            ZStack {
+                RoundedRectangle(cornerRadius: 24).fill(PadAppearance.surface).contentShape(Rectangle()).onTapGesture { selected = nil }
+                ForEach(items) { item in
+                    let diameter = item.radius * 2
+                    let four = item.role == "dpad" && mode.dpadStyle == "fourWay"
+                    let invalid = unmapped.contains(item.runtimeID)
+                    let color = invalid ? Color.red : selected == item.id ? Color.accentColor : Color.primary.opacity(0.16)
+                    ZStack {
+                        if four { DPadCross().fill(.regularMaterial); DPadCross().stroke(color, lineWidth: 2) }
+                        else { Circle().fill(.regularMaterial); Circle().strokeBorder(color, lineWidth: 2) }
+                        if item.role != "dpad" && pressed(item) { Circle().fill(Color.accentColor.opacity(0.65)) }
+                        if let state = liveState, ["leftStick", "rightStick"].contains(item.role) {
+                            let left = item.role == "leftStick"
+                            Circle().fill(Color.accentColor).frame(width: diameter * 0.32, height: diameter * 0.32)
+                                .offset(x: CGFloat(left ? state.leftX : state.rightX) / 32767 * diameter * 0.3, y: CGFloat(left ? state.leftY : state.rightY) / 32767 * diameter * 0.3)
+                        }
+                        if item.role == "radial", let state = liveState, state.radialPreview > 1 {
+                            let angle = Double(state.radialPreview - 2) * .pi / 4
+                            Circle().fill(Color.accentColor).frame(width: 18, height: 18).offset(x: sin(angle) * diameter * 0.42, y: -cos(angle) * diameter * 0.42)
+                        }
+                        if item.role == "dpad" { DPadPreview(hat: liveState?.hat ?? 8, style: DPadStyle(rawValue: mode.dpadStyle ?? "eightWay") ?? .eightWay) }
+                        else { Text(item.label).font(.system(size: 14 / scale, weight: .medium)).fixedSize() }
+                    }.frame(width: diameter, height: diameter).position(x: item.placement.x * width, y: item.placement.y * height)
+                        .onTapGesture { selected = item.id }
+                        .gesture(DragGesture(minimumDistance: 2, coordinateSpace: .named("canvas")).onChanged { value in
+                            if dragOrigin == nil { past.append(layout.document); future.removeAll(); dragOrigin = item.placement; selected = item.id }
+                            guard let origin = dragOrigin else { return }
+                            let p = ControlPlacement(x: origin.x + value.translation.width / width, y: origin.y + value.translation.height / height, scale: origin.scale)
+                                .fitting(width: width, height: height, baseRadius: item.radius / item.placement.scale)
+                            change(record: false) { try $0.placeControl(item.id, at: DocumentPlacement(x: p.x, y: p.y, scale: p.scale), modeID: mode.id) }
+                        }.onEnded { _ in dragOrigin = nil })
                 }
-                if selected == "radial" {
-                    Text("Eight-way selector").fontWeight(.semibold)
-                    ForEach(0..<8) { index in
-                        Picker(["Up", "Up right", "Right", "Down right", "Down", "Down left", "Left", "Up left"][index], selection: Binding(get: {
-                            (layout.modes[modeIndex].radialSlots ?? Array(0..<8))[index]
-                        }, set: { slot in
-                            var slots = layout.modes[modeIndex].radialSlots ?? Array(0..<8)
-                            slots[index] = slot; layout.modes[modeIndex].radialSlots = slots
-                        })) {
-                            Text("None").tag(-1)
-                            ForEach(0..<16) { slot in Text("Custom \(slot + 1)").tag(slot) }
-                        }
-                        let slot = (layout.modes[modeIndex].radialSlots ?? Array(0..<8))[index]
-                        if (0..<16).contains(slot) {
-                            let control = MappedControl.customControls[slot]
-                            if layout.effectiveInputType == .keyboardMouse {
-                                ComboBindingEditor(binding: Binding(get: { keyboardBinding.wrappedValue[control] }, set: { value in
-                                    var profile = keyboardBinding.wrappedValue; profile[control] = value
-                                    keyboardBinding.wrappedValue = profile.sanitized
-                                }))
-                            } else {
-                                Picker("Controller input", selection: Binding(get: { gamepadBinding.wrappedValue[control]?.rawValue ?? "none" }, set: { gamepadBinding.wrappedValue[control] = MappedControl(rawValue: $0) })) {
-                                    Text("Unmapped").tag("none")
-                                    ForEach(GamepadProfile.destinations, id: \.self) { Text($0.label).tag($0.rawValue) }
-                                }
-                            }
-                        }
-                        Divider()
-                    }
-                } else if layout.effectiveInputType == .gamepad && (selected == "left-stick" || selected == "right-stick") {
-                    Toggle("Enable analog stick", isOn: Binding(get: {
-                        selected == "left-stick" ? gamepadBinding.wrappedValue.disableLeftStick != true : gamepadBinding.wrappedValue.disableRightStick != true
-                    }, set: { enabled in
-                        if selected == "left-stick" { gamepadBinding.wrappedValue.disableLeftStick = !enabled }
-                        else { gamepadBinding.wrappedValue.disableRightStick = !enabled }
-                    }))
-                    Text("Analog sticks send all directions continuously.").foregroundStyle(.secondary)
-                } else {
-                    ForEach(controls, id: \.self) { control in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(controlLabels[control] ?? control.label).fontWeight(.semibold)
-                            if layout.effectiveInputType == .keyboardMouse {
-                                ComboBindingEditor(binding: Binding(get: { keyboardBinding.wrappedValue[control] }, set: { value in
-                                    var profile = keyboardBinding.wrappedValue; profile[control] = value
-                                    keyboardBinding.wrappedValue = profile.sanitized
-                                }))
-                            } else {
-                                Picker("Controller input", selection: Binding(get: { gamepadBinding.wrappedValue[control]?.rawValue ?? "none" }, set: { gamepadBinding.wrappedValue[control] = MappedControl(rawValue: $0) })) {
-                                    Text("Unmapped").tag("none")
-                                    ForEach(GamepadProfile.destinations, id: \.self) { Text($0.label).tag($0.rawValue) }
-                                }
-                            }
-                        }
-                        if control != controls.last { Divider() }
-                    }
-                }
-            }.font(.system(size: 14)).padding(16).background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 12))
+            }.frame(width: width, height: height).coordinateSpace(name: "canvas")
+                .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(Color.primary.opacity(0.4), lineWidth: 2))
+                .clipShape(RoundedRectangle(cornerRadius: 24)).scaleEffect(scale, anchor: .topLeading).allowsHitTesting(liveState == nil)
         }
+    }
+    private func summary(_ item: ResolvedLayoutControl) -> String? {
+        guard let control = layout.document.controls.first(where: { $0.id == item.id }) else { return nil }
+        if control.role == "modeSwitch" { return "Switch modes" }
+        if control.role == "rightStick", layout.effectiveInputType == .keyboardMouse, layout.document.keyboard?.rightStickMouse != false { return "Mouse" }
+        if layout.effectiveInputType == .gamepad && ["leftStick", "rightStick"].contains(control.role) {
+            let disabled = control.role == "leftStick" ? layout.document.gamepad?.disableLeftStick : layout.document.gamepad?.disableRightStick
+            return disabled == true ? "Unmapped" : "Analog stick"
+        }
+        if control.role == "radial" { return "\(control.radialSlots?.count ?? 0) directions" }
+        let directions = ["leftStick", "rightStick", "dpad"].contains(control.role) ? ["up", "right", "down", "left"] : ["press"]
+        return directions.map { direction in
+            guard let id = control.bindings?[direction], let action = layout.document.actions[id], !action.outputs.isEmpty else { return "Unmapped" }
+            return action.outputs.map { output in
+                OutputToken(documentOutput: output)?.label ?? MappedControl(rawValue: String(output.dropFirst("gamepad.".count)))?.label ?? output
+            }.joined(separator: " + ")
+        }.joined(separator: " / ")
+    }
+    private var mappingOverview: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], alignment: .leading, spacing: 12) {
+            ForEach(items) { item in
+                Button { selected = item.id } label: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(item.label).fontWeight(.semibold)
+                        Text(summary(item) ?? "Unmapped").foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    }.font(.system(size: 14)).frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                        .background(selected == item.id ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
+                        .contentShape(Rectangle())
+                }.buttonStyle(.plain)
+            }
+        }
+    }
+    @ViewBuilder private var inspector: some View {
+        if let selected, let item = items.first(where: { $0.id == selected }), let control = layout.document.controls.first(where: { $0.id == selected }) {
+            HStack {
+                TextField("Control name", text: Binding(get: { item.label }, set: { value in change { try $0.renameControl(selected, caption: value, modeID: mode.id) } })).frame(width: 180)
+                Button("Remove", role: .destructive) { change { try $0.removeControl(selected) }; self.selected = nil }
+                Text("Size")
+                Slider(value: Binding(get: { item.placement.scale }, set: { value in change { try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: value), modeID: mode.id) } }), in: 0.65...1.8).frame(width: 160)
+                if layout.document.modes.count > 1 {
+                    Toggle("Keep position in both modes", isOn: Binding(get: { layout.document.linkedControls?.contains(selected) == true }, set: { linked in change { try $0.linkControl(selected, linked: linked, modeID: mode.id, placement: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale)) } }))
+                }
+            }
+            if control.role == "dpad" {
+                Picker("D-pad style", selection: Binding(get: { mode.dpadStyle ?? "eightWay" }, set: { value in change { doc in let i = doc.modes.firstIndex { $0.id == mode.id }!; doc.modes[i].dpadStyle = value } })) {
+                    Text("4 directions").tag("fourWay"); Text("8 directions").tag("eightWay")
+                }.pickerStyle(.segmented).frame(width: 320)
+            }
+            if control.role == "rightStick" && layout.effectiveInputType == .keyboardMouse {
+                Toggle("Move the mouse", isOn: Binding(get: { layout.document.keyboard?.rightStickMouse ?? true }, set: { enabled in change { doc in
+                    if doc.keyboard == nil { doc.keyboard = DocumentKeyboardSettings() }
+                    doc.keyboard?.rightStickMouse = enabled
+                    if enabled, let i = doc.controls.firstIndex(where: { $0.id == selected }) { doc.controls[i].bindings = nil }
+                } }))
+                Toggle("Allow cursor switching", isOn: Binding(get: { layout.hasCursorSwitching }, set: { enabled in change { $0.setModeSwitching(enabled) } }))
+            }
+            if control.role == "radial" {
+                ForEach(Array(LayoutDocument.radialDirections.enumerated()), id: \.offset) { index, direction in
+                    Picker(direction, selection: Binding(get: { layout.document.radialSlots()[index] }, set: { slot in change { try $0.assignRadial(direction: index, customSlot: slot) } })) {
+                        Text("Unmapped").tag(-1)
+                        ForEach(layout.document.controls.filter { $0.role == "customButton" }, id: \.id) { source in Text(source.label ?? "Custom \((source.customSlot ?? 0) + 1)").tag(source.customSlot!) }
+                    }
+                    if let sourceID = control.radialSlots?[direction] { bindingEditor(controlID: sourceID, direction: "press", caption: direction) }
+                }
+            } else if ["leftStick", "rightStick"].contains(control.role) && layout.effectiveInputType == .gamepad {
+                Toggle("Enable analog stick", isOn: Binding(get: { control.role == "leftStick" ? layout.document.gamepad?.disableLeftStick != true : layout.document.gamepad?.disableRightStick != true }, set: { enabled in change { doc in
+                    if doc.gamepad == nil { doc.gamepad = DocumentGamepadSettings() }
+                    if control.role == "leftStick" { doc.gamepad?.disableLeftStick = !enabled } else { doc.gamepad?.disableRightStick = !enabled }
+                } }))
+            } else if control.role != "modeSwitch" && !(control.role == "rightStick" && layout.document.keyboard?.rightStickMouse != false) {
+                ForEach(["leftStick", "rightStick", "dpad"].contains(control.role) ? ["up", "right", "down", "left"] : ["press"], id: \.self) { direction in
+                    bindingEditor(controlID: selected, direction: direction, caption: item.label + (direction == "press" ? "" : " · " + direction.capitalized))
+                }
+            }
+        } else { Text("Select a control to edit it.").foregroundStyle(.secondary) }
+    }
+    @ViewBuilder private func bindingEditor(controlID: String, direction: String, caption: String) -> some View {
+        let reference = LayoutBindingReference.control(id: controlID, direction: direction)
+        let action = layout.document.actionID(for: reference).flatMap { layout.document.actions[$0] }
+        VStack(alignment: .leading, spacing: 10) {
+            Text(caption).fontWeight(.semibold)
+            if layout.effectiveInputType == .keyboardMouse {
+                ComboBindingEditor(binding: Binding(get: { KeyBinding(action?.outputs.compactMap(OutputToken.init(documentOutput:)) ?? [], behavior: action?.behavior == "tap" ? .tap : .hold) }, set: { value in
+                    change { try $0.rebind(reference, outputs: value.outputs.map(\.documentOutput), behavior: value.behavior.rawValue) }
+                }))
+            } else {
+                Picker("Controller input", selection: Binding(get: { action?.outputs.first ?? "none" }, set: { value in change { try $0.rebind(reference, outputs: value == "none" ? [] : [value]) } })) {
+                    Text("Unmapped").tag("none")
+                    ForEach(GamepadProfile.destinations, id: \.self) { Text($0.label).tag("gamepad." + $0.rawValue) }
+                }
+            }
+        }.font(.system(size: 14)).padding(16).background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 12))
     }
 }
-
 
 private struct DPadPreview: View {
     let hat: UInt8

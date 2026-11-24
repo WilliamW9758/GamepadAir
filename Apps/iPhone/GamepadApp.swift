@@ -2,138 +2,59 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 final class LayoutStore: ObservableObject {
-    @Published var catalog: LayoutCatalog
+    @Published private(set) var catalog: LocalLayoutCatalog = .fresh()
     @Published var storageError: String?
-    private let key = "named-control-layouts-v2"
-    @Published private(set) var history = LayoutHistory()
-    private var editStart: LayoutCatalog?
-    func beginEdit() { if editStart == nil { editStart = catalog } }
-    func endEdit() {
-        if let before = editStart, before != catalog { history.record(before) }
-        editStart = nil
-    }
-    func undo() { endEdit(); if let previous = history.undo(catalog) { catalog = previous; save() } }
-    func redo() { endEdit(); if let next = history.redo(catalog) { catalog = next; save() } }
-    func checkpoint() { if editStart == nil { history.record(catalog) } }
-    func importData(_ data: Data) throws {
-        guard storageError == nil, data.count <= 4_000_000 else { throw ProtocolError.invalidState }
-        let incoming: [SavedLayout]
-        if let profile = try? PortableProfile.decode(data) {
-            var layout = profile.layout; layout.keyboardProfile = profile.keyboard ?? layout.keyboardProfile
-            incoming = [layout]
-        } else {
-            incoming = try LayoutCatalog.decode(data).layouts.filter { !$0.isPreset }.map { layout in
-                try PortableProfile.decode(JSONEncoder().encode(PortableProfile(layout: layout))).layout
-            }
-        }
-        checkpoint()
-        for var layout in incoming {
-            layout.id = UUID().uuidString; layout.isPreset = false; layout.name += " · imported"
-            for i in layout.modes.indices { layout.modes[i].id = UUID().uuidString }
-            catalog.layouts.append(layout); catalog.selectedID = layout.id
-        }
-        save()
-    }
+    @Published private(set) var history = DocumentLayoutHistory()
+    private var store: LayoutDocumentStore?
+    private var storageURL: URL?
     init() {
-        let defaults = UserDefaults.standard
-        let legacyData = defaults.data(forKey: "control-layouts-v1")
-        // Never overwrite the old key, including on subsequent launches.
-        if defaults.data(forKey: "control-layouts-v1-backup") == nil, let legacyData {
-            defaults.set(legacyData, forKey: "control-layouts-v1-backup")
-        }
-        let imported = LayoutCatalog(legacy: LayoutLibrary.restore(legacyData),
-            style: PadStyle(rawValue: defaults.string(forKey: "padStyle") ?? "") ?? .xbox,
-            showDPad: defaults.object(forKey: "showDPad") as? Bool ?? true,
-            holdAimEnabled: defaults.object(forKey: "holdAimEnabled") as? Bool ?? true,
-            holdAimDelay: defaults.object(forKey: "holdAimDelay") as? Double ?? 0.3,
-            trackpadHoldDelay: defaults.object(forKey: "trackpadHoldDelay") as? Double ?? 0.5)
-        if let data = defaults.data(forKey: key) {
-            if defaults.data(forKey: "named-control-layouts-before-modern-editor") == nil {
-                defaults.set(data, forKey: "named-control-layouts-before-modern-editor")
-            }
-            do { catalog = try LayoutCatalog.decode(data) }
-            catch {
-                catalog = imported
-                storageError = "Saved layouts could not be read. They have not been overwritten. Close the app and contact support to recover them."
-            }
-        } else { catalog = imported }
-        save()
+        do {
+            let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            let url = directory.appendingPathComponent("PocketPad/layout-documents-v1.json")
+            storageURL = url
+            store = try LayoutDocumentStore(url: url)
+            refresh()
+        } catch { storageError = "Saved layouts could not be opened and have not been overwritten: " + error.localizedDescription }
     }
-    var selected: SavedLayout { catalog.layouts.first { $0.id == catalog.selectedID }! }
-    func save() {
-        guard storageError == nil, let data = try? JSONEncoder().encode(catalog) else { return }
-        UserDefaults.standard.set(data, forKey: key)
+    private func refresh() { if let store { catalog = store.catalog; history = store.history } }
+    private func perform(_ action: (LayoutDocumentStore) throws -> Void) {
+        guard let store else { return }
+        do { try action(store); refresh(); storageError = nil }
+        catch { storageError = error.localizedDescription }
     }
-    func change(_ update: (inout SavedLayout) -> Void) {
-        guard storageError == nil, let index = catalog.layouts.firstIndex(where: { $0.id == catalog.selectedID }), !catalog.layouts[index].isPreset else { return }
-        let before = catalog
-        update(&catalog.layouts[index])
-        if catalog != before, editStart == nil { history.record(before) }
-        save()
+    var selected: LocalLayout { catalog.layouts.first { $0.id == catalog.selectedID }! }
+    var activeModeID: String { catalog.activeMode(for: selected) }
+    func beginEdit() { store?.beginEdit() }
+    func endEdit() { store?.endEdit(); refresh() }
+    func undo() { perform { try $0.undo() } }
+    func redo() { perform { try $0.redo() } }
+    func save() { endEdit() }
+    func change(_ update: (inout LayoutDocument) throws -> Void) { perform { try $0.edit(update) } }
+    func importData(_ data: Data) throws {
+        guard let store else { throw LayoutDocumentError("Layout storage is unavailable") }
+        try store.importDocument(data); refresh()
     }
-    func apply(_ command: LayoutCommand) throws {
-        guard storageError == nil else { throw ProtocolError.invalidState }
-        switch command.action {
-        case .delete:
-            guard let id = command.layoutID, let base = command.base,
-                  catalog.layouts.first(where: { $0.id == id }) == base else { throw ProtocolError.invalidState }
-            try delete(id)
-        case .clear:
-            clearLayouts()
-        case .bindLegacy:
-            guard let layout = command.layout, let type = layout.inputType,
-                  command.base == catalog.layouts.first(where: { $0.id == catalog.selectedID }) else { throw ProtocolError.invalidState }
-            checkpoint()
-            for index in catalog.layouts.indices where catalog.layouts[index].inputType == nil {
-                catalog.layouts[index].inputType = type
-                catalog.layouts[index].keyboardProfile = catalog.layouts[index].keyboardProfile ?? layout.keyboardProfile
-                catalog.layouts[index].gamepadProfile = catalog.layouts[index].gamepadProfile ?? layout.gamepadProfile
-            }
-            save()
-        case .select:
-            guard let id = command.layoutID, catalog.layouts.contains(where: { $0.id == id }) else { throw ProtocolError.invalidState }
-            select(id)
-        case .create:
-            guard var layout = command.layout else { throw ProtocolError.invalidState }
-            _ = try PortableProfile.decode(JSONEncoder().encode(PortableProfile(layout: layout)))
-            checkpoint(); layout.id = UUID().uuidString; layout.isPreset = false
-            catalog.layouts.append(layout); catalog.selectedID = layout.id; save()
-        case .save:
-            guard let layout = command.layout, let base = command.base,
-                  let index = catalog.layouts.firstIndex(where: { $0.id == layout.id }),
-                  catalog.layouts[index] == base, !base.isPreset else { throw ProtocolError.invalidState }
-            _ = try PortableProfile.decode(JSONEncoder().encode(PortableProfile(layout: layout)))
-            checkpoint()
-            if let data = try? JSONEncoder().encode(catalog) { UserDefaults.standard.set(data, forKey: "layouts-before-mac-save") }
-            var updated = layout; updated.isPreset = false
-            catalog.layouts[index] = updated; save()
-        }
+    func apply(_ command: DocumentLayoutCommand) -> DocumentLayoutAcknowledgment {
+        guard let store else { return DocumentLayoutAcknowledgment(commandID: command.id, error: "Layout storage is unavailable") }
+        let result = store.apply(command); refresh(); return result
     }
     func delete(_ id: String) throws {
-        var updated = catalog
-        try updated.delete(id)
-        catalog = updated
-        discardHistoryAndBackups()
-        save()
+        guard let store else { throw LayoutDocumentError("Layout storage is unavailable") }
+        try store.delete(id); refresh()
     }
     func clearLayouts() {
-        catalog = .fresh(); storageError = nil
-        discardHistoryAndBackups(); save()
+        if store != nil { perform { try $0.resetLayouts() }; return }
+        // Only the explicit, confirmed reset action may replace unreadable storage.
+        do {
+            guard let url = storageURL else { throw LayoutDocumentError("Layout storage is unavailable") }
+            try LocalLayoutCatalog.fresh().save(to: url)
+            store = try LayoutDocumentStore(url: url); refresh(); storageError = nil
+        } catch { storageError = error.localizedDescription }
     }
-    private func discardHistoryAndBackups() {
-        history = LayoutHistory(); editStart = nil
-        for key in ["control-layouts-v1", "control-layouts-v1-backup", "named-control-layouts-before-modern-editor", "layouts-before-mac-save"] {
-            UserDefaults.standard.removeObject(forKey: key)
-        }
-    }
-    func select(_ id: String) { endEdit(); catalog.selectedID = id; save() }
-    func copy(name: String) { guard storageError == nil else { return }; checkpoint(); catalog.duplicate(catalog.selectedID, name: name); save() }
-    func create(name: String, style: PadStyle) {
-        guard storageError == nil else { return }
-        checkpoint()
-        let layout = SavedLayout(name: name, style: style)
-        catalog.layouts.append(layout); catalog.selectedID = layout.id; save()
-    }
+    func select(_ id: String) { perform { try $0.select(id) } }
+    func selectMode(_ id: String) { perform { try $0.selectMode(id) } }
+    func copy(name: String) { perform { try $0.duplicate(name: name) } }
+    func create(_ document: LayoutDocument, provenance: LayoutProvenance? = nil) { perform { try $0.create(document, provenance: provenance) } }
 }
 
 @main
@@ -141,16 +62,14 @@ struct PhoneGamepadApp: App {
     @StateObject private var server = CableServer()
     @StateObject private var layouts = LayoutStore()
     @Environment(\.scenePhase) private var phase
-    @AppStorage("touch-floating-left") private var touchFloatingLeft = true
-    @AppStorage("touch-floating-right") private var touchFloatingRight = true
     @State private var resetID = UUID()
     @State private var canvasSize = CGSize.zero
-    @State private var modeIndex = 0
     @State private var editing = false
     @AppStorage("phone-onboarding-v1") private var tourComplete = false
     @State private var tour = false
     @State private var settings = false
     @State private var connectionScreen = false
+    @State private var lastAcknowledgment: DocumentLayoutAcknowledgment?
     @State private var lastLayoutCommand: String?
     @State private var layoutCommandError: String?
     @State private var buttonOptions = false
@@ -171,27 +90,42 @@ struct PhoneGamepadApp: App {
     @State private var confirmReset = false
     @State private var confirmDataAction = false
     @State private var dataAction = "delete"
-    private var layout: SavedLayout { layouts.selected }
-    private var mode: LayoutMode { layout.modes[modeIndex] }
+    private var layout: LocalLayout { layouts.selected }
+    private var modeID: String { layouts.activeModeID }
+    private var otherModeID: String { layout.document.modes.first { $0.id != modeID }?.id ?? modeID }
+    private var mode: ResolvedLayoutMode { layout.resolvedMode(modeID) }
     private var padStyle: PadStyle { layout.style }
     private var placements: [String: ControlPlacement] { mode.controls.controls(for: padStyle) }
-    private func changeMode(_ update: (inout LayoutMode) -> Void) {
-        layouts.change { update(&$0.modes[modeIndex]) }
+    private func changeMode(_ update: (inout DocumentMode) -> Void) {
+        layouts.change { document in
+            guard let index = document.modes.firstIndex(where: { $0.id == modeID }) else { return }
+            update(&document.modes[index])
+        }
     }
-    private func binding<T>(_ key: WritableKeyPath<LayoutMode, T>) -> Binding<T> {
-        Binding(get: { mode[keyPath: key] }, set: { value in changeMode { $0[keyPath: key] = value }; release() })
+    private func binding<T>(_ key: WritableKeyPath<DocumentMode, T>) -> Binding<T> {
+        Binding(get: { layout.document.modes.first { $0.id == modeID }![keyPath: key] }, set: { value in changeMode { $0[keyPath: key] = value }; release() })
+    }
+    private func optionBinding<T>(_ key: WritableKeyPath<DocumentMode, T?>, default fallback: T) -> Binding<T> {
+        Binding(get: { layout.document.modes.first { $0.id == modeID }?[keyPath: key] ?? fallback }, set: { value in
+            if layout.isPreset { layouts.copy(name: layout.name + " Custom") }
+            changeMode { $0[keyPath: key] = value }; release()
+        })
+    }
+    private func place(_ p: ControlPlacement, runtimeID: String) {
+        guard let id = layout.controlID(runtimeID: runtimeID) else { return }
+        layouts.change { try $0.placeControl(id, at: DocumentPlacement(x: p.x, y: p.y, scale: p.scale), modeID: modeID) }
     }
     private var selectedScale: Binding<Double> {
         Binding(get: { selectedID.flatMap { placements[$0]?.scale } ?? 1 }, set: { value in
             guard let id = selectedID, var p = placements[id] else { return }
-            p.scale = value; layouts.change { $0.place(p, control: id, mode: modeIndex) }
+            p.scale = value; place(p, runtimeID: id)
         })
     }
     var body: some Scene {
         WindowGroup {
             ZStack(alignment: .top) {
-                ControllerSurface(style: padStyle, mode: mode, displayLabels: layout.displayLabels(modeIndex: modeIndex), touchHaptic: layout.effectiveTouchHaptic, showsGuideButton: layout.effectiveInputType == .gamepad, guideLabel: layout.effectiveControllerStyle.label(.guide), showsModeSwitch: layout.hasCursorSwitching, placements: placements, unmapped: Set(layout.unmappedControls.map(\.canvasID)),
-                    referenceMode: layout.modes[1 - modeIndex], showGhost: showGhost,
+                ControllerSurface(document: layout.document, activeModeID: modeID, referenceModeID: otherModeID, style: padStyle, mode: mode, displayLabels: layout.displayLabels(modeID: modeID), touchHaptic: layout.effectiveTouchHaptic, showsGuideButton: layout.effectiveInputType == .gamepad, guideLabel: layout.effectiveControllerStyle.label(.guide), showsModeSwitch: layout.hasCursorSwitching, placements: placements, unmapped: Set(layout.unmappedControls.map(\.canvasID)),
+                    referenceMode: layout.resolvedMode(otherModeID), showGhost: showGhost,
                     onReference: { selectedReference = $0 }, onCanvasSize: { size in
                         guard canvasSize != size else { return }
                         canvasSize = size
@@ -202,15 +136,8 @@ struct PhoneGamepadApp: App {
                     onRename: { id, label in selectedID = id; selectedLabel = label; nameDraft = label; nameAction = "control"; naming = true },
                     onSelect: { id, label, p in
                         layouts.beginEdit(); selectedID = id; selectedLabel = label
-                        changeMode { $0.controls.set(p, control: id, style: padStyle) }
-                    }, onPlacement: { id, p in layouts.change { $0.place(p, control: id, mode: modeIndex) } },
-                    onMigration: { modeID, converted, factor in
-                        changeMode { m in
-                            guard m.id == modeID, m.legacyCanvas else { return }
-                            for (id, p) in converted { m.controls.set(p, control: id, style: padStyle) }
-                            m.sizeFactor = factor; m.legacyCanvas = false
-                        }
-                    })
+                        place(p, runtimeID: id)
+                    }, onPlacement: { id, p in place(p, runtimeID: id) })
                     .id(resetID).ignoresSafeArea()
                 if !editing {
                     MovableSettingsButton(connected: server.connected,
@@ -238,8 +165,8 @@ struct PhoneGamepadApp: App {
                     HStack(spacing: 12) {
                         Button { layouts.undo(); selectedID = nil; release() } label: { Image(systemName: "arrow.uturn.backward").frame(width: 44, height: 44) }.disabled(!layouts.history.canUndo)
                         Button { layouts.redo(); selectedID = nil; release() } label: { Image(systemName: "arrow.uturn.forward").frame(width: 44, height: 44) }.disabled(!layouts.history.canRedo)
-                        if layout.hasCursorSwitching { Picker("Mode", selection: Binding(get: { modeIndex }, set: { modeIndex = $0; selectedID = nil; release() })) {
-                            ForEach(0..<2, id: \.self) { Text(layout.modes[$0].name).tag($0) }
+                        if layout.hasCursorSwitching { Picker("Mode", selection: Binding(get: { modeID }, set: { layouts.selectMode($0); selectedID = nil; release() })) {
+                            ForEach(layout.document.modes, id: \.id) { Text($0.name).tag($0.id) }
                         }.pickerStyle(.segmented).frame(width: 180) }
                         Spacer()
                         Button("Done editing") { editing = false; selectedID = nil; release() }
@@ -265,12 +192,12 @@ struct PhoneGamepadApp: App {
             }
             .confirmationDialog("Reset only this mode's arrangement?", isPresented: $confirmReset, titleVisibility: .visible) {
                 Button("Reset mode arrangement", role: .destructive) {
-                    layouts.change { l in l.linkedControls = nil; l.modes[modeIndex].controls.reset(style: padStyle); l.modes[modeIndex].sizeFactor = 1; l.modes[modeIndex].legacyCanvas = false }
+                    layouts.change { try $0.resetArrangement(modeID: modeID) }
                     selectedID = nil; release()
                 }
             }
             .onChange(of: layouts.catalog) { _, _ in publishLayout() }
-            .onChange(of: modeIndex) { _, _ in publishLayout() }
+            .onChange(of: modeID) { _, _ in publishLayout() }
             .onChange(of: settings) { _, _ in release() }
             .onChange(of: naming) { _, _ in release() }
             .onChange(of: server.setupStage) { _, stage in
@@ -296,40 +223,32 @@ struct PhoneGamepadApp: App {
             }
         }
     }
-    private func feedbackBinding<T>(_ key: WritableKeyPath<ButtonFeedback, T>) -> Binding<T> {
-        Binding(get: { (mode.buttonFeedback?[selectedID ?? ""] ?? ButtonFeedback(haptic: .light))[keyPath: key] }, set: { value in
-            guard let id = selectedID else { return }
-            changeMode { m in
-                var prefs = m.buttonFeedback?[id] ?? ButtonFeedback(haptic: .light)
-                prefs[keyPath: key] = value
-                if m.buttonFeedback == nil { m.buttonFeedback = [:] }
-                m.buttonFeedback?[id] = prefs
-            }
+    private var tintBinding: Binding<ButtonTint> {
+        Binding(get: { mode.buttonFeedback?[selectedID ?? ""]?.tint ?? .automatic }, set: { value in
+            guard let runtimeID = selectedID, let id = layout.controlID(runtimeID: runtimeID) else { return }
+            layouts.change { try $0.setFeedback(id, modeID: modeID, tint: value.rawValue.lowercased()) }
         })
     }
     private var buttonOptionsView: some View {
         NavigationStack {
             Form {
                 if layout.hasCursorSwitching { Section("Position across modes") {
-                    Toggle("Link position and size", isOn: Binding(get: { selectedID.map { layout.linkedControls?.contains($0) == true } ?? false }, set: { linked in
+                    Toggle("Link position and size", isOn: Binding(get: { selectedID.map { layout.document.linkedControls?.contains(layout.controlID(runtimeID: $0) ?? "") == true } ?? false }, set: { linked in
                         guard let id = selectedID, let p = placements[id] else { return }
-                        layouts.change { l in
-                            if l.linkedControls == nil { l.linkedControls = [] }
-                            if linked { l.linkedControls?.insert(id); l.place(p, control: id, mode: modeIndex) }
-                            else { l.linkedControls?.remove(id) }
-                        }
-                    })).disabled(mode.legacyCanvas || layout.modes[1 - modeIndex].legacyCanvas)
-                    Button("Copy position from \(layout.modes[1 - modeIndex].name)") {
+                        guard let controlID = layout.controlID(runtimeID: id) else { return }
+                        layouts.change { try $0.linkControl(controlID, linked: linked, modeID: modeID, placement: DocumentPlacement(x: p.x, y: p.y, scale: p.scale)) }
+                    }))
+                    Button("Copy position from \(layout.resolvedMode(otherModeID).name)") {
                         guard let id = selectedID, let p = selectedReference else { return }
-                        layouts.change { $0.place(p, control: id, mode: modeIndex) }
-                    }.disabled(selectedReference == nil || layout.modes[1 - modeIndex].legacyCanvas)
+                        place(p, runtimeID: id)
+                    }.disabled(selectedReference == nil)
                     Toggle("Show other mode outline", isOn: $showGhost)
                     Text("Keep this button’s position and size matched across modes.").font(.callout).foregroundStyle(.secondary)
                 } }
                 if selectedID == "dpad" {
                     Section {
                         Picker("Directions", selection: Binding(get: { mode.effectiveDPadStyle }, set: { value in
-                            changeMode { $0.dpadStyle = value }
+                            changeMode { $0.dpadStyle = value.rawValue }
                         })) {
                             ForEach(DPadStyle.allCases, id: \.self) { Text($0.title).tag($0) }
                         }.pickerStyle(.segmented)
@@ -338,7 +257,7 @@ struct PhoneGamepadApp: App {
                     }
                 }
                 Section("Appearance") {
-                    Picker("Button color", selection: feedbackBinding(\.tint)) {
+                    Picker("Button color", selection: tintBinding) {
                         ForEach(ButtonTint.allCases, id: \.self) { tint in
                             Label { Text(tint.rawValue) } icon: {
                                 Image(systemName: "circle.fill").foregroundStyle(Color(tint.uiColor))
@@ -350,12 +269,12 @@ struct PhoneGamepadApp: App {
                     Button("Rename control") { buttonOptions = false; nameAction = "control"; nameDraft = selectedLabel; naming = true }
                     Button("Reset position and size") {
                         guard let id = selectedID else { return }
-                        layouts.change { l in l.linkedControls?.remove(id); l.modes[modeIndex].controls.presets[padStyle.rawValue]?[id] = nil }
+                        if let controlID = layout.controlID(runtimeID: id) { layouts.change { try $0.resetPlacement(controlID, modeID: modeID) } }
                         buttonOptions = false; selectedID = nil; release()
                     }
-                    if let id = selectedID, id.hasPrefix("custom-"), let slot = Int(id.dropFirst(7)) {
+                    if let id = selectedID, let controlID = layout.controlID(runtimeID: id) {
                         Button("Remove button", role: .destructive) {
-                            layouts.change { l in l.linkedControls?.remove(id); l.modes[modeIndex].controls.removeCustom(slot, style: padStyle); l.modes[modeIndex].buttonFeedback?[id] = nil }
+                            layouts.change { try $0.removeControl(controlID) }
                             buttonOptions = false; selectedID = nil; release()
                         }
                     }
@@ -408,7 +327,7 @@ struct PhoneGamepadApp: App {
                         Picker("Emulate controller", selection: Binding(get: { layout.effectiveControllerStyle }, set: { value in
                             if layout.isPreset { layouts.copy(name: layout.name + " Custom") }
                             release()
-                            layouts.change { $0.emulatedController = value }
+                            layouts.change { $0.controllerStyle = value == .xbox ? "xbox" : "playstation" }
                         })) {
                             ForEach(PadStyle.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                         }
@@ -419,7 +338,7 @@ struct PhoneGamepadApp: App {
                 Section("Layout touch feedback") {
                     Picker("Button haptics", selection: Binding(get: { layout.effectiveTouchHaptic }, set: { value in
                         if layout.isPreset { layouts.copy(name: layout.name + " Custom") }
-                        layouts.change { $0.touchHaptic = value }
+                        layouts.change { $0.haptics = value.rawValue.lowercased() }
                         TouchPadView.playHaptic(value)
                     })) {
                         ForEach(ButtonHaptic.allCases, id: \.self) { Text($0.rawValue).tag($0) }
@@ -428,20 +347,20 @@ struct PhoneGamepadApp: App {
                         .font(.callout).foregroundStyle(.secondary)
                 }
                 Section("Stick positioning") {
-                    Picker("Left stick", selection: $touchFloatingLeft) {
+                    Picker("Left stick", selection: optionBinding(\.floatingLeft, default: false)) {
                         Text("Center on touch").tag(true)
                         Text("Fixed position").tag(false)
                     }
-                    Picker("Right stick", selection: $touchFloatingRight) {
+                    Picker("Right stick", selection: optionBinding(\.floatingRight, default: false)) {
                         Text("Center on touch").tag(true)
                         Text("Fixed position").tag(false)
                     }
-                    Text("Applies to all layouts on this iPhone. Center on touch places the stick's neutral point where your finger first lands.")
+                    Text("Applies to this layout and mode. Center on touch places the stick's neutral point where your finger first lands.")
                         .font(.callout).foregroundStyle(.secondary)
                 }
                 Section("Saved layouts") {
                     Picker("Layout", selection: Binding(get: { layouts.catalog.selectedID }, set: {
-                        layouts.select($0); modeIndex = 0; selectedID = nil; editing = false; release()
+                        layouts.select($0); selectedID = nil; editing = false; release()
                     })) {
                         ForEach(layouts.catalog.layouts) { Text($0.name + ($0.isPreset ? " · preset" : "")).tag($0.id) }
                     }
@@ -455,69 +374,60 @@ struct PhoneGamepadApp: App {
                 }
                 DisclosureGroup("Right-stick cursor switching") {
                     Toggle("Allow switching between aim and cursor", isOn: Binding(get: { layout.hasCursorSwitching }, set: { enabled in
-                        layouts.change { $0.setCursorSwitching(enabled) }; modeIndex = 0; release()
+                        layouts.change { $0.setModeSwitching(enabled) }; release()
                     }))
-                    if layout.hasCursorSwitching { Picker("Edit mode", selection: Binding(get: { modeIndex }, set: { modeIndex = $0; selectedID = nil; release() })) {
-                        ForEach(0..<2, id: \.self) { Text(layout.modes[$0].name).tag($0) }
+                    if layout.hasCursorSwitching { Picker("Edit mode", selection: Binding(get: { modeID }, set: { layouts.selectMode($0); selectedID = nil; release() })) {
+                        ForEach(layout.document.modes, id: \.id) { Text($0.name).tag($0.id) }
                     }
                     }
                     if layout.hasCursorSwitching { TextField("Mode name", text: binding(\.name)) }
-                    Picker("Right control behavior", selection: binding(\.cursor)) {
+                    Picker("Right control behavior", selection: Binding(get: { mode.cursor }, set: { value in changeMode { $0.pointerMode = value ? "cursor" : "aim" }; release() })) {
                         Text("Camera aim · analog stick").tag(false)
                         Text("Menu pointer · trackpad").tag(true)
                     }
                 }.disabled(layout.isPreset)
                 DisclosureGroup("Add and manage controls") {
-                    Toggle("D-pad", isOn: binding(\.showDPad))
+                    Toggle("D-pad", isOn: Binding(get: { mode.showDPad }, set: { value in layouts.change { try $0.setControlVisible(role: "dpad", visible: value, modeID: modeID) }; release() }))
                     Button("Add custom button") {
-                        changeMode { m in
-                            if let slot = m.controls.addCustom(style: padStyle) {
-                                m.controls.set(ControlPlacement(x: 0.5, y: 0.5), control: "custom-\(slot)", style: padStyle)
-                            }
-                        }; settings = false; editing = true; release()
-                    }.disabled(mode.controls.customButtons(for: padStyle).count >= 16)
-                    Button("Add quick bar 1–8") { changeMode { $0.controls.addQuickBar(style: padStyle) }; release() }
+                        layouts.change { _ = try $0.addControl(role: "customButton") }
+                        settings = false; editing = true; release()
+                    }.disabled(layout.document.controls.filter { $0.role == "customButton" }.count >= 16)
                     Button("Reset mode arrangement…", role: .destructive) { settings = false; confirmReset = true }
                 }.disabled(layout.isPreset)
                 DisclosureGroup("Radial quick bar") {
                     Toggle("Show radial button", isOn: Binding(get: { mode.radialEnabled ?? false }, set: { value in
-                        changeMode { $0.radialEnabled = value }; release()
+                        layouts.change { try $0.setControlVisible(role: "radial", visible: value, modeID: modeID) }; release()
                     }))
                     Text("Hold, swipe, and release to select. Return to the center to cancel.").font(.callout)
                     if mode.radialEnabled == true {
                         Button("Hide separate buttons used by the radial") {
-                            changeMode { m in
-                                var slots = m.controls.customSlots ?? [:]
-                                let radial = m.radialSlots ?? Array(0..<8)
-                                slots[padStyle.rawValue] = (slots[padStyle.rawValue] ?? []).filter { !radial.contains($0) }
-                                m.controls.customSlots = slots
-                            }; release()
+                            layouts.change { try $0.hideRadialSources(modeID: modeID) }; release()
                         }
                         ForEach(0..<8, id: \.self) { i in
-                            Picker(["↑ Up", "↗ Upper right", "→ Right", "↘ Lower right", "↓ Down", "↙ Lower left", "← Left", "↖ Upper left"][i], selection: Binding(get: { (mode.radialSlots ?? Array(0..<8))[i] }, set: { slot in
-                                changeMode { m in var slots = m.radialSlots ?? Array(0..<8); slots[i] = slot; m.radialSlots = slots }; release()
+                            Picker(["↑ Up", "↗ Upper right", "→ Right", "↘ Lower right", "↓ Down", "↙ Lower left", "← Left", "↖ Upper left"][i], selection: Binding(get: { (mode.radialSlots ?? Array(repeating: -1, count: 8))[i] }, set: { slot in
+                                layouts.change { try $0.assignRadial(direction: i, customSlot: slot) }; release()
                             })) {
                                 Text("None").tag(-1)
-                                ForEach(0..<16, id: \.self) { slot in Text("Custom \(slot + 1)").tag(slot) }
+                                ForEach(layout.document.controls.filter { $0.role == "customButton" }, id: \.id) { control in Text(control.label ?? "Custom \((control.customSlot ?? 0) + 1)").tag(control.customSlot!) }
                             }
                         }
                     }
                 }.disabled(layout.isPreset)
                 DisclosureGroup("Stick behavior") {
-                    Picker("Left stick tap", selection: binding(\.leftTap)) {
+                    Picker("Left stick tap", selection: Binding(get: { mode.leftTap }, set: { value in changeMode { $0.leftTap = value.rawValue }; release() })) {
                         ForEach(StickTapAction.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
-                    Picker("Right stick tap", selection: binding(\.rightTap)) {
+                    Picker("Right stick tap", selection: Binding(get: { mode.rightTap }, set: { value in changeMode { $0.rightTap = value.rawValue }; release() })) {
                         ForEach(StickTapAction.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
                     Text("Tap actions use your Mac mappings.").font(.callout)
                 }.disabled(layout.isPreset)
                 DisclosureGroup("Hold gestures") {
-                    Toggle("RT hold-to-aim", isOn: binding(\.holdAimEnabled))
-                    Picker("Aim hold delay", selection: binding(\.holdAimDelay)) {
+                    Toggle("RT hold-to-aim", isOn: optionBinding(\.holdAimEnabled, default: true))
+                    Picker("Aim hold delay", selection: optionBinding(\.holdAimDelay, default: 0.3)) {
                         ForEach([0.2, 0.3, 0.5, 0.8], id: \.self) { Text("\($0, specifier: "%.1f") seconds").tag($0) }
                     }
-                    Picker("Trackpad right-click hold", selection: binding(\.trackpadHoldDelay)) {
+                    Picker("Trackpad right-click hold", selection: optionBinding(\.trackpadHoldDelay, default: 0.5)) {
                         ForEach([0.3, 0.5, 0.7], id: \.self) { Text("\($0, specifier: "%.1f") seconds").tag($0) }
                     }
                 }.disabled(layout.isPreset)
@@ -532,12 +442,8 @@ struct PhoneGamepadApp: App {
                 }
                 Section("Profiles & backups") {
                     Button("Export this profile") { exportProfile() }
-                    Button("Back up all layouts") {
-                        do { document = ProfileDocument(data: try JSONEncoder().encode(layouts.catalog)); exportName = "Pocket Pad layouts"; exporting = true }
-                        catch { transferMessage = error.localizedDescription }
-                    }
-                    Button("Import profile or backup") { importing = true }
-                    Text("Import always creates copies. To bundle Mac mappings: export a profile, open it on the Mac, then export it there with your mappings. Import that file here to keep a complete backup.").font(.callout).foregroundStyle(.secondary)
+                    Button("Import layout") { importing = true }
+                    Text("Layout files include controls, mappings and settings. Import creates a new local copy.").font(.callout).foregroundStyle(.secondary)
                 }
                 Section("Local data") {
                     Button("Clear saved layouts…", role: .destructive) { dataAction = "clear"; confirmDataAction = true }
@@ -554,13 +460,14 @@ struct PhoneGamepadApp: App {
                 do {
                     let url = try result.get(); let access = url.startAccessingSecurityScopedResource()
                     defer { if access { url.stopAccessingSecurityScopedResource() } }
-                    try layouts.importData(Data(contentsOf: url)); modeIndex = 0; selectedID = nil; release()
+                    let value = try LayoutDocumentFile.read(url)
+                    try layouts.importData(value.document.validatedData()); selectedID = nil; release()
                     transferMessage = "Imported as a new layout. Your existing layouts are unchanged."
                 } catch { transferMessage = "Could not import: \(error.localizedDescription)" }
             }
             .confirmationDialog(dataAction == "delete" ? "Delete \(layout.name)?" : dataAction == "clear" ? "Clear all saved layouts?" : "Erase all Pocket Pad data on this iPhone?", isPresented: $confirmDataAction, titleVisibility: .visible) {
                 Button(dataAction == "delete" ? "Delete layout" : dataAction == "clear" ? "Clear saved layouts" : "Erase local data", role: .destructive) {
-                    release(); editing = false; selectedID = nil; modeIndex = 0
+                    release(); editing = false; selectedID = nil
                     if dataAction == "delete" {
                         do { try layouts.delete(layout.id) } catch { transferMessage = "Could not delete this layout." }
                     } else if dataAction == "clear" { layouts.clearLayouts() }
@@ -585,7 +492,7 @@ struct PhoneGamepadApp: App {
     }
     private func exportProfile() {
         do {
-            document = ProfileDocument(data: try JSONEncoder().encode(PortableProfile(layout: layout, keyboard: layout.keyboardProfile)))
+            document = ProfileDocument(data: try layout.document.validatedData())
             exportName = layout.name; exporting = true
         } catch { transferMessage = error.localizedDescription }
     }
@@ -602,22 +509,19 @@ struct PhoneGamepadApp: App {
         guard !name.isEmpty else { return }
         switch nameAction {
         case "copy":
-            var copy = layout.converted(to: newInputType); copy.name = name
-            try? layouts.apply(LayoutCommand(action: .create, layout: copy))
-        case "new":
-            var value = SavedLayout(name: name, style: newStyle); value.inputType = newInputType
-            value.cursorSwitching = false; value.keyboardProfile = .starter; value.gamepadProfile = GamepadProfile()
-            try? layouts.apply(LayoutCommand(action: .create, layout: value)); modeIndex = 0
+            do { layouts.create(try layout.document.converted(to: newInputType, name: name), provenance: layout.provenance) }
+            catch { transferMessage = error.localizedDescription }
+        case "new": layouts.create(.starter(name: name, style: newStyle, input: newInputType))
         case "rename": layouts.change { $0.name = name }
         default:
-            if let id = selectedID {
-                changeMode { if id == "mode-toggle" { $0.name = name } else if id == "radial" { $0.radialTitle = name; $0.controls.rename(id, to: name, style: padStyle) } else { $0.controls.rename(id, to: name, style: padStyle) } }
+            if let runtimeID = selectedID, let id = layout.controlID(runtimeID: runtimeID) {
+                layouts.change { try $0.renameControl(id, caption: name, modeID: modeID) }
                 selectedLabel = name
             }
         }
         release()
     }
-    private func toggleMode() { guard layout.hasCursorSwitching else { return }; modeIndex = 1 - modeIndex; selectedID = nil; release() }
+    private func toggleMode() { guard layout.hasCursorSwitching else { return }; layouts.selectMode(layout.document.nextMode(after: modeID)); selectedID = nil; release() }
     private func release() {
         layouts.endEdit()
         server.setPointerMode(mode.cursor ? .cursor : .aim)
@@ -625,7 +529,7 @@ struct PhoneGamepadApp: App {
         resetID = UUID()
     }
     private func publishLayout(canvas: CGSize? = nil) {
-        var snapshot = ControllerSnapshot(layout: layout, modeIndex: modeIndex)
+        var snapshot = DocumentLayoutSnapshot(layout: layout, activeModeID: modeID)
         let size = canvas ?? canvasSize
         var hardware = utsname(); uname(&hardware)
         let model = withUnsafeBytes(of: &hardware.machine) { bytes in
@@ -636,33 +540,29 @@ struct PhoneGamepadApp: App {
         if size.width > 0 && size.height > 0 {
             snapshot.screen = PhoneScreen(model: model, width: size.width, height: size.height)
         }
-        snapshot.layouts = layouts.catalog.layouts.map(LayoutSummary.init)
-        snapshot.supportsLayoutDeletion = true
-        snapshot.commandID = lastLayoutCommand; snapshot.commandError = layoutCommandError
+        snapshot.catalog = layouts.catalog.layouts.map(DocumentLayoutSummary.init)
+        snapshot.acknowledgment = lastAcknowledgment
         server.updateLayout(snapshot)
     }
-    private func receiveLayoutCommand(_ command: LayoutCommand) {
-        guard lastLayoutCommand != command.id else { publishLayout(); return }
-        lastLayoutCommand = command.id
-        do {
-            guard !editing && !naming else { throw ProtocolError.invalidState }
-            try layouts.apply(command)
-            modeIndex = layout.hasCursorSwitching ? min(modeIndex, layout.modes.count - 1) : 0
-            layoutCommandError = nil
-        } catch {
-            layoutCommandError = "Layout changed on iPhone or is being edited. Refresh and try again."
+    private func receiveLayoutCommand(_ command: DocumentLayoutCommand) {
+        guard !editing && !naming else {
+            lastAcknowledgment = DocumentLayoutAcknowledgment(commandID: command.id, error: "Finish editing on the phone before applying Mac changes.")
+            publishLayout(); return
         }
+        server.update(.paused)
+        lastAcknowledgment = layouts.apply(command)
         release(); publishLayout()
     }
     private func activate() { server.onLayoutCommand = receiveLayoutCommand; publishLayout(); UIApplication.shared.isIdleTimerDisabled = true; release(); server.start() }
 }
 
 struct ControllerSurface: UIViewRepresentable {
-    @AppStorage("touch-floating-left") private var touchFloatingLeft = true
-    @AppStorage("touch-floating-right") private var touchFloatingRight = true
+    let document: LayoutDocument
+    let activeModeID: String
+    let referenceModeID: String
 
     let style: PadStyle
-    let mode: LayoutMode
+    let mode: ResolvedLayoutMode
     let displayLabels: [String: String]
     let touchHaptic: ButtonHaptic
     let showsGuideButton: Bool
@@ -670,7 +570,7 @@ struct ControllerSurface: UIViewRepresentable {
     let showsModeSwitch: Bool
     let placements: [String: ControlPlacement]
     let unmapped: Set<String>
-    let referenceMode: LayoutMode
+    let referenceMode: ResolvedLayoutMode
     let showGhost: Bool
     let onReference: (ControlPlacement?) -> Void
     let onCanvasSize: (CGSize) -> Void
@@ -683,16 +583,16 @@ struct ControllerSurface: UIViewRepresentable {
     let onRename: (String, String) -> Void
     let onSelect: (String, String, ControlPlacement) -> Void
     let onPlacement: (String, ControlPlacement) -> Void
-    let onMigration: (String, [String: ControlPlacement], Double) -> Void
     func makeUIView(context: Context) -> TouchPadView { let view = TouchPadView(); configure(view); return view }
     func updateUIView(_ view: TouchPadView, context: Context) { configure(view) }
     private func configure(_ view: TouchPadView) {
+        view.document = document; view.activeModeID = activeModeID; view.referenceModeID = referenceModeID
         view.showsModeSwitch = showsModeSwitch
         view.hiddenControls = mode.hiddenControls ?? []
         view.unmapped = unmapped
         view.referencePlacements = referenceMode.controls.controls(for: style)
         view.referenceSizeFactor = referenceMode.sizeFactor
-        view.referenceAvailable = showsModeSwitch && !referenceMode.legacyCanvas
+        view.referenceAvailable = showsModeSwitch
         view.showGhost = showsModeSwitch && showGhost
         view.onReference = onReference
         view.onCanvasSize = onCanvasSize
@@ -701,15 +601,15 @@ struct ControllerSurface: UIViewRepresentable {
         view.style = style; view.showDPad = mode.showDPad; view.onState = onState
         view.cursorMode = mode.cursor; view.trackpadHoldDelay = mode.trackpadHoldDelay; view.onPointer = onPointer
         view.holdAimEnabled = mode.holdAimEnabled && !mode.cursor; view.holdAimDelay = mode.holdAimDelay
-        view.floatingLeft = touchFloatingLeft; view.floatingRight = touchFloatingRight
+        view.floatingLeft = mode.floatingLeft; view.floatingRight = mode.floatingRight
         view.touchHaptic = touchHaptic
         view.showsGuideButton = showsGuideButton
         view.guideLabel = guideLabel
         view.leftTap = mode.leftTap; view.rightTap = mode.rightTap
         view.modeName = mode.name; view.onToggle = onToggle; view.onRename = onRename
         view.radialEnabled = mode.radialEnabled ?? false
-        view.radialSlots = mode.radialSlots ?? Array(0..<8); view.radialTitle = mode.radialTitle ?? "Quick bar"
-        view.legacyCanvas = mode.legacyCanvas; view.sizeFactor = mode.sizeFactor; view.onMigration = { onMigration(mode.id, $0, $1) }
+        view.radialSlots = mode.radialSlots ?? Array(repeating: -1, count: 8); view.radialTitle = mode.radialTitle ?? "Quick bar"
+        view.sizeFactor = mode.sizeFactor
         view.customSlots = mode.controls.customButtons(for: style); view.labels = displayLabels
         view.placements = placements; view.editing = editing; view.selectedID = selectedID
         view.onSelect = onSelect; view.onPlacement = onPlacement; view.onEditEnded = onEditEnded

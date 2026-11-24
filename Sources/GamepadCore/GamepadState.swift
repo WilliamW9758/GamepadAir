@@ -105,53 +105,17 @@ public struct ControlPlacement: Codable, Equatable, Sendable {
     }
 }
 
-public struct LayoutLibrary: Codable, Equatable {
-    public var version = 1
+/// Disposable presentation data compiled from a document. Not a storage format.
+public struct ResolvedControlPresentation: Equatable {
     public var presets: [String: [String: ControlPlacement]] = [:]
     public var customSlots: [String: [Int]]?
     public var names: [String: [String: String]]?
     public init() {}
     public func customButtons(for style: PadStyle) -> [Int] { customSlots?[style.rawValue] ?? [] }
-    public func labels(for style: PadStyle) -> [String: String] { names?[style.rawValue] ?? [:] }
-    public mutating func rename(_ control: String, to name: String, style: PadStyle) {
-        var all = names ?? [:]
-        let label = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20))
-        all[style.rawValue, default: [:]][control] = label.isEmpty ? nil : label
-        names = all
-    }
-    @discardableResult public mutating func addCustom(style: PadStyle) -> Int? {
-        let existing = customButtons(for: style)
-        guard let slot = (0..<16).first(where: { !existing.contains($0) }) else { return nil }
-        var all = customSlots ?? [:]; all[style.rawValue] = existing + [slot]; customSlots = all
-        return slot
-    }
-    public mutating func addQuickBar(style: PadStyle) {
-        var all = customSlots ?? [:]
-        all[style.rawValue] = Array(Set(customButtons(for: style) + Array(0..<8))).sorted()
-        customSlots = all
-        for slot in 0..<8 where labels(for: style)["custom-\(slot)"] == nil {
-            rename("custom-\(slot)", to: "\(slot + 1)", style: style)
-        }
-    }
-    public mutating func removeCustom(_ slot: Int, style: PadStyle) {
-        customSlots?[style.rawValue]?.removeAll { $0 == slot }
-        presets[style.rawValue]?["custom-\(slot)"] = nil
-        names?[style.rawValue]?["custom-\(slot)"] = nil
-    }
     public func controls(for style: PadStyle) -> [String: ControlPlacement] { presets[style.rawValue] ?? [:] }
-    public mutating func set(_ placement: ControlPlacement, control: String, style: PadStyle) {
-        presets[style.rawValue, default: [:]][control] = placement.sanitized
-    }
-    public mutating func reset(style: PadStyle, control: String? = nil) {
-        if let control { presets[style.rawValue]?[control] = nil }
-        else { presets[style.rawValue] = nil; names?[style.rawValue] = nil; customSlots?[style.rawValue] = nil }
-    }
-    public static func restore(_ data: Data?) -> Self {
-        guard let data, var decoded = try? JSONDecoder().decode(Self.self, from: data), decoded.version == 1 else { return Self() }
-        decoded.presets = decoded.presets.mapValues { $0.mapValues(\.sanitized) }
-        decoded.customSlots = decoded.customSlots?.mapValues { Array(Set($0.filter { (0..<16).contains($0) })).sorted() }
-        decoded.names = decoded.names?.mapValues { $0.mapValues { String($0.prefix(20)) } }
-        return decoded
+    public mutating func set(_ placement: ControlPlacement, control: String, style: PadStyle) { presets[style.rawValue, default: [:]][control] = placement }
+    public mutating func rename(_ control: String, to name: String, style: PadStyle) {
+        if names == nil { names = [:] }; names?[style.rawValue, default: [:]][control] = name
     }
 }
 
@@ -240,13 +204,12 @@ public struct StickGesture {
     public func isTap(now: Double) -> Bool { !moved && now - began <= 0.25 }
 }
 
-public struct LayoutMode: Codable, Equatable, Identifiable {
+public struct ResolvedLayoutMode: Equatable, Identifiable {
     public var id = UUID().uuidString
     public var name: String
     public var cursor: Bool
-    public var controls: LayoutLibrary
+    public var controls: ResolvedControlPresentation
     public var showDPad = true
-    /// Missing on older layouts preserves their eight-way behavior.
     public var dpadStyle: DPadStyle?
     public var effectiveDPadStyle: DPadStyle { dpadStyle ?? .eightWay }
     public var holdAimEnabled = true
@@ -254,107 +217,17 @@ public struct LayoutMode: Codable, Equatable, Identifiable {
     public var trackpadHoldDelay = 0.5
     public var floatingLeft = false, floatingRight = false
     public var leftTap = StickTapAction.off, rightTap = StickTapAction.off
-    public var legacyCanvas = false
     public var sizeFactor = 1.0
     public var radialSlots: [Int]?
     public var radialEnabled: Bool?
     public var radialTitle: String?
     public var hiddenControls: Set<String>?
     public var buttonFeedback: [String: ButtonFeedback]?
-    public init(name: String, cursor: Bool, controls: LayoutLibrary = LayoutLibrary()) {
+    public init(name: String, cursor: Bool, controls: ResolvedControlPresentation = ResolvedControlPresentation()) {
         self.name = name; self.cursor = cursor; self.controls = controls
     }
 }
 
-public struct SavedLayout: Codable, Equatable, Identifiable {
-    public var id = UUID().uuidString
-    public var name: String
-    public var style: PadStyle
-    public var modes: [LayoutMode]
-    public var isPreset = false
-    public var linkedControls: Set<String>?
-    /// Nil preserves the two-mode behavior of existing layouts.
-    public var cursorSwitching: Bool?
-    public var hasCursorSwitching: Bool { cursorSwitching ?? true }
-    /// Nil uses the starting template controller identity.
-    public var emulatedController: PadStyle?
-    public var effectiveControllerStyle: PadStyle { emulatedController ?? style }
-    /// Nil gives existing and new layouts the default medium press feedback.
-    public var touchHaptic: ButtonHaptic?
-    public var effectiveTouchHaptic: ButtonHaptic { touchHaptic ?? .medium }
-    public var keyboardProfile: KeyboardProfile?
-    public var inputType: LayoutInputType?
-    public var gamepadProfile: GamepadProfile?
-    public init(name: String, style: PadStyle, controls: LayoutLibrary = LayoutLibrary()) {
-        self.name = name; self.style = style
-        modes = [LayoutMode(name: "Aim", cursor: false, controls: controls), LayoutMode(name: "Cursor", cursor: true, controls: controls)]
-    }
-}
-
-public struct LayoutCatalog: Codable, Equatable {
-    public var version = 2
-    public var layouts: [SavedLayout]
-    public var selectedID: String
-    public init(legacy: LayoutLibrary, style: PadStyle, showDPad: Bool, holdAimEnabled: Bool, holdAimDelay: Double, trackpadHoldDelay: Double) {
-        var saved = SavedLayout(name: "Valheim Controls", style: style, controls: legacy)
-        for i in saved.modes.indices {
-            saved.modes[i].showDPad = showDPad
-            saved.modes[i].holdAimEnabled = holdAimEnabled
-            saved.modes[i].holdAimDelay = holdAimDelay
-            saved.modes[i].trackpadHoldDelay = trackpadHoldDelay
-            saved.modes[i].legacyCanvas = true
-        }
-        selectedID = saved.id; layouts = [saved]
-        // Keep any separately tuned second style accessible too.
-        for other in PadStyle.allCases where other != style && (!legacy.controls(for: other).isEmpty || !legacy.customButtons(for: other).isEmpty) {
-            var copy = saved; copy.id = UUID().uuidString; copy.style = other; copy.name = "Imported \(other.rawValue)"
-            layouts.append(copy)
-        }
-        for style in PadStyle.allCases {
-            var preset = SavedLayout(name: style.rawValue, style: style); preset.isPreset = true
-            layouts.append(preset)
-        }
-    }
-    /// Reset to immutable starters without reviving legacy personal layouts.
-    public static func fresh() -> Self {
-        var value = Self(legacy: LayoutLibrary(), style: .xbox, showDPad: true,
-                         holdAimEnabled: true, holdAimDelay: 0.3, trackpadHoldDelay: 0.5)
-        value.layouts = value.layouts.filter(\.isPreset)
-        for i in value.layouts.indices {
-            value.layouts[i].cursorSwitching = false
-        }
-        value.selectedID = value.layouts[0].id
-        return value
-    }
-    public mutating func delete(_ id: String) throws {
-        guard let index = layouts.firstIndex(where: { $0.id == id }), !layouts[index].isPreset else {
-            throw ProtocolError.invalidState
-        }
-        layouts.remove(at: index)
-        if layouts.isEmpty { self = .fresh() }
-        else if selectedID == id { selectedID = layouts[min(index, layouts.count - 1)].id }
-    }
-    public static func decode(_ data: Data) throws -> Self {
-        let catalog = try JSONDecoder().decode(Self.self, from: data)
-        guard catalog.version == 2, !catalog.layouts.isEmpty,
-              Set(catalog.layouts.map(\.id)).count == catalog.layouts.count,
-              catalog.layouts.contains(where: { $0.id == catalog.selectedID }),
-              catalog.layouts.allSatisfy({ layout in
-                  layout.modes.count == 2 && layout.modes.allSatisfy { mode in
-                      mode.radialSlots == nil || (mode.radialSlots!.count == 8 && mode.radialSlots!.allSatisfy { (-1..<16).contains($0) })
-                  }
-              }) else { throw ProtocolError.invalidState }
-        return catalog
-    }
-    @discardableResult public mutating func duplicate(_ id: String, name: String) -> String? {
-        guard var layout = layouts.first(where: { $0.id == id }) else { return nil }
-        layout.id = UUID().uuidString; layout.name = name; layout.isPreset = false
-        for i in layout.modes.indices { layout.modes[i].id = UUID().uuidString }
-        layouts.append(layout); selectedID = layout.id; return layout.id
-    }
-}
-
-/// Direction zero is up; the remaining sectors proceed clockwise.
 public enum RadialInput {
     /// Empty sectors are shared at the angular midpoint between mapped neighbors.
     public static func direction(x: Double, y: Double, deadZone: Double, slots: [Int]) -> Int? {

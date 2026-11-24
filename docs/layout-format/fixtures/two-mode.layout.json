@@ -1,0 +1,111 @@
+{
+  "format": "pocketpad-layout",
+  "schemaVersion": 2,
+  "runtimeProfile": "pocketpad-fixed-v1",
+  "name": "Combat and building",
+  "inputType": "keyboardMouse",
+  "templateStyle": "xbox",
+  "geometry": "runtimePresetV1",
+  "actions": {
+    "forward": {
+      "label": "Forward",
+      "outputs": [
+        "key.w"
+      ]
+    },
+    "backward": {
+      "label": "Backward",
+      "outputs": [
+        "key.s"
+      ]
+    },
+    "left": {
+      "label": "Left",
+      "outputs": [
+        "key.a"
+      ]
+    },
+    "right": {
+      "label": "Right",
+      "outputs": [
+        "key.d"
+      ]
+    },
+    "jump": {
+      "label": "Jump",
+      "outputs": [
+        "key.space"
+      ]
+    }
+  },
+  "controls": [
+    {
+      "id": "movement",
+      "role": "leftStick",
+      "placement": {
+        "x": 0.2,
+        "y": 0.65
+      },
+      "bindings": {
+        "up": "forward",
+        "down": "backward",
+        "left": "left",
+        "right": "right"
+      }
+    },
+    {
+      "id": "jump",
+      "role": "south",
+      "label": "Jump",
+      "placement": {
+        "x": 0.8,
+        "y": 0.65
+      },
+      "bindings": {
+        "press": "jump"
+      }
+    },
+    {
+      "id": "switch",
+      "role": "modeSwitch",
+      "command": "cycleModes",
+      "placement": {
+        "x": 0.5,
+        "y": 0.15
+      }
+    }
+  ],
+  "modes": [
+    {
+      "id": "combat",
+      "name": "Combat",
+      "holdAimEnabled": false
+    },
+    {
+      "id": "building",
+      "name": "Building",
+      "pointerMode": "cursor",
+      "holdAimEnabled": false,
+      "overrides": {
+        "jump": {
+          "placement": {
+            "x": 0.75,
+            "y": 0.6
+          },
+          "label": "Hop",
+          "feedback": {
+            "haptic": "light",
+            "tint": "blue"
+          }
+        }
+      }
+    }
+  ],
+  "initialMode": "combat",
+  "keyboard": {
+    "rightStickMouse": false
+  },
+  "linkedControls": [
+    "movement"
+  ]
+}

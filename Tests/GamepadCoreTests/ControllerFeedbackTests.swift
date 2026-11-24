@@ -2,26 +2,6 @@ import XCTest
 @testable import GamepadCore
 
 final class ControllerFeedbackTests: XCTestCase {
-    func testLayoutHapticsSurviveTransferAndOldLayoutsDefaultToMedium() throws {
-        var layout = SavedLayout(name: "Test", style: .xbox)
-        let legacy = try JSONEncoder().encode(layout)
-        XCTAssertEqual(try JSONDecoder().decode(SavedLayout.self, from: legacy).effectiveTouchHaptic, .medium)
-        layout.touchHaptic = .off
-        layout.modes[0].buttonFeedback = ["button-0": ButtonFeedback(haptic: .strong)]
-        let restored = try JSONDecoder().decode(SavedLayout.self, from: JSONEncoder().encode(layout))
-        XCTAssertEqual(restored.effectiveTouchHaptic, .off)
-        XCTAssertEqual(restored.touchHaptic, .off)
-    }
-    func testRemovedControlsPersistAndDoNotRequireMappings() throws {
-        var layout = SavedLayout(name: "Removed", style: .xbox)
-        layout.keyboardProfile = KeyboardProfile()
-        for index in layout.modes.indices {
-            layout.modes[index].hiddenControls = ["left-stick", "dpad", "button-0"]
-        }
-        let decoded = try JSONDecoder().decode(SavedLayout.self, from: JSONEncoder().encode(layout))
-        XCTAssertEqual(decoded.modes[0].hiddenControls, layout.modes[0].hiddenControls)
-        XCTAssertFalse(decoded.unmappedControls.contains { $0.canvasID == "left-stick" || $0.canvasID == "dpad" })
-    }
     func testSparseRadialSplitsAtMappedDirectionMidpoints() {
         let vertical = [0, -1, -1, -1, 4, -1, -1, -1]
         XCTAssertEqual(RadialInput.direction(x: 100, y: -1, deadZone: 0, slots: vertical), 0)
@@ -46,15 +26,6 @@ final class ControllerFeedbackTests: XCTestCase {
         var invalid = StateFrame(sequence: 0, state: .neutral).encode()
         invalid[15] = 10
         XCTAssertThrowsError(try StateFrame(data: invalid))
-    }
-    func testControllerIdentityDefaultsToLayoutAndCanBeOverridden() throws {
-        var layout = SavedLayout(name: "Xbox", style: .xbox)
-        XCTAssertEqual(layout.effectiveControllerStyle, .xbox)
-        layout.emulatedController = .playStation
-        let restored = try JSONDecoder().decode(SavedLayout.self, from: JSONEncoder().encode(layout))
-        XCTAssertEqual(restored.effectiveControllerStyle, .playStation)
-        XCTAssertEqual(restored.style, .xbox)
-        XCTAssertEqual(restored.modes, layout.modes)
     }
     func testCenterHoldLatchesThroughMovement() {
         var hold = StickClickHold(now: 10)
@@ -85,5 +56,12 @@ final class ControllerFeedbackTests: XCTestCase {
         var state = GamepadState(); state.set(.back, pressed: true)
         let bytes = XboxHIDReport.encode(state)
         XCTAssertEqual(bytes[15], 4); XCTAssertEqual(bytes[16], 0)
+    }
+    func testLayoutHapticsDefaultToMediumAndRoundTrip() throws {
+        var layout = LocalLayout(name: "Test", style: .xbox)
+        XCTAssertEqual(layout.effectiveTouchHaptic, .medium)
+        layout.document.haptics = "off"
+        let restored = LocalLayout(document: try LayoutDocument.decode(layout.document.validatedData()))
+        XCTAssertEqual(restored.effectiveTouchHaptic, .off)
     }
 }

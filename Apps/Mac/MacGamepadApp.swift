@@ -5,9 +5,6 @@ import UniformTypeIdentifiers
 final class HostModel: ObservableObject {
     @Published var mode = OutputMode(rawValue: UserDefaults.standard.string(forKey: "last-output-mode") ?? "")
         .flatMap { $0 == .monitor ? nil : $0 } ?? .keyboardMouse
-    @Published var gamepadProfile = GamepadProfile.restore(UserDefaults.standard.data(forKey: "gamepad-profile-v1")) {
-        didSet { if let data = try? JSONEncoder().encode(gamepadProfile) { UserDefaults.standard.set(data, forKey: "gamepad-profile-v1") }; session?.updateMappings(keyboard: profile, gamepad: gamepadProfile) }
-    }
     @Published var practicePressCount = 0
     @Published var practiceMoved = false
     private var practiceWasPressed = false
@@ -19,35 +16,49 @@ final class HostModel: ObservableObject {
         let saved = UserDefaults.standard.string(forKey: "wireless-code") ?? ""
         return WirelessSettings.validCode(saved) ? saved : ""
     }()
-    @Published var profile = KeyboardProfile.restore(UserDefaults.standard.data(forKey: "keyboard-profile-v1")) {
-        didSet { if let data = try? JSONEncoder().encode(profile) { UserDefaults.standard.set(data, forKey: "keyboard-profile-v1") }; session?.updateMappings(keyboard: profile, gamepad: gamepadProfile) }
-    }
-    @Published var portable: PortableProfile? = {
-        guard let data = UserDefaults.standard.data(forKey: "portable-profile-v1") else { return nil }
-        return try? PortableProfile.decode(data)
-    }()
+    @Published var portable: LocalLayout?
+    private var layoutStore: LayoutDocumentStore?
+    private var layoutStoreURL: URL?
     @Published var profileNotice: String?
+    init() {
+        do {
+            let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            let url = directory.appendingPathComponent("PocketPad/layout-documents-v1.json")
+            layoutStoreURL = url
+            let store = try LayoutDocumentStore(url: url)
+            layoutStore = store; portable = store.selected
+        } catch { profileNotice = "Saved layouts were not overwritten: " + error.localizedDescription }
+    }
     func importProfile() {
         let panel = NSOpenPanel(); panel.allowedContentTypes = [.json]; panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard panel.runModal() == .OK, let url = panel.url, let store = layoutStore else { return }
         do {
-            let value = try PortableProfile.decode(Data(contentsOf: url))
-            stop()
-            if let keyboard = value.keyboard {
-                UserDefaults.standard.set(try JSONEncoder().encode(profile), forKey: "keyboard-profile-before-import")
-                profile = keyboard
-            }
-            portable = value
-            UserDefaults.standard.set(try JSONEncoder().encode(value), forKey: "portable-profile-v1")
-            profileNotice = value.keyboard == nil ? "Layout loaded. Export to bundle it with your current mappings." : "Profile loaded. Layout and mappings are ready to export together."
+            let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Int.max
+            guard size <= 256 * 1024 else { throw LayoutDocumentError("Layout file is too large") }
+            try store.importDocument(Data(contentsOf: url)); portable = store.selected
+            profileNotice = "Layout imported as a new local copy."
         } catch { profileNotice = "Import failed: \(error.localizedDescription)" }
     }
+    func saveLocal(_ value: LocalLayout) {
+        guard let store = layoutStore else { return }
+        do {
+            if store.selected.isPreset { try store.duplicate(name: value.name) }
+            try store.edit { $0 = value.document }; portable = store.selected
+            profileNotice = "Layout saved on this Mac."
+        } catch { profileNotice = error.localizedDescription }
+    }
+    func eraseLocalLayouts() throws {
+        if let layoutStore { try layoutStore.resetLayouts(); portable = layoutStore.selected }
+        else if let layoutStoreURL {
+            try LocalLayoutCatalog.fresh().save(to: layoutStoreURL)
+            layoutStore = try LayoutDocumentStore(url: layoutStoreURL); portable = layoutStore?.selected
+        }
+    }
     func exportProfile() {
-        guard var value = portable else { return }
-        value.keyboard = profile; value.layout.keyboardProfile = profile
-        let panel = NSSavePanel(); panel.allowedContentTypes = [.json]; panel.nameFieldStringValue = value.layout.name + ".json"
+        guard let value = update.layout?.layout ?? portable else { return }
+        let panel = NSSavePanel(); panel.allowedContentTypes = [.json]; panel.nameFieldStringValue = value.name + ".json"
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        do { try JSONEncoder().encode(value).write(to: url, options: .atomic); profileNotice = "Saved layout and current mappings together." }
+        do { try value.document.validatedData().write(to: url, options: .atomic); profileNotice = "Saved layout document." }
         catch { profileNotice = "Export failed: \(error.localizedDescription)" }
     }
     @Published var globalInput = UserDefaults.standard.object(forKey: "last-global-input") as? Bool ?? true
@@ -68,9 +79,6 @@ final class HostModel: ObservableObject {
     @Published var layoutCommandNotice: String?
     func sendLayout(_ command: LayoutCommand) {
         guard let session, update.connected, layoutCommandID == nil else { return }
-        if (command.action == .delete || command.action == .clear), update.layout?.supportsLayoutDeletion != true {
-            layoutCommandNotice = "Update Pocket Pad on your iPhone to delete layouts from Mac."; return
-        }
         do {
             try session.sendLayoutCommand(command)
             layoutCommandID = command.id; layoutCommandNotice = "Updating iPhone…"
@@ -80,7 +88,6 @@ final class HostModel: ObservableObject {
             }
         } catch { layoutCommandNotice = error.localizedDescription }
     }
-    private var attemptedLayoutMigration = false
     private var lastUIUpdate: TimeInterval = 0
     private var generation = UUID()
 
@@ -99,14 +106,14 @@ final class HostModel: ObservableObject {
         }
         UserDefaults.standard.set(wirelessHost, forKey: "wireless-host")
         UserDefaults.standard.set(pairingCode, forKey: "wireless-code")
-        let session = CableSession(mode: mode, transport: transport, wirelessHost: selectedPhone ?? wirelessHost, pairingCode: pairingCode, keyboardProfile: profile, gamepadProfile: gamepadProfile, targetPID: targetPID, globalInput: globalInput) { [weak self] event in
+        let session = CableSession(mode: mode, transport: transport, wirelessHost: selectedPhone ?? wirelessHost, pairingCode: pairingCode, targetPID: targetPID, globalInput: globalInput) { [weak self] event in
             DispatchQueue.main.async {
                 guard let self, self.generation == token else { return }
                 let now = ProcessInfo.processInfo.systemUptime
                 let statusChanged = self.update.connected != event.connected || self.update.message != event.message || self.update.layout != event.layout
-                if let id = self.layoutCommandID, event.layout?.commandID == id {
+                if let id = self.layoutCommandID, event.layout?.acknowledgment?.commandID == id {
                     self.layoutCommandID = nil
-                    self.layoutCommandNotice = event.layout?.commandError ?? "Updated on iPhone"
+                    self.layoutCommandNotice = event.layout?.acknowledgment?.error ?? "Updated on iPhone"
                 }
                 if self.outputPaused && !statusChanged && !event.finished { return }
                 if self.mode != .monitor && !statusChanged && !event.finished && now - self.lastUIUpdate < 1.0 / 60 { return }
@@ -116,18 +123,10 @@ final class HostModel: ObservableObject {
                 self.practiceWasPressed = pressed
                 if abs(Int(event.state.leftX)) > 4000 || abs(Int(event.state.leftY)) > 4000 { self.practiceMoved = true }
                 self.update = event
-                if let type = event.layout?.layout.inputType, self.mode != .monitor, self.setupStage == .play {
+                if let type = event.layout?.layout.effectiveInputType, self.mode != .monitor, self.setupStage == .play {
                     let nextMode: OutputMode = type == .gamepad ? .gamepad : .keyboardMouse
                     if self.mode != nextMode { self.mode = nextMode }
                     if statusChanged { UserDefaults.standard.set(nextMode.rawValue, forKey: "last-output-mode") }
-                }
-                if let snapshot = event.layout, snapshot.layout.inputType == nil, self.layoutCommandID == nil, !self.attemptedLayoutMigration, self.mode != .monitor, self.setupStage == .play {
-                    self.attemptedLayoutMigration = true
-                    var value = snapshot.layout
-                    value.inputType = self.mode == .gamepad ? .gamepad : .keyboardMouse
-                    value.keyboardProfile = value.keyboardProfile ?? self.profile
-                    value.gamepadProfile = value.gamepadProfile ?? self.gamepadProfile
-                    self.sendLayout(LayoutCommand(action: .bindLegacy, layout: value, base: snapshot.layout))
                 }
                 if event.finished { self.running = false; self.session = nil }
             }
@@ -197,8 +196,8 @@ struct MacGamepadApp: App {
         }.defaultSize(width: 760, height: 740)
         .commands {
             CommandMenu("Layouts") {
-                Button("Import profile…") { model.importProfile() }
-                Button("Export profile…") { model.exportProfile() }.disabled(model.portable == nil || model.running)
+                Button("Import layout…") { model.importProfile() }
+                Button("Export layout…") { model.exportProfile() }.disabled(model.portable == nil || model.running)
                 Divider()
                 Button("Open Layout Studio") {
                     NotificationCenter.default.post(name: Notification.Name("PocketPadOpenLayoutStudio"), object: nil)
@@ -223,7 +222,7 @@ struct HostView: View {
     @State private var newLayoutName = ""
     @State private var newLayoutPrompt = false
     @State private var newLayoutType = LayoutInputType.keyboardMouse
-    @State private var duplicateSource: SavedLayout?
+    @State private var duplicateSource: LocalLayout?
     @State private var section: WorkspaceSection = .connection
     enum WorkspaceSection: String, CaseIterable, Identifiable {
         case connection = "Connection", layouts = "Layout & mappings", marketplace = "Marketplace", assistant = "AI helper", general = "General", diagnostics = "Diagnostics", about = "About"
@@ -250,11 +249,12 @@ struct HostView: View {
     @State private var sawButton = false
     @State private var practiceFlash = false
     @State private var controlsPage = -1
+    @State private var setupLayoutCommandID: String?
     @State private var previousMode = OutputMode.keyboardMouse
     @State private var settingsTab = 0
     @State private var confirmDataAction = false
     @State private var dataAction = "delete"
-    @State private var deletionLayout: SavedLayout?
+    @State private var deletionLayout: LocalLayout?
     @State private var accessibilityAllowed = KeyboardMousePermissions.allowed
     private let accent = PadAppearance.accent
     enum Panel: String, Identifiable { case settings, mappings, gamepadMappings, layout; var id: String { rawValue } }
@@ -363,18 +363,19 @@ struct HostView: View {
         .onAppear { model.refreshApps() }
         .sheet(isPresented: $newLayoutPrompt) {
             LayoutCreationView(name: $newLayoutName, type: $newLayoutType, source: $duplicateSource, style: model.update.layout?.layout.style ?? .xbox) { layout in
-                model.sendLayout(LayoutCommand(action: .create, layout: layout))
+                model.sendLayout(LayoutCommand(action: .create, document: layout.document, provenance: layout.provenance))
                 newLayoutPrompt = false
             }
         }
         .confirmationDialog(dataAction == "delete" ? "Delete \(deletionLayout?.name ?? "layout") from iPhone?" : dataAction == "clear" ? "Clear saved layouts on the connected iPhone?" : "Erase local data on this Mac?", isPresented: $confirmDataAction, titleVisibility: .visible) {
             Button(dataAction == "delete" ? "Delete layout" : dataAction == "clear" ? "Clear saved layouts" : "Erase data and quit", role: .destructive) {
                 if dataAction == "delete", let layout = deletionLayout {
-                    model.sendLayout(LayoutCommand(action: .delete, layoutID: layout.id, base: layout))
+                    model.sendLayout(LayoutCommand(action: .delete, layoutID: layout.id, baseEditRevision: layout.editRevision))
                 } else if dataAction == "clear" {
-                    model.sendLayout(LayoutCommand(action: .clear))
+                    model.sendLayout(LayoutCommand(action: .clear, layoutID: model.update.layout?.layout.id, baseEditRevision: model.update.layout?.layout.editRevision, catalogRevisions: Dictionary(uniqueKeysWithValues: (model.update.layout?.catalog ?? []).map { ($0.id, $0.editRevision) })))
                 } else if dataAction == "erase" {
                     model.stop()
+                    try? model.eraseLocalLayouts()
                     if let id = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: id) }
                     InputDiagnostics.erase { NSApplication.shared.terminate(nil) }
                 }
@@ -396,6 +397,13 @@ struct HostView: View {
                 pairingAttempt = false
                 quickConnection = false
                 showingSettings = false
+            }
+        }
+        .onChange(of: model.update.layout?.acknowledgment) { _, acknowledgment in
+            guard let acknowledgment, acknowledgment.commandID == setupLayoutCommandID else { return }
+            setupLayoutCommandID = nil
+            if acknowledgment.error == nil && controlsPage == 0 {
+                controlsPage = model.mode == .keyboardMouse && !KeyboardMousePermissions.allowed ? 1 : 2
             }
         }
         .onChange(of: model.practiceMoved) { _, moved in if testing && moved { sawStick = true } }
@@ -420,19 +428,10 @@ struct HostView: View {
         .onChange(of: showingSettings) { _, showing in model.pauseOutput(showing && section != .connection) }
         .sheet(item: $panel, onDismiss: { model.pauseOutput(panel != nil || (!isSettingUp && showingSettings && section != .connection)) }) { selected in
             switch selected {
-            case .mappings: MappingEditor(profile: $model.profile)
-            case .gamepadMappings: GamepadMappingEditor(profile: $model.gamepadProfile)
-            case .layout:
-                LayoutEditor(layout: model.portable?.layout ?? SavedLayout(name: "New Controls", style: .xbox)) { layout, _ in
-                    if let existing = model.portable, let data = try? JSONEncoder().encode(existing) {
-                        UserDefaults.standard.set(data, forKey: "portable-profile-before-layout-edit")
-                    }
-                    var copy = layout; copy.isPreset = false
-                    model.portable = PortableProfile(layout: copy, keyboard: model.profile)
-                    if let data = try? JSONEncoder().encode(model.portable) { UserDefaults.standard.set(data, forKey: "portable-profile-v1") }
-                    model.profileNotice = "Layout saved on this Mac. Export it, then import on your iPhone as a new layout."
-                }
             case .settings: settingsView
+            case .mappings, .gamepadMappings, .layout:
+                LayoutEditor(layout: model.portable ?? LocalLayout(name: "New Controls", style: .xbox)) { layout, _ in model.saveLocal(layout) }
+
             }
         }
     }
@@ -477,12 +476,12 @@ struct HostView: View {
                 HStack {
                     Text(snapshot.layout.name).font(.headline)
                     if snapshot.layout.hasCursorSwitching {
-                        Text(snapshot.layout.modes[snapshot.modeIndex].name).foregroundStyle(.secondary)
+                        Text(snapshot.layout.resolvedMode(snapshot.activeModeID).name).foregroundStyle(.secondary)
                     }
                     Spacer()
                 }.padding(.horizontal, 24).padding(.top, 20)
                 LayoutEditor(layout: snapshot.layout, embedded: true, liveState: model.update.state,
-                             modeIndex: snapshot.modeIndex, screen: snapshot.screen) { _, _ in }
+                             modeID: snapshot.activeModeID, screen: snapshot.screen) { _, _ in }
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "iphone.and.arrow.forward").font(.system(size: 48)).foregroundStyle(.secondary)
@@ -547,28 +546,23 @@ struct HostView: View {
             if let snapshot = model.update.layout, model.update.connected {
                 VStack(spacing: 0) {
                     HStack {
-                        Picker("Phone layout", selection: Binding(get: { snapshot.layout.id }, set: {
-                            model.sendLayout(LayoutCommand(action: .select, layoutID: $0))
+                        Picker("Phone layout", selection: Binding(get: { snapshot.layout.id }, set: { id in
+                            model.sendLayout(LayoutCommand(action: .select, layoutID: id, baseEditRevision: snapshot.catalog.first { $0.id == id }?.editRevision))
                         })) {
-                            ForEach(snapshot.layouts ?? [LayoutSummary(snapshot.layout)]) { item in
+                            ForEach(snapshot.catalog) { item in
                                 Text(item.name + (item.isPreset ? " · preset" : "")).tag(item.id)
                             }
                         }
                         Button { section = .assistant } label: { Label("AI helper", systemImage: "sparkles") }
                         Button("New") { duplicateSource = nil; newLayoutType = .keyboardMouse; newLayoutName = ""; newLayoutPrompt = true }
                         Button("Duplicate") {
-                            var source = snapshot.layout
-                            if source.inputType == nil {
-                                source.inputType = model.mode == .gamepad ? .gamepad : .keyboardMouse
-                                source.keyboardProfile = source.keyboardProfile ?? model.profile
-                                source.gamepadProfile = source.gamepadProfile ?? model.gamepadProfile
-                            }
+                            let source = snapshot.layout
                             duplicateSource = source; newLayoutType = source.effectiveInputType
                             newLayoutName = source.name + " Copy"; newLayoutPrompt = true
                         }
                         Button("Delete…", role: .destructive) {
                             deletionLayout = snapshot.layout; dataAction = "delete"; confirmDataAction = true
-                        }.disabled(snapshot.layout.isPreset || snapshot.supportsLayoutDeletion != true)
+                        }.disabled(snapshot.layout.isPreset)
                             .help("Delete a saved layout. Requires the updated iPhone app.")
                     }.disabled(model.layoutCommandID != nil).padding(.horizontal, 24).padding(.top, 16)
                     if let screen = snapshot.screen {
@@ -579,12 +573,15 @@ struct HostView: View {
                     if let notice = model.layoutCommandNotice {
                         Text(notice).foregroundStyle(.secondary).padding(.top, 8)
                     }
-                    LayoutEditor(layout: snapshot.layout, embedded: true, screen: snapshot.screen) { layout, base in
+                    LayoutEditor(layout: snapshot.layout, embedded: true, modeID: snapshot.activeModeID, screen: snapshot.screen, selectMode: { modeID in
+                        guard snapshot.layout.document.modes.contains(where: { $0.id == modeID }) else { return }
+                        model.sendLayout(LayoutCommand(action: .selectMode, layoutID: snapshot.layout.id, baseEditRevision: snapshot.layout.editRevision, activeModeID: modeID))
+                    }) { layout, base in
                         if base.isPreset {
                             var copy = layout; copy.name += " Copy"; copy.isPreset = false
-                            model.sendLayout(LayoutCommand(action: .create, layout: copy))
+                            model.sendLayout(LayoutCommand(action: .create, document: copy.document, provenance: copy.provenance))
                         } else {
-                            model.sendLayout(LayoutCommand(action: .save, layout: layout, base: base))
+                            model.sendLayout(LayoutCommand(action: .save, layoutID: base.id, baseEditRevision: base.editRevision, document: layout.document))
                         }
                     }.id(snapshot.layout.id).disabled(model.layoutCommandID != nil)
                 }
@@ -622,13 +619,13 @@ struct HostView: View {
                     Button("Accessibility settings") { AccessibilityHelper.shared.show() }
                 }
                 Section("Profiles") {
-                    Button("Import profile…") { model.importProfile() }
-                    Button("Export profile…") { model.exportProfile() }.disabled(model.portable == nil)
+                    Button("Import layout…") { model.importProfile() }
+                    Button("Export layout…") { model.exportProfile() }.disabled(model.portable == nil)
                     if let notice = model.profileNotice { Text(notice).foregroundStyle(.secondary) }
                 }
                 Section("Local data") {
                     Button("Clear saved layouts on iPhone…", role: .destructive) { dataAction = "clear"; confirmDataAction = true }
-                        .disabled(!model.update.connected || model.layoutCommandID != nil || model.update.layout?.supportsLayoutDeletion != true)
+                        .disabled(!model.update.connected || model.layoutCommandID != nil)
                     Button("Erase all local Mac data…", role: .destructive) { dataAction = "erase"; confirmDataAction = true }
                 }
             }.formStyle(.grouped)
@@ -834,10 +831,13 @@ struct HostView: View {
                     }.frame(height: 168)
                 }
             } else {
-                heading("Ready for your game.", "Enable controller support in your game. Use Aim mode on your phone for the right stick.")
+                heading("Ready for your game.", "Enable controller support in your game.")
                 if model.mode == .gamepad && !CableSession.gamepadAuthorized {
                     Label("Virtual gamepad is unavailable in this build. Choose keyboard & mouse to continue.", systemImage: "exclamationmark.circle").foregroundStyle(.secondary)
                 }
+            }
+            if let notice = model.layoutCommandNotice, controlsPage >= 0 {
+                Text(notice).font(.callout).foregroundStyle(.secondary)
             }
             HStack {
                 Button("Back") {
@@ -850,15 +850,30 @@ struct HostView: View {
                 if controlsPage >= 0 {
                 Button(controlsPage < 2 ? "Continue" : "Start playing") {
                     accessibilityAllowed = KeyboardMousePermissions.allowed
-                    if controlsPage == 0 { controlsPage = model.mode == .keyboardMouse && !accessibilityAllowed ? 1 : 2 }
+                    if controlsPage == 0 { prepareSetupLayout() }
                     else if controlsPage == 1 { if accessibilityAllowed { controlsPage = 2 } }
                     else if canStart { setupComplete = true; replaySetup = false; model.syncSetup(.play); step = 2; model.start() }
                     else if model.mode == .keyboardMouse && !accessibilityAllowed { controlsPage = 1 }
                 }.buttonStyle(PadActionStyle(prominent: true))
-                    .disabled(controlsPage == 1 ? !accessibilityAllowed : controlsPage == 2 ? !canStart : false)
+                    .disabled(model.layoutCommandID != nil || !model.update.connected || (controlsPage == 1 ? !accessibilityAllowed : controlsPage == 2 ? !canStart : false))
                 }
             }
         }
+    }
+
+    private func prepareSetupLayout() {
+        guard let current = model.update.layout?.layout else { return }
+        let input: LayoutInputType = model.mode == .gamepad ? .gamepad : .keyboardMouse
+        guard current.effectiveInputType != input else {
+            controlsPage = input == .keyboardMouse && !accessibilityAllowed ? 1 : 2
+            return
+        }
+        do {
+            let document = try current.document.converted(to: input, name: current.name + " — " + input.title)
+            let command = LayoutCommand(action: .create, document: document)
+            model.sendLayout(command)
+            if model.layoutCommandID == command.id { setupLayoutCommandID = command.id }
+        } catch { model.layoutCommandNotice = error.localizedDescription }
     }
 
     private func finishSetup(in destination: WorkspaceSection) {
@@ -918,7 +933,7 @@ struct HostView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(model.update.connected ? "Ready to play." : model.running ? "Reconnecting…" : "Your controls are ready.").font(.system(size: 29, weight: .medium))
-                    Text(model.portable?.layout.name ?? "Your iPhone controls").foregroundStyle(.secondary)
+                    Text(model.portable?.name ?? "Your iPhone controls").foregroundStyle(.secondary)
                 }
                 Spacer()
                 Label(model.transport.rawValue, systemImage: model.update.connected ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath")
@@ -977,15 +992,15 @@ struct HostView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     if settingsTab == 0 {
                         Text("Input mappings").font(.headline)
-                        Text(model.mode == .gamepad ? "Remap controller buttons and adjust stick axes. Gamepad mappings are saved on this Mac, separately from keyboard mappings." : "Edit key combinations, mouse sensitivity, and automatic running. Arrange controls in the Layouts tab.").foregroundStyle(.secondary)
+                        Text(model.mode == .gamepad ? "Remap controller buttons and adjust stick axes. Mappings are saved with the layout and synchronized with your phone." : "Edit key combinations, mouse sensitivity, and automatic running. Arrange controls in the Layouts tab.").foregroundStyle(.secondary)
                         Button("Edit mappings") { panel = model.mode == .gamepad ? .gamepadMappings : .mappings }
                     } else if settingsTab == 1 {
-                        Text(model.portable?.layout.name ?? "Your current controls").font(.headline)
+                        Text(model.portable?.name ?? "Your current controls").font(.headline)
                         Text("Import your iPhone profile to arrange it here. Export your changes and import them on your phone as a new layout.").foregroundStyle(.secondary)
                         Button("Open layout studio") { panel = .layout }
                         HStack {
-                            Button("Import profile…") { model.importProfile() }.disabled(model.running)
-                            Button("Export profile…") { model.exportProfile() }.disabled(model.running || model.portable == nil)
+                            Button("Import layout…") { model.importProfile() }.disabled(model.running)
+                            Button("Export layout…") { model.exportProfile() }.disabled(model.running || model.portable == nil)
                         }
                         if model.running { Text("Disconnect before changing profiles.").font(.callout).foregroundStyle(.secondary) }
                         if let notice = model.profileNotice { Text(notice).font(.callout) }

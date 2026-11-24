@@ -61,7 +61,7 @@ final class CableTests: XCTestCase {
     }
 
     func testPhoneLayoutTelemetryInterleavesWithState() throws {
-        let snapshot = ControllerSnapshot(layout: SavedLayout(name: "Phone layout", style: .xbox), modeIndex: 1)
+        let snapshot = ControllerSnapshot(layout: LocalLayout(name: "Phone layout", style: .xbox), activeModeID: "play")
         let chunks = try LayoutTelemetry.chunks(snapshot)
         var receiver = LayoutTelemetryReceiver()
         var result: ControllerSnapshot?
@@ -88,12 +88,12 @@ final class CableTests: XCTestCase {
     }
 
     func testLayoutCommandsRoundTripAndRejectMalformedFrames() throws {
-        var layout = SavedLayout(name: "Custom 中文", style: .xbox)
+        var layout = LocalLayout(name: "Custom 中文", style: .xbox)
         layout.isPreset = false
         let commands = [
-            LayoutCommand(action: .select, layoutID: layout.id),
-            LayoutCommand(action: .create, layout: layout),
-            LayoutCommand(action: .save, layout: layout, base: layout)
+            LayoutCommand(action: .select, layoutID: layout.id, baseEditRevision: layout.editRevision),
+            LayoutCommand(action: .create, document: layout.document),
+            LayoutCommand(action: .save, layoutID: layout.id, baseEditRevision: layout.editRevision, document: layout.document)
         ]
         for command in commands {
             let bytes = try command.encode()
@@ -110,11 +110,11 @@ final class CableTests: XCTestCase {
     }
 
     func testScreenGeometryAndLibraryTelemetry() throws {
-        let layout = SavedLayout(name: "Phone layout", style: .xbox)
-        var snapshot = ControllerSnapshot(layout: layout, modeIndex: 0)
+        let layout = LocalLayout(name: "Phone layout", style: .xbox)
+        var snapshot = ControllerSnapshot(layout: layout, activeModeID: "play")
         snapshot.screen = PhoneScreen(model: "iPhone", width: 852, height: 393)
-        snapshot.layouts = [LayoutSummary(layout)]
-        snapshot.commandID = "confirmed"
+        snapshot.catalog = [LayoutSummary(layout)]
+        snapshot.acknowledgment = DocumentLayoutAcknowledgment(commandID: UUID().uuidString)
         var receiver = LayoutTelemetryReceiver()
         var decoded: ControllerSnapshot?
         for chunk in try LayoutTelemetry.chunks(snapshot) {
@@ -151,6 +151,30 @@ final class CableTests: XCTestCase {
     }
     func testDisconnectReleasesHeldControls() throws { try verifyRelease(stall: false) }
     func testStallReleasesHeldControls() throws { try verifyRelease(stall: true) }
+    func testModeIDTransitionReleasesHeldOutputs() throws {
+        let (reader, writer) = try pair()
+        let reset = expectation(description: "Mode transition releases held input")
+        let sink = ResetRecordingOutput(reset: reset)
+        let session = CableSession(connect: { reader }, output: { sink }, update: { _ in })
+        session.start(); defer { session.stop() }
+        _ = try writer.readExactly(StateFrame.hello.count, timeout: 1)
+        var layout = LocalLayout(name: "Modes", style: .xbox)
+        layout.document.setModeSwitching(true)
+        var sequence: UInt32 = 0
+        func sendLayout(_ mode: String) throws {
+            let snapshot = ControllerSnapshot(layout: layout, activeModeID: mode)
+            for var chunk in try LayoutTelemetry.chunks(snapshot) {
+                for i in 0..<4 { chunk[8 + i] = UInt8(truncatingIfNeeded: sequence >> (8 * i)) }
+                try writer.write(chunk); sequence &+= 1
+            }
+        }
+        try sendLayout(layout.document.modes[0].id)
+        var held = GamepadState(); held.set(.east, pressed: true)
+        try writer.write(StateFrame(sequence: sequence, state: held).encode()); sequence &+= 1
+        try sendLayout(layout.document.modes[1].id)
+        wait(for: [reset], timeout: 1)
+    }
+
     func testLayoutPauseResetsPendingOutput() throws {
         let (reader, writer) = try pair()
         let reset = expectation(description: "Pause calls reset rather than submitting neutral")

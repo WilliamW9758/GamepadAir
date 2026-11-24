@@ -11,6 +11,25 @@ data = json.loads(subprocess.check_output(["plutil", "-convert", "json", "-o", "
 objects = data["objects"]
 main_group = objects[objects[data["rootObject"]]["mainGroup"]]
 
+# Remove registrations only for deleted project-owned Swift sources. This supports
+# source renames without regenerating signing settings or unrelated project objects.
+removed = {
+    key for key, item in objects.items()
+    if item.get("isa") == "PBXFileReference"
+    and item.get("lastKnownFileType") == "sourcecode.swift"
+    and item.get("sourceTree") == "SOURCE_ROOT"
+    and item.get("path", "").startswith(("Sources/", "Apps/"))
+    and not (root / item["path"]).exists()
+}
+removed.update(key for key, item in objects.items()
+               if item.get("isa") == "PBXBuildFile" and item.get("fileRef") in removed)
+for item in objects.values():
+    for field in ("children", "files"):
+        if field in item:
+            item[field] = [key for key in item[field] if key not in removed]
+for key in removed:
+    del objects[key]
+
 def identifier(value):
     return hashlib.sha256(value.encode()).hexdigest()[:24].upper()
 

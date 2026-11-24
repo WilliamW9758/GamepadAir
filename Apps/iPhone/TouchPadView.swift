@@ -27,9 +27,22 @@ final class TouchPadView: UIView {
     var showGhost = true
     var onReference: ((ControlPlacement?) -> Void)?
     var onCanvasSize: ((CGSize) -> Void)?
+    var document: LayoutDocument?
+    var activeModeID = "play"
+    var referenceModeID = "play"
+    private func resolved(_ modeID: String) -> [ResolvedLayoutControl] {
+        guard let document else { return [] }
+        return LayoutGeometry.resolve(document, modeID: modeID, width: bounds.width, height: bounds.height)
+    }
+    private func control(_ runtimeID: String) -> Control? {
+        if runtimeID.hasPrefix("custom-"), let slot = Int(runtimeID.dropFirst(7)) { return .custom(slot) }
+        if runtimeID.hasPrefix("button-"), let raw = Int(runtimeID.dropFirst(7)), let button = PadButton(rawValue: raw) { return .button(button) }
+        return ["left-stick": .leftStick, "right-stick": .rightStick, "dpad": .dpad, "radial": .radial, "mode-toggle": .modeToggle, "left-trigger": .leftTrigger, "right-trigger": .rightTrigger][runtimeID]
+    }
     private func reference(for item: Item) -> ControlPlacement? {
-        guard showsModeSwitch, referenceAvailable, let base = presetItems.first(where: { $0.control == item.control }) else { return nil }
-        var p = referencePlacements[item.control.id] ?? ControlPlacement(x: base.center.x / max(1, bounds.width), y: base.center.y / max(1, bounds.height))
+        guard showsModeSwitch, referenceAvailable,
+              let other = resolved(referenceModeID).first(where: { $0.runtimeID == item.control.id && !$0.hidden }) else { return nil }
+        var p = other.placement
         p.scale *= referenceSizeFactor / max(0.01, sizeFactor)
         return p
     }
@@ -47,11 +60,11 @@ final class TouchPadView: UIView {
         }
     }
     private func pressHaptic(_ control: Control) {
-        Self.playHaptic(touchHaptic)
+        Self.playHaptic(buttonFeedback[control.id]?.haptic ?? touchHaptic)
     }
     var style = PadStyle.xbox
     var radialEnabled = false
-    var radialSlots = Array(0..<8)
+    var radialSlots = Array(repeating: -1, count: 8)
     var radialTitle = "Quick bar"
     var onRename: ((String, String) -> Void)?
     private var radialChoice: Int?
@@ -62,10 +75,7 @@ final class TouchPadView: UIView {
     var onToggle: (() -> Void)?
     var floatingLeft = true, floatingRight = true
     var leftTap = StickTapAction.off, rightTap = StickTapAction.off
-    var legacyCanvas = false
     var sizeFactor = 1.0
-    var onMigration: (([String: ControlPlacement], Double) -> Void)?
-    private var migrationSent = false
     private var stickGestures: [Control: StickGesture] = [:]
     private var stickClickHolds: [Control: StickClickHold] = [:]
     private var stickHoldWork: [Control: DispatchWorkItem] = [:]
@@ -117,70 +127,21 @@ final class TouchPadView: UIView {
     var guideLabel = "Xbox"
 
     private var presetItems: [Item] {
-        let w = bounds.width, h = bounds.height
-        let unit = min(h / 320, w / 800) * sizeFactor
-        func item(_ c: Control, _ x: CGFloat, _ y: CGFloat, _ r: CGFloat, _ label: String) -> Item {
-            Item(control: c, center: CGPoint(x: w * x, y: h * y), radius: r * unit, label: label)
+        resolved(activeModeID).compactMap { value in
+            guard !value.hidden, let control = control(value.runtimeID) else { return nil }
+            return Item(control: control, center: CGPoint(x: value.placement.x * bounds.width, y: value.placement.y * bounds.height),
+                        radius: value.radius / value.placement.scale, label: value.label)
         }
-        let ps = style == .playStation
-        var result = [
-            item(.modeToggle, 0.5, 0.15, 25, modeName),
-            item(.leftTrigger, 0.12, 0.12, 27, ps ? "L2" : "LT"),
-            item(.button(.leftShoulder), 0.26, 0.12, 27, style.label(.leftShoulder)),
-            item(.button(.rightShoulder), 0.74, 0.12, 27, style.label(.rightShoulder)),
-            item(.rightTrigger, 0.88, 0.12, 27, ps ? "R2" : "RT"),
-            item(.leftStick, ps ? 0.30 : 0.18, ps ? 0.69 : 0.43, 62, "L"),
-            item(.rightStick, 0.65, 0.70, 62, "R"),
-            item(.button(.back), 0.445, 0.24, 22, style.label(.back)),
-            item(.button(.start), 0.545, 0.24, 22, style.label(.start)),
-            item(.button(.leftClick), 0.435, 0.78, 22, "L3"),
-            item(.button(.rightClick), 0.525, 0.78, 22, "R3")
-        ]
-        let center = CGPoint(x: w * 0.85, y: h * 0.44)
-        for (button, dx, dy) in [(PadButton.south, 0.0, 1.0), (.east, 1, 0), (.west, -1, 0), (.north, 0, -1)] {
-            result.append(Item(control: .button(button), center: CGPoint(x: center.x + dx * 48 * unit, y: center.y + dy * 48 * unit), radius: 23 * unit, label: style.label(button)))
-        }
-        if showsGuideButton { result.append(item(.button(.guide), 0.5, 0.35, 20, guideLabel)) }
-        if showDPad { result.append(item(.dpad, ps ? 0.14 : 0.355, ps ? 0.43 : 0.66, 50, "D-PAD")) }
-        for slot in customSlots {
-            result.append(item(.custom(slot), 0.10 + CGFloat(slot % 8) * 0.11, slot < 8 ? 0.91 : 0.51, 19, "C\(slot + 1)"))
-        }
-        if radialEnabled { result.append(item(.radial, 0.5, 0.5, 30, radialTitle)) }
-        if !showsModeSwitch { result.removeAll { $0.control == .modeToggle } }
-        return result
     }
-
     private var items: [Item] {
-        presetItems.filter { !hiddenControls.contains($0.control.id) }.map { item in
-            let fallback = ControlPlacement(x: item.center.x / max(1, bounds.width), y: item.center.y / max(1, bounds.height))
-            let p = (placements[item.control.id] ?? fallback).fitting(width: bounds.width, height: bounds.height, baseRadius: item.radius)
-            return Item(control: item.control, center: CGPoint(x: p.x * bounds.width, y: p.y * bounds.height), radius: item.radius * p.scale, label: item.control == .modeToggle ? modeName : (labels[item.control.id] ?? item.label))
+        resolved(activeModeID).compactMap { value in
+            guard !value.hidden, let control = control(value.runtimeID) else { return nil }
+            return Item(control: control, center: CGPoint(x: value.placement.x * bounds.width, y: value.placement.y * bounds.height), radius: value.radius, label: value.label)
         }
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        if legacyCanvas && !migrationSent && bounds.width > 0 && window != nil {
-            // The previous app used the safe-area width and a 78-point header.
-            // Convert to full-screen coordinates without moving or resizing controls.
-            let insets = window?.safeAreaInsets ?? .zero
-            let old = CGRect(x: insets.left, y: insets.top + 78,
-                             width: bounds.width - insets.left - insets.right,
-                             height: bounds.height - insets.top - insets.bottom - 78)
-            if old.width > 0 && old.height > 0 {
-                let factor = min(old.height / 320, old.width / 800) / min(bounds.height / 320, bounds.width / 800)
-                var converted: [String: ControlPlacement] = [:]
-                for item in presetItems where item.control != .modeToggle {
-                    let fallback = ControlPlacement(x: item.center.x / bounds.width, y: item.center.y / bounds.height)
-                    let p = (placements[item.control.id] ?? fallback).fitting(width: old.width, height: old.height, baseRadius: item.radius * factor)
-                    converted[item.control.id] = ControlPlacement(x: (old.minX + p.x * old.width) / bounds.width,
-                        y: (old.minY + p.y * old.height) / bounds.height, scale: p.scale)
-                }
-                migrationSent = true
-                let callback = onMigration
-                DispatchQueue.main.async { callback?(converted, factor) }
-            }
-        }
         if previousSize != bounds.size {
             previousSize = bounds.size
             touches.removeAll(); cancelSticks(); cancelAim(); cancelTrackpad(); editTouch = nil; refresh()
