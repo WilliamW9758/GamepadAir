@@ -24,7 +24,7 @@ extension DocumentControl {
         if role == "customButton", direction == "press", let slot = customSlot, (0..<16).contains(slot) { return MappedControl.customControls[slot] }
         let prefixes = ["leftStick": "left", "rightStick": "right", "dpad": "dpad"]
         if let prefix = prefixes[role], ["up", "right", "down", "left"].contains(direction) {
-            return MappedControl(rawValue: prefix + direction.prefix(1).uppercased() + direction.dropFirst())
+            return MappedControl(rawValue: prefix + direction.prefix(1).uppercased() + String(direction.dropFirst()))
         }
         return direction == "press" ? MappedControl(rawValue: role) : nil
     }
