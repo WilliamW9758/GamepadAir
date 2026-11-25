@@ -37,9 +37,9 @@ usable by offline JWT verifiers until expiry, as described in the backend contra
 
 - Marketplace loads approved community layouts without signing in.
 - Sign in with Apple opens the system-managed browser session, then verifies `/v1/me`.
-- Your layouts shows owned listings. Share current layout submits canonical v2 JSON for review.
+- Your layouts shows owned listings. Choose a saved layout from the dropdown and submit its canonical v2 JSON for review.
 - Open latest fetches an owned revision, including pending ones, as a fresh local copy.
-- Submit current as revision sends the displayed expected revision; HTTP 409 requires refresh.
+- Submit selected as revision uses the dropdown selection and displayed expected revision; HTTP 409 requires refresh.
 - Remove unpublishes a listing; already downloaded copies remain on other devices.
 - Writes are never automatically retried. A lost response tells the user to check Your layouts
   before resubmitting, because initial POST is not idempotent.

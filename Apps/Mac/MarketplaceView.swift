@@ -17,7 +17,7 @@ struct MarketplaceView: View {
             VStack(alignment: .leading, spacing: 24) {
                 if showingSubmissions {
                     Button { showingSubmissions = false } label: { Label("Back to Marketplace", systemImage: "chevron.left") }
-                    MarketplaceAccountView(account: account, currentLayout: model.portable) { document in model.importMarketplaceDocument(document) }
+                    MarketplaceAccountView(account: account, layouts: model.localLayouts) { document in model.importMarketplaceDocument(document) }
                 } else {
                 HStack {
                     Text("Community layouts").font(.largeTitle.bold())

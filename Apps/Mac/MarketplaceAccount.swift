@@ -80,7 +80,13 @@ import AuthenticationServices
 
 struct MarketplaceAccountView: View {
     @ObservedObject var account: MarketplaceAccountModel
-    let currentLayout: LocalLayout?
+    let layouts: [LocalLayout]
+    @State private var selectedLayoutID = ""
+    @State private var submissionLayout: LocalLayout?
+    private var selectedLayout: LocalLayout? { layouts.first { $0.id == selectedLayoutID } }
+    private func updateSelection() {
+        if selectedLayout == nil { selectedLayoutID = "" }
+    }
     let importLayout: (LayoutDocument) -> Void
     @State private var title = ""
     @State private var description = ""
@@ -101,14 +107,26 @@ struct MarketplaceAccountView: View {
             if account.busy { ProgressView().controlSize(.small) }
             if let notice = account.notice { Text(notice).textSelection(.enabled).foregroundStyle(.secondary) }
             if account.accountID != nil {
-                Button("Share current layout…") { title = currentLayout?.name ?? ""; submitting = true }.disabled(currentLayout == nil)
+                HStack {
+                    Picker("Layout", selection: $selectedLayoutID) {
+                        Text(layouts.isEmpty ? "No saved layouts" : "Choose a layout").tag("")
+                        ForEach(layouts) { layout in
+                            Text(layout.name + (layout.isPreset ? " · preset" : "") +
+                                 (layouts.filter { $0.name == layout.name }.count > 1 ? " · " + String(layout.id.prefix(6)) : ""))
+                                .tag(layout.id)
+                        }
+                    }.frame(maxWidth: 380)
+                    Button("Submit layout…") {
+                        submissionLayout = selectedLayout; title = selectedLayout?.name ?? ""; description = ""; submitting = true
+                    }.disabled(selectedLayout == nil)
+                }
                 ForEach(account.listings) { item in
                     VStack(alignment: .leading, spacing: 10) {
                         Text(item.title).font(.headline)
                         Text("Revision \(item.latest_revision) · \(item.status)" + (item.published_revision.map { " · Published revision \($0)" } ?? " · Not yet public")).foregroundStyle(.secondary)
                         HStack {
                             Button("Open latest") { account.perform { importLayout(try await account.api.revision(item)) } }
-                            Button("Submit current as revision…") { revising = item }.disabled(currentLayout == nil || item.status == "removed")
+                            Button("Submit selected as revision…") { submissionLayout = selectedLayout; revising = item }.disabled(selectedLayout == nil || item.status == "removed")
                             Button("Remove…", role: .destructive) { removing = item }.disabled(item.status == "removed")
                         }
                     }.padding().frame(maxWidth: .infinity, alignment: .leading).background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
@@ -119,24 +137,26 @@ struct MarketplaceAccountView: View {
                 Text("Use the local development server until the public service is available.").font(.callout).foregroundStyle(.secondary)
             }
         }.disabled(account.busy)
+        .onAppear { updateSelection() }
+        .onChange(of: layouts.map(\.id)) { _, _ in updateSelection() }
         .sheet(isPresented: $submitting) {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Share layout").font(.title2.bold())
                 TextField("Title", text: $title)
                 TextField("Description", text: $description, axis: .vertical).lineLimit(3...6)
-                Text("A copy of the current layout will be submitted for review.").foregroundStyle(.secondary)
+                Text("A copy of “\(submissionLayout?.name ?? "layout")” will be submitted for review.").foregroundStyle(.secondary)
                 HStack { Button("Cancel") { submitting = false }; Spacer(); Button("Submit for review") {
-                    guard let currentLayout else { return }; submitting = false
+                    guard let submissionLayout else { return }; submitting = false
                     account.perform {
-                        let result = try await account.api.submit(document: currentLayout.document, title: title, description: description)
+                        let result = try await account.api.submit(document: submissionLayout.document, title: title, description: description)
                         try await account.loadAccount(); account.notice = "Revision \(result.revision) submitted for review."
                     }
                 }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || title.count > 120 || description.count > 4000) }
             }.padding(24).frame(width: 480)
         }
-        .confirmationDialog("Submit the current layout as a new revision?", isPresented: Binding(get: { revising != nil }, set: { if !$0 { revising = nil } })) {
-            if let listing = revising, let currentLayout { Button("Submit revision") { revising = nil; account.perform {
-                let result = try await account.api.revise(listing, document: currentLayout.document)
+        .confirmationDialog("Submit “\(submissionLayout?.name ?? "layout")” as a new revision?", isPresented: Binding(get: { revising != nil }, set: { if !$0 { revising = nil } })) {
+            if let listing = revising, let submissionLayout { Button("Submit revision") { revising = nil; account.perform {
+                let result = try await account.api.revise(listing, document: submissionLayout.document)
                 try await account.loadAccount(); account.notice = "Revision \(result.revision) submitted for review."
             } } }
         }
