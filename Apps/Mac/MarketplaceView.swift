@@ -180,7 +180,10 @@ private struct MarketplaceLayoutThumbnail: View {
                     ForEach(LayoutGeometry.resolve(document, modeID: document.initialMode, width: width, height: height).filter { !$0.hidden }) { control in
                         let diameter = control.radius * 2 * scale
                         ZStack {
-                            if control.role == "dpad", mode?.dpadStyle == "fourWay" {
+                            if control.rectangular {
+                                RoundedRectangle(cornerRadius: 8).fill(Color.accentColor.opacity(0.15))
+                                RoundedRectangle(cornerRadius: 8).stroke(Color.accentColor.opacity(0.6), lineWidth: 1)
+                            } else if control.role == "dpad", mode?.dpadStyle == "fourWay" {
                                 DPadCross().fill(Color.accentColor.opacity(0.25))
                                 DPadCross().stroke(Color.accentColor.opacity(0.65), lineWidth: 1)
                             } else {
@@ -192,7 +195,7 @@ private struct MarketplaceLayoutThumbnail: View {
                             } else if diameter >= 22 {
                                 Text(control.role == "dpad" ? "✣" : control.label).font(.system(size: 10, weight: .semibold)).lineLimit(1).foregroundStyle(Color.primary.opacity(0.8))
                             }
-                        }.frame(width: diameter, height: diameter)
+                        }.frame(width: control.width * scale, height: control.height * scale)
                             .position(x: control.placement.x * width * scale, y: control.placement.y * height * scale)
                     }
                 }.frame(width: width * scale, height: height * scale)

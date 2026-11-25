@@ -5,7 +5,7 @@ Decision and implementation: November 24, 2026.
 The canonical model is now wired through both app targets. `SavedLayout`, the legacy catalog,
 profile exchange, coordinate migration and standalone mapping-editor paths have been removed.
 `LayoutDocumentStore` owns atomic persistence/history; editors mutate the document; runtime
-profiles and `ResolvedLayoutMode` are disposable projections. Sync envelopes use protocol 3,
+profiles and `ResolvedLayoutMode` are disposable projections. Sync envelopes use protocol 4,
 local edit revisions and bounded idempotency acknowledgments. Downloads and file imports share
 the same strict decoder and allocate fresh local wrappers.
 

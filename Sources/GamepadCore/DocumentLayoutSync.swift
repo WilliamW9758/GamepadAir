@@ -1,7 +1,7 @@
 import Foundation
 
 public struct DocumentLayoutSnapshot: Codable, Equatable {
-    public var protocolVersion = 3
+    public var protocolVersion = 4
     public var layout: LocalLayout
     public var activeModeID: String
     public var screen: PhoneScreen?
@@ -11,7 +11,7 @@ public struct DocumentLayoutSnapshot: Codable, Equatable {
         self.layout = layout; self.activeModeID = activeModeID; self.catalog = catalog
     }
     public func validate() throws {
-        guard protocolVersion == 3 else { throw LayoutDocumentError("Update Pocket Pad on both devices: layout sync versions differ") }
+        guard protocolVersion == 4 else { throw LayoutDocumentError("Update Pocket Pad on both devices: layout sync versions differ") }
         guard UUID(uuidString: layout.id) != nil, catalog.count <= 500, Set(catalog.map(\.id)).count == catalog.count,
               catalog.allSatisfy({ UUID(uuidString: $0.id) != nil }) else { throw LayoutDocumentError("Invalid layout identity") }
         try layout.document.validate()
@@ -41,7 +41,7 @@ public struct DocumentLayoutAcknowledgment: Codable, Equatable {
 }
 public struct DocumentLayoutCommand: Codable, Equatable {
     public enum Action: String, Codable { case select, create, save, delete, selectMode, clear, fetch }
-    public var protocolVersion = 3
+    public var protocolVersion = 4
     public var id = UUID().uuidString
     public var action: Action
     public var layoutID: String?

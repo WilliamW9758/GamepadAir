@@ -43,9 +43,17 @@ extension LayoutDocument {
                 try require(roles.insert(control.role).inserted && control.customSlot == nil, "Duplicate role or unexpected custom slot")
             }
             try require(control.role != "guide" || isGamepad, "Guide requires controller input")
+            try require(control.role != "trackpad" || !isGamepad, "Trackpad requires keyboard/mouse input")
+            func dimensions(_ p: DocumentPlacement?) throws {
+                guard let p else { return }
+                try require((p.width == nil) == (p.height == nil), "Rectangle requires both width and height")
+                try require(p.width == nil || ["trackpad", "customButton"].contains(control.role), "Only trackpad and custom buttons support rectangular dimensions")
+            }
+            try dimensions(control.placement)
+            for mode in modes { if case .value(let p) = mode.overrides?[control.id]?.placement { try dimensions(p) } }
             let stick = ["leftStick", "rightStick"].contains(control.role)
             var allowed = stick || control.role == "dpad" ? cardinal : Set(["press"])
-            if ["radial", "modeSwitch"].contains(control.role) || (isGamepad && stick) { allowed = [] }
+            if ["radial", "modeSwitch", "trackpad"].contains(control.role) || (isGamepad && stick) { allowed = [] }
             let bindings = control.bindings ?? [:]
             try require(Set(bindings.keys).isSubset(of: allowed), "Unsupported binding role")
             try require(control.role != "rightStick" || isGamepad || keyboard?.rightStickMouse == false || bindings.isEmpty, "Mouse stick cannot also have directional bindings")
@@ -53,6 +61,7 @@ extension LayoutDocument {
             try require(control.radialSlots == nil || control.role == "radial", "Only a radial can have radial slots")
             try require(control.role == "modeSwitch" ? control.command == "cycleModes" : control.command == nil, "Invalid mode switch command")
         }
+        try require(motion?.mode != "steering" || isGamepad, "Analog steering requires gamepad input")
         let byID = Dictionary(uniqueKeysWithValues: controls.map { ($0.id, $0) })
         for control in controls {
             try require((control.radialSlots ?? [:]).values.allSatisfy { byID[$0]?.role == "customButton" }, "Radial target must be a custom button")

@@ -59,7 +59,9 @@ extension LayoutDocument {
         guard controls.contains(where: { $0.id == id }), let selected = modes.first(where: { $0.id == modeID }) else { throw LayoutDocumentError("Unknown control or mode") }
         for i in next.modes.indices where next.modes[i].id == modeID || (linkedControls ?? []).contains(id) {
             var p = placement
-            if next.modes[i].id != modeID {
+            let previous = resolvedControl(id, modeID: modeID)?.placement
+            if p.width == nil { p.width = previous?.width; p.height = previous?.height }
+            if next.modes[i].id != modeID && p.width == nil && controls.first(where: { $0.id == id })?.role != "trackpad" {
                 p.scale = (placement.scale ?? 1) * (selected.sizeFactor ?? 1) / (next.modes[i].sizeFactor ?? 1)
                 // Linked edits must remain representable; never silently clamp stored geometry.
             }

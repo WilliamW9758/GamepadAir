@@ -1,11 +1,13 @@
 import UIKit
+import CoreMotion
 
 /// UIKit owns individual touches, allowing two sticks plus simultaneous buttons.
 final class TouchPadView: UIView {
     enum Control: Hashable {
-        case custom(Int), button(PadButton), leftStick, rightStick, dpad, leftTrigger, rightTrigger, modeToggle, radial
+        case trackpad, custom(Int), button(PadButton), leftStick, rightStick, dpad, leftTrigger, rightTrigger, modeToggle, radial
         var id: String {
             switch self {
+            case .trackpad: return "trackpad"
             case .custom(let slot): return "custom-\(slot)"
             case .button(let button): return "button-\(button.rawValue)"
             case .leftStick: return "left-stick"
@@ -18,7 +20,9 @@ final class TouchPadView: UIView {
             }
         }
     }
-    struct Item { let control: Control; let center: CGPoint; let radius: CGFloat; let label: String }
+    struct Item { let control: Control; let center: CGPoint; let radius: CGFloat; let label: String; var width: CGFloat? = nil; var height: CGFloat? = nil
+        var rect: CGRect { CGRect(x: center.x - (width ?? radius * 2) / 2, y: center.y - (height ?? radius * 2) / 2, width: width ?? radius * 2, height: height ?? radius * 2) }
+    }
     var hiddenControls = Set<String>()
     var unmapped = Set<String>()
     var referencePlacements: [String: ControlPlacement] = [:]
@@ -27,7 +31,36 @@ final class TouchPadView: UIView {
     var showGhost = true
     var onReference: ((ControlPlacement?) -> Void)?
     var onCanvasSize: ((CGSize) -> Void)?
-    var document: LayoutDocument?
+    var document: LayoutDocument? {
+        didSet { if document != oldValue { resetMotion() } }
+    }
+    var inputEnabled = true { didSet { if inputEnabled != oldValue { touches.removeAll(); cancelSticks(); cancelAim(); cancelTrackpad(); resetMotion(); refresh() } } }
+    private let motionManager = CMMotionManager()
+    private var motionReference: CMAttitude?
+    private var motionX = 0.0, motionY = 0.0
+    private func resetMotion() {
+        motionManager.stopDeviceMotionUpdates(); motionReference = nil; motionX = 0; motionY = 0
+    }
+    private func updateMotion() {
+        let mode = document?.motion?.mode ?? "off"
+        let held = touches.values.contains { $0.control == .rightTrigger }
+        guard inputEnabled, !editing, window != nil, mode != "off", !(mode == "aim" && cursorMode), held, motionManager.isDeviceMotionAvailable else { resetMotion(); return }
+        guard !motionManager.isDeviceMotionActive else { return }
+        motionManager.deviceMotionUpdateInterval = 1.0 / 60
+        motionManager.startDeviceMotionUpdates(to: .main) { [weak self] sample, _ in
+            guard let self, let sample, self.inputEnabled, !self.editing,
+                  self.touches.values.contains(where: { $0.control == .rightTrigger }) else { return }
+            guard let reference = self.motionReference else { self.motionReference = sample.attitude.copy() as? CMAttitude; return }
+            let attitude = sample.attitude.copy() as! CMAttitude
+            attitude.multiply(byInverseOf: reference)
+            let sign = self.window?.windowScene?.interfaceOrientation == .landscapeRight ? -1.0 : 1.0
+            let sensitivity = self.document?.motion?.sensitivity ?? 1
+            let deadZone = self.document?.motion?.deadZone ?? 0.03
+            self.motionX = MotionInput.axis(angle: mode == "steering" ? attitude.yaw : attitude.roll * sign, sensitivity: sensitivity, deadZone: deadZone)
+            self.motionY = mode == "steering" ? 0 : MotionInput.axis(angle: attitude.pitch * sign, sensitivity: sensitivity, deadZone: deadZone)
+            self.refresh()
+        }
+    }
     var activeModeID = "play"
     var referenceModeID = "play"
     private func resolved(_ modeID: String) -> [ResolvedLayoutControl] {
@@ -37,7 +70,7 @@ final class TouchPadView: UIView {
     private func control(_ runtimeID: String) -> Control? {
         if runtimeID.hasPrefix("custom-"), let slot = Int(runtimeID.dropFirst(7)) { return .custom(slot) }
         if runtimeID.hasPrefix("button-"), let raw = Int(runtimeID.dropFirst(7)), let button = PadButton(rawValue: raw) { return .button(button) }
-        return ["left-stick": .leftStick, "right-stick": .rightStick, "dpad": .dpad, "radial": .radial, "mode-toggle": .modeToggle, "left-trigger": .leftTrigger, "right-trigger": .rightTrigger][runtimeID]
+        return ["trackpad": .trackpad, "left-stick": .leftStick, "right-stick": .rightStick, "dpad": .dpad, "radial": .radial, "mode-toggle": .modeToggle, "left-trigger": .leftTrigger, "right-trigger": .rightTrigger][runtimeID]
     }
     private func reference(for item: Item) -> ControlPlacement? {
         guard showsModeSwitch, referenceAvailable,
@@ -88,6 +121,10 @@ final class TouchPadView: UIView {
     var trackpadHoldDelay = 0.5
     var onPointer: ((PointerAction, Double, Double) -> Void)?
     private var trackpad = TrackpadGesture()
+    private var scrolling = false
+    private var scrollCenter: CGPoint?
+    private var trackpadOwner: Control?
+    private func isPointer(_ control: Control) -> Bool { control == .trackpad || (control == .rightStick && cursorMode) }
     private var trackpadActivation: DispatchWorkItem?
     var holdAimEnabled = true
     var holdAimDelay = 0.3
@@ -130,13 +167,13 @@ final class TouchPadView: UIView {
         resolved(activeModeID).compactMap { value in
             guard !value.hidden, let control = control(value.runtimeID) else { return nil }
             return Item(control: control, center: CGPoint(x: value.placement.x * bounds.width, y: value.placement.y * bounds.height),
-                        radius: value.radius / value.placement.scale, label: value.label)
+                        radius: value.radius / value.placement.scale, label: value.label, width: value.rectangular ? value.width : nil, height: value.rectangular ? value.height : nil)
         }
     }
     private var items: [Item] {
         resolved(activeModeID).compactMap { value in
             guard !value.hidden, let control = control(value.runtimeID) else { return nil }
-            return Item(control: control, center: CGPoint(x: value.placement.x * bounds.width, y: value.placement.y * bounds.height), radius: value.radius, label: value.label)
+            return Item(control: control, center: CGPoint(x: value.placement.x * bounds.width, y: value.placement.y * bounds.height), radius: value.radius, label: value.label, width: value.rectangular ? value.width : nil, height: value.rectangular ? value.height : nil)
         }
     }
 
@@ -156,10 +193,11 @@ final class TouchPadView: UIView {
     }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if !inputEnabled && !editing { return }
         if editing {
             guard editTouch == nil, let touch = touches.first else { return }
             let point = touch.location(in: self)
-            guard let item = items.min(by: { distance($0.center, point) / $0.radius < distance($1.center, point) / $1.radius }),
+            guard let item = items.filter { hit($0, point) }.min(by: { distance($0.center, point) / $0.radius < distance($1.center, point) / $1.radius }),
                   hit(item, point) else { return }
             if touch.tapCount == 2 {
                 onReference?(reference(for: item))
@@ -178,9 +216,10 @@ final class TouchPadView: UIView {
         }
         for touch in touches {
             let point = touch.location(in: self)
-            if let item = items.min(by: { distance($0.center, point) / $0.radius < distance($1.center, point) / $1.radius }),
+            if let item = items.filter { hit($0, point) }.min(by: { distance($0.center, point) / $0.radius < distance($1.center, point) / $1.radius }),
                hit(item, point),
-               !self.touches.values.contains(where: { $0.control == item.control }) {
+               (!self.touches.values.contains(where: { $0.control == item.control }) || (isPointer(item.control) && self.touches.values.filter { $0.control == item.control }.count < 2)) {
+                if isPointer(item.control), let owner = trackpadOwner, owner != item.control { continue }
                 if item.control != .leftStick && item.control != .rightStick {
                     pressHaptic(item.control)
                 }
@@ -198,12 +237,17 @@ final class TouchPadView: UIView {
                     stickHoldWork[control]?.cancel(); stickHoldWork[control] = work
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.46, execute: work)
                 }
-                if item.control == .rightStick && cursorMode {
-                    cancelTrackpad()
+                if isPointer(item.control) {
+                    if self.touches.values.filter({ $0.control == item.control }).count == 2 {
+                        trackpadActivation?.cancel(); trackpad.cancel(); scrolling = true
+                        scrollCenter = pointerCenter(item.control)
+                        continue
+                    }
+                    cancelTrackpad(); trackpadOwner = item.control
                     trackpad.begin(x: point.x, y: point.y, now: ProcessInfo.processInfo.systemUptime)
                     let touchID = ObjectIdentifier(touch)
                     let work = DispatchWorkItem { [weak self] in
-                        guard let self, self.cursorMode, self.touches[touchID]?.control == .rightStick else { return }
+                        guard let self, !self.scrolling, self.touches[touchID]?.control == self.trackpadOwner else { return }
                         if let action = self.trackpad.hold(now: ProcessInfo.processInfo.systemUptime, delay: self.trackpadHoldDelay) {
                             self.onPointer?(action, 0, 0); self.setNeedsDisplay()
                         }
@@ -229,12 +273,16 @@ final class TouchPadView: UIView {
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         if editing {
             guard let control = editControl, let touch = touches.first(where: { ObjectIdentifier($0) == editTouch }),
-                  let base = presetItems.first(where: { $0.control == control }) else { return }
+                  let base = items.first(where: { $0.control == control }) else { return }
             let point = touch.location(in: self)
-            let p = ControlPlacement(x: (point.x - dragOffset.x) / max(1, bounds.width),
+            var p = ControlPlacement(x: (point.x - dragOffset.x) / max(1, bounds.width),
                                      y: (point.y - dragOffset.y) / max(1, bounds.height),
                                      scale: placements[control.id]?.scale ?? 1)
-                .fitting(width: bounds.width, height: bounds.height, baseRadius: base.radius)
+
+            if UserDefaults.standard.bool(forKey: "layout-snap") {
+                p = LayoutGeometry.snapped(p, others: resolved(activeModeID).filter { $0.runtimeID != control.id }.map(\.placement))
+            }
+            p = LayoutGeometry.fitted(p, canvasWidth: bounds.width, canvasHeight: bounds.height, controlWidth: base.rect.width, controlHeight: base.rect.height)
             placements[control.id] = p; onPlacement?(control.id, p); setNeedsDisplay()
             return
         }
@@ -247,13 +295,24 @@ final class TouchPadView: UIView {
                     radialChoice = RadialInput.direction(x: point.x - radialOrigin.x, y: point.y - radialOrigin.y, deadZone: 24, slots: radialSlots)
                 }
                 stickGestures[previous.control]?.move(x: point.x, y: point.y)
-                if previous.control == .rightStick && cursorMode {
+                if isPointer(previous.control) && !scrolling {
                     let delta = trackpad.move(x: point.x, y: point.y)
                     if delta.0 != 0 || delta.1 != 0 { onPointer?(.move, delta.0, delta.1) }
                 }
             }
         }
+        if scrolling, let owner = trackpadOwner, let center = pointerCenter(owner) {
+            if let old = scrollCenter, document?.modes.first(where: { $0.id == activeModeID })?.trackpadScroll != false {
+                onPointer?(.scroll, center.x - old.x, center.y - old.y)
+            }
+            scrollCenter = center
+        }
         refresh()
+    }
+    private func pointerCenter(_ control: Control) -> CGPoint? {
+        let points = touches.values.filter { $0.control == control }.map(\.point)
+        guard points.count == 2 else { return nil }
+        return CGPoint(x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2)
     }
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) { remove(touches) }
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { remove(touches, cancelled: true) }
@@ -291,11 +350,11 @@ final class TouchPadView: UIView {
                     if control == .rightStick && !cursorMode { pulse(rightTap) }
                 }
             }
-            if self.touches[id]?.control == .rightStick && cursorMode {
-                if !cancelled, let action = trackpad.end(now: ProcessInfo.processInfo.systemUptime, delay: trackpadHoldDelay) {
+            if let control = self.touches[id]?.control, isPointer(control) {
+                if !cancelled && !scrolling, let action = trackpad.end(now: ProcessInfo.processInfo.systemUptime, delay: trackpadHoldDelay) {
                     onPointer?(action, 0, 0)
                 }
-                cancelTrackpad()
+                if self.touches.values.filter({ isPointer($0.control) }).count <= 1 { cancelTrackpad() }
             }
             self.touches.removeValue(forKey: id)
         }
@@ -303,6 +362,7 @@ final class TouchPadView: UIView {
         refresh()
     }
     private func hit(_ item: Item, _ point: CGPoint) -> Bool {
+        if item.width != nil { return item.rect.contains(point) }
         if item.control == .rightStick && cursorMode && !editing {
             return CGRect(x: item.center.x - item.radius, y: item.center.y - item.radius, width: item.radius * 2, height: item.radius * 2).contains(point)
         }
@@ -335,7 +395,7 @@ final class TouchPadView: UIView {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: work)
     }
     private func cancelTrackpad() {
-        trackpadActivation?.cancel(); trackpadActivation = nil; trackpad.cancel()
+        trackpadActivation?.cancel(); trackpadActivation = nil; trackpad.cancel(); scrolling = false; scrollCenter = nil; trackpadOwner = nil
     }
     private func cancelAim() {
         aimActivation?.cancel(); aimActivation = nil; holdAim.reset()
@@ -345,7 +405,8 @@ final class TouchPadView: UIView {
 
     private func refresh() {
         var next = GamepadState.neutral
-        if editing { state = .paused; onState?(.paused); setNeedsDisplay(); return }
+        updateMotion()
+        if editing || !inputEnabled { state = .paused; onState?(.paused); setNeedsDisplay(); return }
         for value in touches.values {
             guard let item = items.first(where: { $0.control == value.control }) else { continue }
             let gesture = stickGestures[value.control]
@@ -357,9 +418,9 @@ final class TouchPadView: UIView {
             if !wasPressed && stickClickHolds[value.control]?.pressed == true {
                 pressHaptic(.button(value.control == .leftStick ? .leftClick : .rightClick))
             }
-            let inside = distance(value.point, item.center) <= item.radius * 1.3
+            let inside = item.width != nil ? item.rect.contains(value.point) : distance(value.point, item.center) <= item.radius * 1.3
             switch value.control {
-            case .modeToggle, .radial: break
+            case .modeToggle, .radial, .trackpad: break
             case .leftStick: (next.leftX, next.leftY) = GamepadState.stick(x: x, y: y)
             case .rightStick:
                 if !cursorMode { (next.rightX, next.rightY) = GamepadState.stick(x: x, y: y) }
@@ -386,6 +447,11 @@ final class TouchPadView: UIView {
         if touches.values.contains(where: { $0.control == .radial }) { next.radialPreview = radialChoice.map { UInt8($0 + 2) } ?? 1 }
         for slot in radialPulses { next.setCustom(slot, pressed: true) }
         for action in pulses.values { action.apply(to: &next) }
+        if document?.motion?.mode == "aim", motionReference != nil {
+            (next.rightX, next.rightY) = GamepadState.stick(x: motionX, y: motionY)
+        } else if document?.motion?.mode == "steering", motionReference != nil {
+            next.leftX = GamepadState.stick(x: motionX, y: 0).0
+        }
         state = next; onState?(next); setNeedsDisplay()
     }
 
@@ -398,6 +464,20 @@ final class TouchPadView: UIView {
 
     override func draw(_ rect: CGRect) {
         let muted = UIColor.secondaryLabel
+        if motionReference != nil && !editing && inputEnabled {
+            text(document?.motion?.mode == "steering" ? "MOTION STEERING" : "GYRO AIM", at: CGPoint(x: bounds.midX, y: 18), color: .systemBlue, size: 10)
+        }
+        if editing {
+            let overlaps = LayoutGeometry.overlappingIDs(resolved(activeModeID), width: bounds.width, height: bounds.height)
+            for item in items where resolved(activeModeID).contains(where: { $0.runtimeID == item.control.id && overlaps.contains($0.id) }) {
+                let outline = UIBezierPath(rect: item.rect.insetBy(dx: -2, dy: -2)); UIColor.systemOrange.setStroke(); outline.lineWidth = 2; outline.stroke()
+            }
+            if UserDefaults.standard.bool(forKey: "layout-snap"), let item = items.first(where: { $0.control.id == selectedID }) {
+                let guide = UIBezierPath(); guide.move(to: CGPoint(x: item.center.x, y: 0)); guide.addLine(to: CGPoint(x: item.center.x, y: bounds.height))
+                guide.move(to: CGPoint(x: 0, y: item.center.y)); guide.addLine(to: CGPoint(x: bounds.width, y: item.center.y))
+                UIColor.systemBlue.withAlphaComponent(0.5).setStroke(); guide.setLineDash([4, 4], count: 2, phase: 0); guide.stroke()
+            }
+        }
         if editing, showGhost, let id = selectedID, let item = items.first(where: { $0.control.id == id }), let p = reference(for: item), let base = presetItems.first(where: { $0.control.id == id }) {
             let radius = base.radius * p.scale
             let ghost = UIBezierPath(ovalIn: CGRect(x: p.x * bounds.width - radius, y: p.y * bounds.height - radius, width: radius * 2, height: radius * 2))
@@ -425,11 +505,11 @@ final class TouchPadView: UIView {
             case .dpad: active = state.hat != 8
             default: active = touches.values.contains { $0.control == item.control }
             }
-            if item.control == .rightStick && cursorMode && !editing {
-                let pad = UIBezierPath(roundedRect: CGRect(x: item.center.x - item.radius, y: item.center.y - item.radius, width: item.radius * 2, height: item.radius * 2), cornerRadius: 14)
+            if item.width != nil || (item.control == .rightStick && cursorMode && !editing) {
+                let pad = UIBezierPath(roundedRect: item.rect, cornerRadius: 14)
                 (active ? accent.withAlphaComponent(0.3) : idleFill).setFill(); pad.fill()
-                (active ? accent : (tint == .automatic ? muted : accent)).setStroke(); pad.lineWidth = 1.5; pad.stroke()
-                text(trackpad.rightClicked ? "RIGHT CLICK" : "TRACKPAD", at: item.center, color: .label, size: 10, maxWidth: item.radius * 1.8)
+                (active ? accent : (tint == .automatic ? muted : accent)).setStroke(); pad.lineWidth = editing && selectedID == item.control.id ? 3 : 1.5; pad.stroke()
+                text(item.label, at: item.center, color: .label, size: 10, maxWidth: item.radius * 1.8)
                 continue
             }
             let circle = UIBezierPath(ovalIn: CGRect(x: item.center.x - item.radius, y: item.center.y - item.radius, width: item.radius * 2, height: item.radius * 2))

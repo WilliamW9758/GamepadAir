@@ -4,6 +4,7 @@ from pathlib import Path
 s = json.loads(Path("docs/layout-format/layout.schema.json").read_text())
 names = {
     "placement": "DocumentPlacement",
+    "motion": "DocumentMotionSettings",
     "feedback": "DocumentFeedback",
     "control": "DocumentControl",
     "mode": "DocumentMode",

@@ -75,7 +75,7 @@ Current validators deliberately reject third modes and remote layout targets.
 Controls have stable document-local `id` and a `role`, not just a generic shape. Fixed roles are
 native face/shoulder/system buttons, triggers, left/right sticks, D-pad, radial and mode switch.
 Only one of each fixed role is allowed. `customButton` additionally declares a unique `customSlot`
-from 0 to 15. These are runtime slots, not device UUIDs. At most 34 controls fit the full profile.
+from 0 to 15. These are runtime slots, not device UUIDs. At most 35 controls fit the full profile.
 The adapter will map each role to the existing canvas ID; IDs themselves remain readable.
 
 `bindings` maps `press` or the four cardinal directions to action IDs. Actions contain ordered
@@ -179,3 +179,36 @@ Export uses ordinary validated JSON. The Swift app does not generate publication
 server digests use RFC 8785 and remain immutable origin metadata on local edits and duplicates.
 Run `python3 Scripts/generate_layout_types.py` after schema changes. The embedded-schema test
 fails if the app contract drifts from the checked-in schema.
+
+## Extended controls (development v2)
+
+Optional placement `width` and `height` form a pair of normalized canvas dimensions
+(0.03–1 each), supported by `customButton` and the dedicated keyboard/mouse-only
+`trackpad` role. These dimensions take precedence over radius/scale/sizeFactor;
+rectangles fit within the same four-point canvas margin. An omitted trackpad size
+resolves to 28% canvas width and 40% height. Ordinary buttons remain circular until
+both dimensions are supplied. Position edits preserve dimensions; reset placement
+clears them. Mac, phone, and marketplace previews use the shared resolver.
+The fixed profile now admits 35 controls, including one trackpad; mode count remains 1–2.
+
+Trackpad has no action bindings. One-finger drag emits cursor displacement, tap
+clicks, and stationary hold right-clicks in either pointer mode. Two fingers suppress
+clicks until both lift; mode `trackpadScroll` enables scrolling (default true).
+The existing right-stick cursor behavior remains available. Pointer wire action 3
+carries bounded two-axis scroll deltas, using the displacement fixed-point format.
+Layout sync protocol is 4; both apps must be updated together.
+
+Optional document `motion` has `mode` (`off`, `aim`, `steering`), `sensitivity`
+(0.1–4, default 1), and `deadZone` (0–0.3, default .03). Omission is off. Steering
+requires gamepad input. While RT/R2 is held, the phone calibrates against the first
+sensor sample and emits right analog axes for aim or left X for steering. Release,
+interruption, or mode/layout changes clear calibration and output. Aim is inactive
+in Cursor mode. RT retains its ordinary binding; its normal hold-to-aim axes are
+superseded while motion is active. Existing axis inversion, swapping and disabling
+still apply. Keyboard motion aim uses the right-stick mouse output. Motion does not
+create a separately persisted runtime profile. Actual sensor direction/feel still
+requires physical-device acceptance.
+
+Editor snapping and device preview selection are editor preferences, not layout
+content. The floating phone settings button's size, fade delay (zero means always
+visible), and inactive opacity are phone preferences, like its existing position.

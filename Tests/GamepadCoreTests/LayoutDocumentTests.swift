@@ -10,7 +10,7 @@ final class LayoutDocumentTests: XCTestCase {
         let schema = try Data(contentsOf: root.appendingPathComponent("docs/layout-format/layout.schema.json"))
         XCTAssertEqual(try JSONSerialization.jsonObject(with: schema) as? NSDictionary,
                        try JSONSerialization.jsonObject(with: Data(LayoutDocumentSchema.json.utf8)) as? NSDictionary)
-        for name in ["keyboard-simple", "two-mode", "gamepad-remapped", "radial-custom"] {
+        for name in ["keyboard-simple", "two-mode", "gamepad-remapped", "radial-custom", "trackpad-motion"] {
             let value = try fixture(name)
             XCTAssertEqual(try LayoutDocument.decode(value.validatedData()), value)
         }

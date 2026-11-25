@@ -75,6 +75,7 @@ extension LayoutDocument {
         if type == .gamepad {
             next.keyboard = nil; next.gamepad = DocumentGamepadSettings()
             next.controllerStyle = templateStyle
+            for id in next.controls.filter({ $0.role == "trackpad" }).map(\.id) { try next.removeControl(id) }
             let equivalents = ["key.space": "gamepad.south", "key.escape": "gamepad.start", "mouse.left": "gamepad.rightTrigger", "mouse.right": "gamepad.leftTrigger", "key.up": "gamepad.dpadUp", "key.right": "gamepad.dpadRight", "key.down": "gamepad.dpadDown", "key.left": "gamepad.dpadLeft"]
             for id in next.actions.keys {
                 let action = next.actions[id]!
@@ -87,6 +88,7 @@ extension LayoutDocument {
             for index in next.controls.indices where ["leftStick", "rightStick"].contains(next.controls[index].role) { next.controls[index].bindings = nil }
         } else {
             next.gamepad = nil; next.controllerStyle = nil
+            if next.motion?.mode == "steering" { next.motion?.mode = "off" }
             next.keyboard = DocumentKeyboardSettings(rightStickMouse: compiled.gamepad.disableRightStick != true && !compiled.gamepad.swapSticks)
             // An action is converted once, retaining its identity and every intentional shared reference.
             for id in next.actions.keys {

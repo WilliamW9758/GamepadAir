@@ -170,6 +170,7 @@ final class KeyboardMouseOutput: GamepadOutput {
     private let relativeGameAim: Bool
     private var displayBounds: [CGRect] = []
     private var pointerActiveUntil = 0.0
+    private var scrollRemainderX = 0.0, scrollRemainderY = 0.0
     private var lastInput: TimeInterval?
     private let trace = InputTrace.shared
     private var deliveryObserver: MouseDeliveryObserver?
@@ -240,8 +241,15 @@ final class KeyboardMouseOutput: GamepadOutput {
     }
     func pointer(_ frame: PointerFrame) throws {
         queue.sync {
-            guard !closed, latest.pointerMode == .cursor, ready() else { return }
-            if frame.action == .move { pointerActiveUntil = ProcessInfo.processInfo.systemUptime + 0.1; move(dx: Double(frame.dx) / 16 * 2, dy: Double(frame.dy) / 16 * 2) }
+            guard !closed, !latest.isPaused, ready() else { return }
+            if frame.action == .move { pointerActiveUntil = ProcessInfo.processInfo.systemUptime + 0.1; move(dx: Double(frame.dx) / 16 * 2, dy: Double(frame.dy) / 16 * 2, cursor: true) }
+            else if frame.action == .scroll {
+                scrollRemainderX += Double(frame.dx) / 16; scrollRemainderY += Double(frame.dy) / 16
+                let x = Int32(scrollRemainderX), y = Int32(scrollRemainderY)
+                scrollRemainderX -= Double(x); scrollRemainderY -= Double(y)
+                let event = CGEvent(scrollWheelEvent2Source: source, units: .pixel, wheelCount: 2, wheel1: y, wheel2: x, wheel3: 0)
+                event?.post(tap: .cghidEventTap)
+            }
             else { emit(mapper.pointerClick(right: frame.action == .rightClick, now: ProcessInfo.processInfo.systemUptime)) }
         }
     }
@@ -301,6 +309,7 @@ final class KeyboardMouseOutput: GamepadOutput {
     private func disarm() {
         trace.record("RESET output")
         pointerActiveUntil = 0
+        scrollRemainderX = 0; scrollRemainderY = 0
         emit(mapper.reset()); gate.reset(); remainderX = 0; remainderY = 0
     }
 
@@ -353,7 +362,7 @@ final class KeyboardMouseOutput: GamepadOutput {
         if let event, token.keyCode == nil { trace.record("POST_CLICK type=\(event.type.rawValue) number=\(event.getIntegerValueField(.mouseEventNumber)) flags=\(event.flags.rawValue) position=\(event.location)") }
         event?.post(tap: .cghidEventTap)
     }
-    private func move(dx: Double, dy: Double) {
+    private func move(dx: Double, dy: Double, cursor: Bool = false) {
         remainderX += dx; remainderY += dy
         let x = Int64(remainderX.rounded(.towardZero)), y = Int64(remainderY.rounded(.towardZero))
         remainderX -= Double(x); remainderY -= Double(y)
@@ -363,7 +372,7 @@ final class KeyboardMouseOutput: GamepadOutput {
         let type: CGEventType = posted.contains(.mouseLeft) ? .leftMouseDragged : posted.contains(.mouseRight) ? .rightMouseDragged :
             posted.contains(.mouseMiddle) ? .otherMouseDragged : .mouseMoved
         let event = CGEvent(mouseEventSource: source, mouseType: type,
-                            mouseCursorPosition: MousePositioning.position(current: point, dx: Double(x), dy: Double(y), relative: latest.pointerMode.usesRelativeAim(profile: relativeGameAim), displays: displayBounds), mouseButton: button)
+                            mouseCursorPosition: MousePositioning.position(current: point, dx: Double(x), dy: Double(y), relative: !cursor && latest.pointerMode.usesRelativeAim(profile: relativeGameAim), displays: displayBounds), mouseButton: button)
         if let event { mouseSequence.prepare(event, button: button, down: nil) }
         event?.setIntegerValueField(.mouseEventDeltaX, value: x)
         event?.setIntegerValueField(.mouseEventDeltaY, value: y)

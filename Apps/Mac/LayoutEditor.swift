@@ -13,6 +13,8 @@ struct LayoutEditor: View {
     @State private var error: String?
     @State private var saved = false
     @State private var advanced = false
+    @State private var snap = false
+    @State private var preview = "current"
     let embedded: Bool
     let liveState: GamepadState?
     let sourceLayout: LocalLayout
@@ -28,8 +30,8 @@ struct LayoutEditor: View {
         sourceLayout = layout; self.embedded = embedded; self.liveState = liveState; self.screen = screen; self.selectMode = selectMode; self.dirtyChanged = dirtyChanged; self.save = save
     }
     private var hasChanges: Bool { layout.document != baseLayout.document }
-    private var width: Double { screen?.width ?? 800 }
-    private var height: Double { screen?.height ?? 360 }
+    private var width: Double { preview == "compact" ? 667 : preview == "wide" ? 932 : screen?.width ?? 800 }
+    private var height: Double { preview == "compact" ? 375 : preview == "wide" ? 430 : screen?.height ?? 360 }
     private var mode: DocumentMode { layout.document.modes.first { $0.id == modeID } ?? layout.document.modes[0] }
     private var items: [ResolvedLayoutControl] { LayoutGeometry.resolve(layout.document, modeID: mode.id, width: width, height: height).filter { !$0.hidden } }
     private func change(record: Bool = true, _ edit: (inout LayoutDocument) throws -> Void) {
@@ -91,8 +93,8 @@ struct LayoutEditor: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Menu("Add control") {
-                    ForEach(["customButton", "leftStick", "rightStick", "dpad", "radial"], id: \.self) { role in
-                        Button(["customButton": "Button", "leftStick": "Left joystick", "rightStick": "Right joystick", "dpad": "D-pad", "radial": "Radial"][role]!) {
+                    ForEach(["customButton", "leftStick", "rightStick", "dpad", "radial"] + (layout.effectiveInputType == .keyboardMouse ? ["trackpad"] : []), id: \.self) { role in
+                        Button(["customButton": "Button", "leftStick": "Left joystick", "rightStick": "Right joystick", "dpad": "D-pad", "radial": "Radial", "trackpad": "Trackpad"][role]!) {
                             change { selected = try $0.addControl(role: role) }
                         }.disabled(role != "customButton" && layout.document.controls.contains { $0.role == role })
                     }
@@ -104,6 +106,19 @@ struct LayoutEditor: View {
                 if !embedded { Button("Cancel") { dismiss() } }
                 Button("Save") { save(layout, baseLayout); if !embedded { dismiss() } }.buttonStyle(PadActionStyle(prominent: hasChanges)).disabled(!hasChanges)
             }
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle("Snap and align", isOn: $snap).fixedSize()
+                HStack {
+                Picker("Preview", selection: $preview) {
+                    Text(screen == nil ? "Default canvas" : "Connected phone").tag("current")
+                    Text("Compact · 667 × 375").tag("compact")
+                    Text("Wide · 932 × 430").tag("wide")
+                }.frame(maxWidth: 300)
+                Text("\(Int(width)) × \(Int(height))").foregroundStyle(.secondary).fixedSize()
+                }
+            }
+            let overlaps = LayoutGeometry.overlappingIDs(items, width: width, height: height)
+            if !overlaps.isEmpty { Text("\(overlaps.count) controls have overlapping bounds (orange outlines). Check each preview size.").foregroundStyle(.orange) }
             if layout.effectiveInputType == .gamepad {
                 Picker("Emulate controller", selection: Binding(get: { layout.document.controllerStyle ?? "xbox" }, set: { value in change { $0.controllerStyle = value } })) {
                     Text("Xbox").tag("xbox"); Text("PlayStation").tag("playstation")
@@ -114,16 +129,30 @@ struct LayoutEditor: View {
     private var canvas: some View {
         GeometryReader { geometry in
             let scale = max(0.01, min(geometry.size.width / width, geometry.size.height / height))
+            let overlaps = LayoutGeometry.overlappingIDs(items, width: width, height: height)
             let unmapped = Set(layout.unmappedControls.map(\.canvasID))
             ZStack {
                 RoundedRectangle(cornerRadius: 24).fill(PadAppearance.surface).contentShape(Rectangle()).onTapGesture { selected = nil }
+                if snap && liveState == nil {
+                    Path { path in
+                        for i in 1..<40 { let x = Double(i) * width / 40; path.move(to: CGPoint(x: x, y: 0)); path.addLine(to: CGPoint(x: x, y: height)) }
+                        for i in 1..<20 { let y = Double(i) * height / 20; path.move(to: CGPoint(x: 0, y: y)); path.addLine(to: CGPoint(x: width, y: y)) }
+                    }.stroke(Color.secondary.opacity(0.15), lineWidth: 0.5).allowsHitTesting(false)
+                    if let selected, let chosen = items.first(where: { $0.id == selected }) {
+                        Path { path in
+                            path.move(to: CGPoint(x: chosen.placement.x * width, y: 0)); path.addLine(to: CGPoint(x: chosen.placement.x * width, y: height))
+                            path.move(to: CGPoint(x: 0, y: chosen.placement.y * height)); path.addLine(to: CGPoint(x: width, y: chosen.placement.y * height))
+                        }.stroke(Color.accentColor.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [4, 4])).allowsHitTesting(false)
+                    }
+                }
                 ForEach(items) { item in
                     let diameter = item.radius * 2
                     let four = item.role == "dpad" && mode.dpadStyle == "fourWay"
                     let invalid = unmapped.contains(item.runtimeID)
-                    let color = invalid ? Color.red : selected == item.id ? Color.accentColor : Color.primary.opacity(0.16)
+                    let color = invalid ? Color.red : selected == item.id ? Color.accentColor : overlaps.contains(item.id) && liveState == nil ? Color.orange : Color.primary.opacity(0.16)
                     ZStack {
-                        if four { DPadCross().fill(.regularMaterial); DPadCross().stroke(color, lineWidth: 2) }
+                        if item.rectangular || (item.role == "rightStick" && mode.pointerMode == "cursor") { RoundedRectangle(cornerRadius: 14).fill(.regularMaterial); RoundedRectangle(cornerRadius: 14).strokeBorder(color, lineWidth: 2) }
+                        else if four { DPadCross().fill(.regularMaterial); DPadCross().stroke(color, lineWidth: 2) }
                         else { Circle().fill(.regularMaterial); Circle().strokeBorder(color, lineWidth: 2) }
                         if item.role != "dpad" && pressed(item) { Circle().fill(Color.accentColor.opacity(0.65)) }
                         if let state = liveState, ["leftStick", "rightStick"].contains(item.role) {
@@ -137,13 +166,15 @@ struct LayoutEditor: View {
                         }
                         if item.role == "dpad" { DPadPreview(hat: liveState?.hat ?? 8, style: DPadStyle(rawValue: mode.dpadStyle ?? "eightWay") ?? .eightWay) }
                         else { Text(item.label).font(.system(size: 14 / scale, weight: .medium)).fixedSize() }
-                    }.frame(width: diameter, height: diameter).position(x: item.placement.x * width, y: item.placement.y * height)
+                    }.frame(width: item.width, height: item.height).position(x: item.placement.x * width, y: item.placement.y * height)
                         .onTapGesture { selected = item.id }
                         .gesture(DragGesture(minimumDistance: 2, coordinateSpace: .named("canvas")).onChanged { value in
                             if dragOrigin == nil { past.append(layout.document); future.removeAll(); dragOrigin = item.placement; selected = item.id }
                             guard let origin = dragOrigin else { return }
-                            let p = ControlPlacement(x: origin.x + value.translation.width / width, y: origin.y + value.translation.height / height, scale: origin.scale)
-                                .fitting(width: width, height: height, baseRadius: item.radius / item.placement.scale)
+                            var p = ControlPlacement(x: origin.x + value.translation.width / width, y: origin.y + value.translation.height / height, scale: origin.scale)
+
+                            if snap { p = LayoutGeometry.snapped(p, others: items.filter { $0.id != item.id }.map(\.placement)) }
+                            p = LayoutGeometry.fitted(p, canvasWidth: width, canvasHeight: height, controlWidth: item.width, controlHeight: item.height)
                             change(record: false) { try $0.placeControl(item.id, at: DocumentPlacement(x: p.x, y: p.y, scale: p.scale), modeID: mode.id) }
                         }.onEnded { _ in dragOrigin = nil })
                 }
@@ -154,6 +185,7 @@ struct LayoutEditor: View {
     }
     private func summary(_ item: ResolvedLayoutControl) -> String? {
         guard let control = layout.document.controls.first(where: { $0.id == item.id }) else { return nil }
+        if control.role == "trackpad" { return "Pointer · tap to click · hold for right-click" }
         if control.role == "modeSwitch" { return "Switch modes" }
         if control.role == "rightStick", layout.effectiveInputType == .keyboardMouse, layout.document.keyboard?.rightStickMouse != false { return "Mouse" }
         if layout.effectiveInputType == .gamepad && ["leftStick", "rightStick"].contains(control.role) {
@@ -187,12 +219,28 @@ struct LayoutEditor: View {
         if let selected, let item = items.first(where: { $0.id == selected }), let control = layout.document.controls.first(where: { $0.id == selected }) {
             HStack {
                 TextField("Control name", text: Binding(get: { item.label }, set: { value in change { try $0.renameControl(selected, caption: value, modeID: mode.id) } })).frame(width: 180)
-                Button("Remove", role: .destructive) { change { try $0.removeControl(selected) }; self.selected = nil }
-                Text("Size")
-                Slider(value: Binding(get: { item.placement.scale }, set: { value in change { try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: value), modeID: mode.id) } }), in: 0.65...1.8).frame(width: 160)
+                Button("Remove", role: .destructive) { change { try $0.removeControl(selected) }; self.selected = nil }.fixedSize()
+                Text(item.rectangular ? "Rectangle" : "Size")
+                if !item.rectangular { Slider(value: Binding(get: { item.placement.scale }, set: { value in change { try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: value), modeID: mode.id) } }), in: 0.65...1.8).frame(width: 160) }
                 if layout.document.modes.count > 1 {
                     Toggle("Keep position in both modes", isOn: Binding(get: { layout.document.linkedControls?.contains(selected) == true }, set: { linked in change { try $0.linkControl(selected, linked: linked, modeID: mode.id, placement: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale)) } }))
                 }
+            }
+            if ["customButton", "trackpad"].contains(control.role) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Rectangle dimensions")
+                    ForEach(["Width", "Height"], id: \.self) { axis in
+                        Slider(value: Binding(get: { axis == "Width" ? item.width / width : item.height / height }, set: { value in
+                            change { try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale,
+                                width: axis == "Width" ? value : item.width / width, height: axis == "Height" ? value : item.height / height), modeID: mode.id) }
+                        }), in: 0.03...1) { Text(axis) }
+                    }
+                    Button("Reset shape and position") { change { try $0.resetPlacement(selected, modeID: mode.id) } }
+                }
+            }
+            if control.role == "trackpad" {
+                Toggle("Two-finger scrolling", isOn: Binding(get: { mode.trackpadScroll ?? true }, set: { value in change { doc in let i = doc.modes.firstIndex { $0.id == mode.id }!; doc.modes[i].trackpadScroll = value } }))
+                Text("Drag to move, tap to click, hold for right-click. Available in either pointer mode.").foregroundStyle(.secondary)
             }
             if control.role == "dpad" {
                 Picker("D-pad style", selection: Binding(get: { mode.dpadStyle ?? "eightWay" }, set: { value in change { doc in let i = doc.modes.firstIndex { $0.id == mode.id }!; doc.modes[i].dpadStyle = value } })) {
@@ -220,7 +268,7 @@ struct LayoutEditor: View {
                     if doc.gamepad == nil { doc.gamepad = DocumentGamepadSettings() }
                     if control.role == "leftStick" { doc.gamepad?.disableLeftStick = !enabled } else { doc.gamepad?.disableRightStick = !enabled }
                 } }))
-            } else if control.role != "modeSwitch" && !(control.role == "rightStick" && layout.document.keyboard?.rightStickMouse != false) {
+            } else if !["modeSwitch", "trackpad"].contains(control.role) && !(control.role == "rightStick" && layout.document.keyboard?.rightStickMouse != false) {
                 ForEach(["leftStick", "rightStick", "dpad"].contains(control.role) ? ["up", "right", "down", "left"] : ["press"], id: \.self) { direction in
                     bindingEditor(controlID: selected, direction: direction, caption: item.label + (direction == "press" ? "" : " · " + direction.capitalized))
                 }

@@ -55,7 +55,7 @@ extension LayoutDocument {
         for control in MappedControl.allCases { k[control] = KeyBinding() }
         let settings = keyboard ?? DocumentKeyboardSettings()
         let roles = Set(controls.map(\.role))
-        k.rightStickMouse = roles.contains("rightStick") && (settings.rightStickMouse ?? true)
+        k.rightStickMouse = motion?.mode == "aim" || (roles.contains("rightStick") && (settings.rightStickMouse ?? true))
         k.mouseSpeed = settings.mouseSpeed ?? 900
         k.mouseSmoothing = settings.mouseSmoothing ?? 0.025
         k.relativeGameAim = settings.relativeGameAim ?? true
@@ -75,8 +75,10 @@ extension LayoutDocument {
         g.swapSticks = gamepad?.swapSticks ?? false
         g.invertLeftY = gamepad?.invertLeftY ?? false; g.invertRightY = gamepad?.invertRightY ?? false
         // Disable missing destination axes, accounting for the runtime's swap-before-disable order.
-        g.disableLeftStick = (gamepad?.disableLeftStick ?? false) || !roles.contains(g.swapSticks ? "rightStick" : "leftStick")
-        g.disableRightStick = (gamepad?.disableRightStick ?? false) || !roles.contains(g.swapSticks ? "leftStick" : "rightStick")
+        let hasLeft = roles.contains("leftStick") || motion?.mode == "steering"
+        let hasRight = roles.contains("rightStick") || motion?.mode == "aim"
+        g.disableLeftStick = (gamepad?.disableLeftStick ?? false) || !(g.swapSticks ? hasRight : hasLeft)
+        g.disableRightStick = (gamepad?.disableRightStick ?? false) || !(g.swapSticks ? hasLeft : hasRight)
         for control in controls {
             for (direction, id) in control.bindings ?? [:] {
                 guard let source = control.mappedControl(direction: direction) else { continue }
@@ -107,6 +109,9 @@ public struct ResolvedLayoutControl: Equatable, Identifiable {
     public let label: String
     public let placement: ControlPlacement
     public let radius: Double
+    public let width: Double
+    public let height: Double
+    public let rectangular: Bool
     public let hidden: Bool
     public let feedback: DocumentFeedback?
 }
@@ -139,6 +144,7 @@ public enum LayoutGeometry {
             case "guide": x = 0.5; y = 0.35; radius = 20
             case "leftStick": x = ps ? 0.30 : 0.18; y = ps ? 0.69 : 0.43; radius = 62; label = "L"
             case "rightStick": x = 0.65; y = 0.70; radius = 62; label = "R"
+            case "trackpad": x = 0.65; y = 0.55; radius = 62; label = "Trackpad"
             case "dpad": x = ps ? 0.14 : 0.355; y = ps ? 0.43 : 0.66; radius = 50; label = "✣"
             case "modeSwitch": x = 0.5; y = 0.15; radius = 25; label = mode.name
             case "radial": radius = 30; label = "Quick bar"
@@ -148,10 +154,49 @@ public enum LayoutGeometry {
             default: break
             }
             let p = control.placement.map { ControlPlacement(x: $0.x, y: $0.y, scale: $0.scale ?? 1) } ?? ControlPlacement(x: x, y: y)
-            let fitted = p.fitting(width: width, height: height, baseRadius: radius * unit)
+            var fitted = p.fitting(width: width, height: height, baseRadius: radius * unit)
+            let rectangular = control.role == "trackpad" || control.placement?.width != nil
+            let w = rectangular ? min(max(0, width - 8), (control.placement?.width ?? 0.28) * width) : radius * unit * fitted.scale * 2
+            let h = rectangular ? min(max(0, height - 8), (control.placement?.height ?? 0.4) * height) : radius * unit * fitted.scale * 2
+            if rectangular {
+                fitted.x = min(1 - (w / 2 + 4) / width, max((w / 2 + 4) / width, p.x))
+                fitted.y = min(1 - (h / 2 + 4) / height, max((h / 2 + 4) / height, p.y))
+            }
             return ResolvedLayoutControl(id: control.id, runtimeID: control.runtimeID, role: control.role,
                                          label: control.label ?? label, placement: fitted, radius: radius * unit * fitted.scale,
-                                         hidden: control.hidden ?? false, feedback: control.feedback)
+                                         width: w, height: h, rectangular: rectangular, hidden: control.hidden ?? false, feedback: control.feedback)
         }
+    }
+}
+
+extension LayoutGeometry {
+    /// Conservative bounds feedback includes round controls' bounding boxes.
+    public static func overlappingIDs(_ controls: [ResolvedLayoutControl], width: Double, height: Double) -> Set<String> {
+        let visible = controls.filter { !$0.hidden }
+        var result = Set<String>()
+        for i in visible.indices {
+            for j in visible.indices where j > i {
+                let a = visible[i], b = visible[j]
+                if abs(a.placement.x - b.placement.x) * width < (a.width + b.width) / 2,
+                   abs(a.placement.y - b.placement.y) * height < (a.height + b.height) / 2 {
+                    result.insert(a.id); result.insert(b.id)
+                }
+            }
+        }
+        return result
+    }
+    public static func fitted(_ p: ControlPlacement, canvasWidth: Double, canvasHeight: Double, controlWidth: Double, controlHeight: Double) -> ControlPlacement {
+        var result = p
+        let insetX = min(0.5, (controlWidth / 2 + 4) / max(1, canvasWidth))
+        let insetY = min(0.5, (controlHeight / 2 + 4) / max(1, canvasHeight))
+        result.x = min(1 - insetX, max(insetX, p.x)); result.y = min(1 - insetY, max(insetY, p.y))
+        return result
+    }
+    public static func snapped(_ p: ControlPlacement, others: [ControlPlacement]) -> ControlPlacement {
+        var result = p
+        result.x = (p.x * 40).rounded() / 40; result.y = (p.y * 20).rounded() / 20
+        if let x = ([0.5] + others.map(\.x)).min(by: { abs($0 - p.x) < abs($1 - p.x) }), abs(x - p.x) < 0.012 { result.x = x }
+        if let y = ([0.5] + others.map(\.y)).min(by: { abs($0 - p.y) < abs($1 - p.y) }), abs(y - p.y) < 0.02 { result.y = y }
+        return result
     }
 }

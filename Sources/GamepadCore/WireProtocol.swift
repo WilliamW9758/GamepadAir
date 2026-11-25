@@ -55,7 +55,7 @@ public struct SequenceGuard {
     }
 }
 
-public enum PointerAction: UInt8, Sendable { case move = 0, leftClick = 1, rightClick = 2 }
+public enum PointerAction: UInt8, Sendable { case move = 0, leftClick = 1, rightClick = 2, scroll = 3 }
 
 /// One-shot pointer commands share the state stream's sequence but never repeat
 /// on heartbeat: displacement must be applied exactly once.
@@ -87,7 +87,7 @@ public struct PointerFrame: Equatable, Sendable {
         dx = Int16(bitPattern: UInt16(b[16]) | UInt16(b[17]) << 8)
         dy = Int16(bitPattern: UInt16(b[18]) | UInt16(b[19]) << 8)
         guard abs(Int(dx)) <= 4096, abs(Int(dy)) <= 4096,
-              action == .move || (dx == 0 && dy == 0) else { throw ProtocolError.invalidState }
+              action == .move || action == .scroll || (dx == 0 && dy == 0) else { throw ProtocolError.invalidState }
     }
 }
 

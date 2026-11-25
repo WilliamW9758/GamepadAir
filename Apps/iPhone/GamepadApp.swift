@@ -68,6 +68,10 @@ struct PhoneGamepadApp: App {
     @AppStorage("phone-onboarding-v1") private var tourComplete = false
     @State private var tour = false
     @State private var settings = false
+    @AppStorage("settings-button-size") private var settingsButtonSize = 48.0
+    @AppStorage("settings-button-fade-delay") private var settingsFadeDelay = 3.0
+    @AppStorage("settings-button-inactive-opacity") private var settingsInactiveOpacity = 0.35
+    @AppStorage("layout-snap") private var snapLayout = false
     @State private var connectionScreen = false
     @State private var lastAcknowledgment: DocumentLayoutAcknowledgment?
     @State private var lastLayoutCommand: String?
@@ -131,7 +135,7 @@ struct PhoneGamepadApp: App {
                         canvasSize = size
                         publishLayout(canvas: size)
                     }, onEditEnded: { layouts.endEdit() },
-                    editing: editing, selectedID: selectedID, onState: { server.update(settings || editing || naming || tour || connectionScreen ? .paused : $0) }, onPointer: server.pointer,
+                    editing: editing, inputEnabled: !settings && !naming && !tour && !connectionScreen && phase == .active, selectedID: selectedID, onState: { server.update(settings || editing || naming || tour || connectionScreen ? .paused : $0) }, onPointer: { action, dx, dy in if !settings && !editing && !naming && !tour && !connectionScreen && phase == .active { server.pointer(action, dx: dx, dy: dy) } },
                     onToggle: toggleMode,
                     onRename: { id, label in selectedID = id; selectedLabel = label; nameDraft = label; nameAction = "control"; naming = true },
                     onSelect: { id, label, p in
@@ -232,6 +236,22 @@ struct PhoneGamepadApp: App {
     private var buttonOptionsView: some View {
         NavigationStack {
             Form {
+                Toggle("Snap and align", isOn: $snapLayout)
+                if let id = selectedID, let controlID = layout.controlID(runtimeID: id),
+                   let control = layout.document.controls.first(where: { $0.id == controlID }), ["trackpad", "customButton"].contains(control.role) {
+                    Section("Rectangle dimensions") {
+                        ForEach(["Width", "Height"], id: \.self) { axis in
+                            Slider(value: Binding(get: {
+                                let p = layout.document.resolvedControl(controlID, modeID: modeID)?.placement
+                                return axis == "Width" ? p?.width ?? 0.28 : p?.height ?? 0.4
+                            }, set: { value in
+                                let p = layout.document.resolvedControl(controlID, modeID: modeID)?.placement ?? DocumentPlacement(x: 0.5, y: 0.5)
+                                layouts.change { try $0.placeControl(controlID, at: DocumentPlacement(x: p.x, y: p.y, scale: p.scale, width: axis == "Width" ? value : p.width ?? 0.28, height: axis == "Height" ? value : p.height ?? 0.4), modeID: modeID) }
+                            }), in: 0.03...1) { Text(axis) }
+                        }
+                        Button("Reset shape and position") { layouts.change { try $0.resetPlacement(controlID, modeID: modeID) } }
+                    }
+                }
                 if layout.hasCursorSwitching { Section("Position across modes") {
                     Toggle("Link position and size", isOn: Binding(get: { selectedID.map { layout.document.linkedControls?.contains(layout.controlID(runtimeID: $0) ?? "") == true } ?? false }, set: { linked in
                         guard let id = selectedID, let p = placements[id] else { return }
@@ -387,6 +407,10 @@ struct PhoneGamepadApp: App {
                     }
                 }.disabled(layout.isPreset)
                 DisclosureGroup("Add and manage controls") {
+                    if layout.effectiveInputType == .keyboardMouse {
+                        Toggle("Trackpad", isOn: Binding(get: { layout.document.controls.contains { $0.role == "trackpad" && layout.document.resolvedControl($0.id, modeID: modeID)?.hidden != true } }, set: { value in layouts.change { try $0.setControlVisible(role: "trackpad", visible: value, modeID: modeID) }; release() }))
+                        Toggle("Two-finger scrolling", isOn: optionBinding(\.trackpadScroll, default: true))
+                    }
                     Toggle("D-pad", isOn: Binding(get: { mode.showDPad }, set: { value in layouts.change { try $0.setControlVisible(role: "dpad", visible: value, modeID: modeID) }; release() }))
                     Button("Add custom button") {
                         layouts.change { _ = try $0.addControl(role: "customButton") }
@@ -422,6 +446,21 @@ struct PhoneGamepadApp: App {
                     }
                     Text("Tap actions use your Mac mappings.").font(.callout)
                 }.disabled(layout.isPreset)
+                DisclosureGroup("Motion") {
+                    Picker("Hold RT / R2 to activate", selection: Binding(get: { layout.document.motion?.mode ?? "off" }, set: { value in
+                        layouts.change { doc in
+                            if doc.motion == nil { doc.motion = DocumentMotionSettings() }
+                            doc.motion?.mode = value
+                            if value != "off" { try doc.setControlVisible(role: "rightTrigger", visible: true, modeID: modeID) }
+                        }; release()
+                    })) {
+                        Text("Off").tag("off"); Text("Gyro aim").tag("aim")
+                        if layout.effectiveInputType == .gamepad { Text("Analog steering").tag("steering") }
+                    }
+                    Slider(value: Binding(get: { layout.document.motion?.sensitivity ?? 1 }, set: { value in layouts.change { if $0.motion == nil { $0.motion = DocumentMotionSettings() }; $0.motion?.sensitivity = value } }), in: 0.1...4) { Text("Sensitivity") }
+                    Slider(value: Binding(get: { layout.document.motion?.deadZone ?? 0.03 }, set: { value in layouts.change { if $0.motion == nil { $0.motion = DocumentMotionSettings() }; $0.motion?.deadZone = value } }), in: 0...0.3) { Text("Dead zone") }
+                    Text("Each RT / R2 hold calibrates your current angle. Release to stop, then hold again to recalibrate. RT keeps its mapping. Aim controls right axes; steering controls left X.").font(.callout)
+                }.disabled(layout.isPreset)
                 DisclosureGroup("Hold gestures") {
                     Toggle("RT hold-to-aim", isOn: optionBinding(\.holdAimEnabled, default: true))
                     Picker("Aim hold delay", selection: optionBinding(\.holdAimDelay, default: 0.3)) {
@@ -431,6 +470,14 @@ struct PhoneGamepadApp: App {
                         ForEach([0.3, 0.5, 0.7], id: \.self) { Text("\($0, specifier: "%.1f") seconds").tag($0) }
                     }
                 }.disabled(layout.isPreset)
+                DisclosureGroup("Settings button") {
+                    Slider(value: $settingsButtonSize, in: 44...80, step: 2) { Text("Size") }
+                    Text("Size: \(Int(settingsButtonSize)) points")
+                    Slider(value: $settingsFadeDelay, in: 0...10, step: 0.5) { Text("Fade delay") }
+                    Text(settingsFadeDelay == 0 ? "Always visible" : "Fade after \(settingsFadeDelay, specifier: "%.1f") seconds")
+                    Slider(value: $settingsInactiveOpacity, in: 0.15...1) { Text("Inactive opacity") }
+                    Text("Inactive opacity: \(Int(settingsInactiveOpacity * 100))%")
+                }
                 DisclosureGroup("About Pocket Pad") {
                     Button("Replay getting started") { settings = false; tour = true; release() }
                     Link("Mac companion and setup", destination: AppInformation.projectURL)
@@ -579,6 +626,7 @@ struct ControllerSurface: UIViewRepresentable {
     let onCanvasSize: (CGSize) -> Void
     let onEditEnded: () -> Void
     let editing: Bool
+    let inputEnabled: Bool
     let selectedID: String?
     let onState: (GamepadState) -> Void
     let onPointer: (PointerAction, Double, Double) -> Void
@@ -589,7 +637,7 @@ struct ControllerSurface: UIViewRepresentable {
     func makeUIView(context: Context) -> TouchPadView { let view = TouchPadView(); configure(view); return view }
     func updateUIView(_ view: TouchPadView, context: Context) { configure(view) }
     private func configure(_ view: TouchPadView) {
-        view.document = document; view.activeModeID = activeModeID; view.referenceModeID = referenceModeID
+        view.inputEnabled = inputEnabled; view.document = document; view.activeModeID = activeModeID; view.referenceModeID = referenceModeID
         view.showsModeSwitch = showsModeSwitch
         view.hiddenControls = mode.hiddenControls ?? []
         view.unmapped = unmapped
@@ -603,7 +651,7 @@ struct ControllerSurface: UIViewRepresentable {
         view.dpadStyle = mode.effectiveDPadStyle
         view.style = style; view.showDPad = mode.showDPad; view.onState = onState
         view.cursorMode = mode.cursor; view.trackpadHoldDelay = mode.trackpadHoldDelay; view.onPointer = onPointer
-        view.holdAimEnabled = mode.holdAimEnabled && !mode.cursor; view.holdAimDelay = mode.holdAimDelay
+        view.holdAimEnabled = mode.holdAimEnabled && !mode.cursor && (document.motion?.mode ?? "off") == "off"; view.holdAimDelay = mode.holdAimDelay
         view.floatingLeft = mode.floatingLeft; view.floatingRight = mode.floatingRight
         view.touchHaptic = touchHaptic
         view.showsGuideButton = showsGuideButton
@@ -717,11 +765,17 @@ private struct MovableSettingsButton: View {
     @AppStorage("settings-button-position-x") private var savedX = 0.5
     @AppStorage("settings-button-position-y") private var savedY = 0.0
     @State private var dragTranslation = CGSize.zero
+    @AppStorage("settings-button-size") private var buttonSize = 48.0
+    @AppStorage("settings-button-fade-delay") private var fadeDelay = 3.0
+    @AppStorage("settings-button-inactive-opacity") private var inactiveOpacity = 0.35
+    @State private var active = true
+    @State private var activity = UUID()
+    private func wake() { active = true; activity = UUID() }
 
     var body: some View {
         GeometryReader { geometry in
-            let insetX = min(32.0, geometry.size.width / 2)
-            let insetY = min(26.0, geometry.size.height / 2)
+            let insetX = min(buttonSize / 2 + 8, geometry.size.width / 2)
+            let insetY = min(buttonSize / 2 + 4, geometry.size.height / 2)
             let travelX = max(0, geometry.size.width - insetX * 2)
             let travelY = max(0, geometry.size.height - insetY * 2)
             let resting = CGPoint(x: insetX + min(1, max(0, savedX)) * travelX,
@@ -732,17 +786,19 @@ private struct MovableSettingsButton: View {
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(connected ? PadAppearance.accent : Color.secondary)
-                .frame(width: 48, height: 44)
+                .frame(width: buttonSize, height: max(44, buttonSize * 0.92))
                 .background(.ultraThinMaterial, in: Capsule())
                 .contentShape(Capsule())
-                .overlay(SettingsHandleGestures(onTap: openSettings, onHold: editLayout,
-                    onDrag: { dragTranslation = $0 }, onEnd: { translation in
+                .overlay(SettingsHandleGestures(onTap: { wake(); openSettings() }, onHold: { wake(); editLayout() },
+                    onDrag: { wake(); dragTranslation = $0 }, onEnd: { translation in
                         if let translation {
                             if travelX > 0 { savedX = min(1, max(0, (resting.x + translation.width - insetX) / travelX)) }
                             if travelY > 0 { savedY = min(1, max(0, (resting.y + translation.height - insetY) / travelY)) }
                         }
-                        dragTranslation = .zero
+                        dragTranslation = .zero; wake()
                     }))
+                .opacity(active || fadeDelay == 0 ? 1 : inactiveOpacity)
+                .animation(.easeInOut(duration: 0.25), value: active)
                 .position(center)
                 .accessibilityLabel("Settings")
                 .accessibilityHint("Tap to open settings, drag to reposition, or hold to edit the layout.")
@@ -751,5 +807,12 @@ private struct MovableSettingsButton: View {
                 .accessibilityAction(named: "Edit layout") { editLayout() }
                 .accessibilityAction(named: "Reset settings button position") { savedX = 0.5; savedY = 0 }
         }.coordinateSpace(name: "settings-button-canvas")
+            .task(id: activity) {
+                guard fadeDelay > 0 else { return }
+                try? await Task.sleep(for: .seconds(fadeDelay))
+                if !Task.isCancelled { active = false }
+            }
+            .onChange(of: fadeDelay) { _, _ in wake() }
+            .onChange(of: connected) { _, _ in wake() }
     }
 }

@@ -24,3 +24,8 @@ same positive and negative fixtures. Legacy documents and coordinates are reject
 These examples are canonical documents, not inputs for a SavedLayout conversion pipeline.
 
 `rejected.json` is a shared mutation corpus consumed by Swift and Python validation tests.
+
+`trackpad-motion.layout.json` exercises a rectangular trackpad, scrolling enabled,
+and opt-in calibrated gyro aim. The matching rejection cases cover unsupported
+rectangle roles, incomplete dimensions, trackpad bindings, keyboard steering,
+and out-of-range motion sensitivity.

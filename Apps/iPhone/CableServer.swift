@@ -131,7 +131,7 @@ final class CableServer: ObservableObject {
     }
 
     func pointer(_ action: PointerAction, dx: Double, dy: Double) {
-        guard connected, pointerMode == .cursor, !state.isPaused else { return }
+        guard connected, !state.isPaused else { return }
         func fixed(_ value: Double) -> Int16 { Int16(max(-4096, min(4096, (value * 16).rounded()))) }
         enqueue(PointerFrame(sequence: sequence, action: action, dx: fixed(dx), dy: fixed(dy)).encode())
     }

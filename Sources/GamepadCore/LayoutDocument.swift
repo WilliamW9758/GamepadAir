@@ -6,10 +6,14 @@ public struct DocumentPlacement: Codable, Equatable {
     public var x: Double
     public var y: Double
     public var scale: Double?
-    public init(x: Double, y: Double, scale: Double? = nil) {
+    public var width: Double?
+    public var height: Double?
+    public init(x: Double, y: Double, scale: Double? = nil, width: Double? = nil, height: Double? = nil) {
         self.x = x
         self.y = y
         self.scale = scale
+        self.width = width
+        self.height = height
     }
 }
 
@@ -61,7 +65,8 @@ public struct DocumentMode: Codable, Equatable {
     public var leftTap: String?
     public var rightTap: String?
     public var overrides: [String: DocumentOverride]?
-    public init(id: String, name: String, pointerMode: String? = nil, sizeFactor: Double? = nil, dpadStyle: String? = nil, holdAimEnabled: Bool? = nil, holdAimDelay: Double? = nil, trackpadHoldDelay: Double? = nil, floatingLeft: Bool? = nil, floatingRight: Bool? = nil, leftTap: String? = nil, rightTap: String? = nil, overrides: [String: DocumentOverride]? = nil) {
+    public var trackpadScroll: Bool?
+    public init(id: String, name: String, pointerMode: String? = nil, sizeFactor: Double? = nil, dpadStyle: String? = nil, holdAimEnabled: Bool? = nil, holdAimDelay: Double? = nil, trackpadHoldDelay: Double? = nil, floatingLeft: Bool? = nil, floatingRight: Bool? = nil, leftTap: String? = nil, rightTap: String? = nil, overrides: [String: DocumentOverride]? = nil, trackpadScroll: Bool? = nil) {
         self.id = id
         self.name = name
         self.pointerMode = pointerMode
@@ -75,6 +80,7 @@ public struct DocumentMode: Codable, Equatable {
         self.leftTap = leftTap
         self.rightTap = rightTap
         self.overrides = overrides
+        self.trackpadScroll = trackpadScroll
     }
 }
 
@@ -122,6 +128,17 @@ public struct DocumentGamepadSettings: Codable, Equatable {
     }
 }
 
+public struct DocumentMotionSettings: Codable, Equatable {
+    public var mode: String?
+    public var sensitivity: Double?
+    public var deadZone: Double?
+    public init(mode: String? = nil, sensitivity: Double? = nil, deadZone: Double? = nil) {
+        self.mode = mode
+        self.sensitivity = sensitivity
+        self.deadZone = deadZone
+    }
+}
+
 public struct DocumentAction: Codable, Equatable {
     public var label: String
     public var outputs: [String]
@@ -163,7 +180,8 @@ public struct LayoutDocument: Codable, Equatable {
     public var linkedControls: [String]?
     public var keyboard: DocumentKeyboardSettings?
     public var gamepad: DocumentGamepadSettings?
-    public init(format: String = "pocketpad-layout", schemaVersion: Int = 2, runtimeProfile: String = "pocketpad-fixed-v1", name: String, inputType: String, templateStyle: String, controllerStyle: String? = nil, haptics: String? = nil, geometry: String = "runtimePresetV1", actions: [String: DocumentAction], controls: [DocumentControl], modes: [DocumentMode], initialMode: String, linkedControls: [String]? = nil, keyboard: DocumentKeyboardSettings? = nil, gamepad: DocumentGamepadSettings? = nil) {
+    public var motion: DocumentMotionSettings?
+    public init(format: String = "pocketpad-layout", schemaVersion: Int = 2, runtimeProfile: String = "pocketpad-fixed-v1", name: String, inputType: String, templateStyle: String, controllerStyle: String? = nil, haptics: String? = nil, geometry: String = "runtimePresetV1", actions: [String: DocumentAction], controls: [DocumentControl], modes: [DocumentMode], initialMode: String, linkedControls: [String]? = nil, keyboard: DocumentKeyboardSettings? = nil, gamepad: DocumentGamepadSettings? = nil, motion: DocumentMotionSettings? = nil) {
         self.format = format
         self.schemaVersion = schemaVersion
         self.runtimeProfile = runtimeProfile
@@ -180,6 +198,7 @@ public struct LayoutDocument: Codable, Equatable {
         self.linkedControls = linkedControls
         self.keyboard = keyboard
         self.gamepad = gamepad
+        self.motion = motion
     }
 }
 

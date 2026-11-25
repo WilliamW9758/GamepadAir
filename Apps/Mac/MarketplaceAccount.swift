@@ -228,7 +228,10 @@ struct SubmissionLayoutPreview: View {
                     RoundedRectangle(cornerRadius: 18).fill(PadAppearance.surface)
                     ForEach(LayoutGeometry.resolve(layout.document, modeID: modeID, width: width, height: height).filter { !$0.hidden }) { control in
                         ZStack {
-                            if control.role == "dpad", mode?.dpadStyle == "fourWay" {
+                            if control.rectangular {
+                                RoundedRectangle(cornerRadius: 8).fill(Color.accentColor.opacity(0.15))
+                                RoundedRectangle(cornerRadius: 8).stroke(Color.accentColor.opacity(0.6), lineWidth: 1)
+                            } else if control.role == "dpad", mode?.dpadStyle == "fourWay" {
                                 DPadCross().fill(.regularMaterial)
                                 DPadCross().stroke(Color.primary.opacity(0.25), lineWidth: 1.5)
                             } else {
@@ -238,7 +241,7 @@ struct SubmissionLayoutPreview: View {
                             Text(control.role == "dpad" ? "✣" : control.label)
                                 .font(.system(size: 14, weight: .medium)).fixedSize()
                         }
-                        .frame(width: control.radius * 2 * scale, height: control.radius * 2 * scale)
+                        .frame(width: control.width * scale, height: control.height * scale)
                         .position(x: control.placement.x * geometry.size.width, y: control.placement.y * geometry.size.height)
                     }
                 }.overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.35), lineWidth: 1.5) }

@@ -15,8 +15,8 @@ USB · Wi-Fi · Bluetooth
 
 ### Make it yours
 
-- **Play your way.** Xbox or PlayStation emulation, or keyboard/mouse mappings with combos and tap/hold actions.
-- **Build your controller.** Arrange buttons, sticks, four- or eight-way D-pads, and radial menus on Mac or iPhone.
+- **Play your way.** Xbox or PlayStation emulation, or keyboard/mouse mappings with recorded shortcuts, combos, and tap/hold actions.
+- **Build your controller.** Arrange buttons, sticks, D-pads, radial menus, and rectangular trackpads on Mac or iPhone, with optional snapping and overlap feedback.
 - **See every input.** The Mac mirrors your phone’s layout and live controls. Layout changes sync between devices.
 - **Feel the feedback.** Adjustable button haptics and supported game rumble, with floating or fixed sticks.
 - **Keep your favorites.** Save, duplicate, switch, share, and delete layouts. No account needed for local play.

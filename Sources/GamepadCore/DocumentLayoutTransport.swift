@@ -9,7 +9,7 @@ public enum DocumentLayoutTransport {
         guard data.count <= maximumBytes,
               let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               Set(root.keys).isSubset(of: keys) else { throw LayoutDocumentError("Invalid layout sync envelope") }
-        guard let version = root["protocolVersion"] as? NSNumber, CFGetTypeID(version) != CFBooleanGetTypeID(), version == 3 else {
+        guard let version = root["protocolVersion"] as? NSNumber, CFGetTypeID(version) != CFBooleanGetTypeID(), version == 4 else {
             throw LayoutDocumentError("Update Pocket Pad on both devices: layout sync versions differ")
         }
         return root
@@ -42,7 +42,7 @@ public enum DocumentLayoutTransport {
 
 extension DocumentLayoutCommand {
     public func validate() throws {
-        guard protocolVersion == 3 else { throw LayoutDocumentError("Update Pocket Pad on both devices: layout sync versions differ") }
+        guard protocolVersion == 4 else { throw LayoutDocumentError("Update Pocket Pad on both devices: layout sync versions differ") }
         guard UUID(uuidString: id) != nil else { throw LayoutDocumentError("Invalid command ID") }
         guard action == .create || provenance == nil else { throw LayoutDocumentError("Source provenance cannot be changed by an edit") }
         guard action == .clear || catalogRevisions == nil else { throw LayoutDocumentError("Unexpected catalog revisions") }

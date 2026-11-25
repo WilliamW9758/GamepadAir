@@ -1,9 +1,11 @@
 import SwiftUI
+import AppKit
 
 /// Additional slots are a chord, not separate controller inputs.
 struct ComboBindingEditor: View {
     @Binding var binding: KeyBinding
     @State private var adding = false
+    @State private var recording = false
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(0..<max(1, binding.outputs.count + (adding && binding.outputs.count < 4 ? 1 : 0)), id: \.self) { index in
@@ -31,6 +33,7 @@ struct ComboBindingEditor: View {
                 if index + 1 < max(1, binding.outputs.count + (adding && binding.outputs.count < 4 ? 1 : 0)) { Divider() }
             }
             HStack {
+                Button("Record shortcut…") { recording = true }
                 if !binding.outputs.isEmpty && binding.outputs.count < 4 {
                     Button("Add to combo") { adding = true }.disabled(adding)
                 }
@@ -45,5 +48,59 @@ struct ComboBindingEditor: View {
                     .foregroundStyle(.secondary)
             }
         }.font(.system(size: 14))
+            .sheet(isPresented: $recording) {
+                ShortcutRecorder { outputs in binding.outputs = outputs; adding = false }
+            }
+    }
+}
+
+/// A local event monitor consumes key events before menu shortcuts or text fields see them.
+/// The surrounding mapping editor pauses Pocket Pad output throughout this sheet.
+private struct ShortcutRecorder: View {
+    @Environment(\.dismiss) private var dismiss
+    let save: ([OutputToken]) -> Void
+    @State private var outputs: [OutputToken] = []
+    @State private var monitor: Any?
+    @State private var captured = false
+    @State private var message = "Press keys together, then click Use shortcut."
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Record shortcut").font(.headline)
+            Text(message)
+            Text(outputs.isEmpty ? "Waiting for keys…" : outputs.map(\.label).joined(separator: " + "))
+                .font(.title2).frame(minHeight: 40)
+            Text("Physical key positions (US labels), up to four keys. Escape cancels; use the picker to map Escape. System-reserved shortcuts may be handled by macOS.").foregroundStyle(.secondary)
+            HStack {
+                Button("Cancel") { dismiss() }
+                Button("Start over") { outputs = []; captured = false; message = "Press keys together, then click Use shortcut." }
+                Spacer()
+                Button("Use shortcut") { save(outputs); dismiss() }.disabled(outputs.isEmpty)
+            }
+        }.padding(24).frame(width: 480)
+            .onAppear {
+                monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { event in
+                    if event.type == .keyDown && event.keyCode == 53 { dismiss(); return nil }
+                    if event.type == .keyDown && !event.isARepeat && !captured {
+                        let modifiers: [(NSEvent.ModifierFlags, OutputToken)] = [(.control, .control), (.option, .option), (.shift, .shift), (.command, .command)]
+                        for (flag, token) in modifiers where event.modifierFlags.contains(flag) { append(token) }
+                        if let token = OutputToken.allCases.first(where: { $0.keyCode == event.keyCode }) { append(token) }
+                        else { message = "This key is unsupported. Choose another key or Cancel." }
+                    } else if event.type == .flagsChanged && !captured {
+                        let pairs: [(NSEvent.ModifierFlags, OutputToken)] = [(.control, .control), (.option, .option), (.shift, .shift), (.command, .command)]
+                        for (flag, token) in pairs where event.modifierFlags.contains(flag) { append(token) }
+                    }
+                    if !outputs.isEmpty && (event.type == .keyUp || (event.type == .flagsChanged && event.modifierFlags.intersection([.shift, .control, .option, .command]).isEmpty)) {
+                        captured = true; message = "Shortcut captured. Review it, then click Use shortcut."
+                    }
+                    return nil
+                }
+            }
+            .onDisappear { if let monitor { NSEvent.removeMonitor(monitor) }; monitor = nil }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in dismiss() }
+    }
+    private func append(_ token: OutputToken) {
+        guard !outputs.contains(token) else { return }
+        guard outputs.count < 4 else { message = "Four-key limit reached. Start over to replace the shortcut."; return }
+        outputs.append(token)
     }
 }
