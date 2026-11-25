@@ -11,6 +11,7 @@ struct MarketplaceView: View {
     @State private var loading = false
     @State private var notice: String?
     @State private var selectedExample: Example?
+    @State private var selectedListing: PublicListing?
     private struct Example: Identifiable {
         let id: String, subtitle: String, category: String, symbol: String
     }
@@ -36,7 +37,23 @@ struct MarketplaceView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                if showingSubmissions {
+                if let item = selectedListing {
+                    Button { selectedListing = nil } label: { Label("Back to Marketplace", systemImage: "chevron.left") }
+                    HStack {
+                        Text(item.title).font(.largeTitle.bold())
+                        Spacer()
+                        Button(isSaved(item) ? "Saved" : "Get layout") { save(item) }.disabled(isSaved(item) || previews[previewKey(item)] == nil)
+                    }
+                    Text(item.description).foregroundStyle(.secondary)
+                    Text(inputCategory(item)).font(.headline)
+                    if let preview = previews[previewKey(item)] {
+                        SubmissionLayoutPreview(layout: preview, screen: model.update.connected ? model.libraryScreen : nil)
+                        if model.update.connected, let screen = model.libraryScreen {
+                            Text("Preview for your iPhone · \(Int(screen.width)) × \(Int(screen.height)) pt").font(.callout).foregroundStyle(.secondary)
+                        }
+                    } else { Text("Preview unavailable").foregroundStyle(.secondary) }
+                    if let notice { Text(notice).foregroundStyle(.secondary) }
+                } else if showingSubmissions {
                     Button { showingSubmissions = false } label: { Label("Back to Marketplace", systemImage: "chevron.left") }
                     MarketplaceAccountView(account: account, layouts: model.localLayouts, screen: model.libraryScreen) { document in model.importMarketplaceDocument(document) }
                 } else {
@@ -67,19 +84,19 @@ struct MarketplaceView: View {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 20)], spacing: 20) {
                         ForEach(results) { item in
                             VStack(alignment: .leading, spacing: 14) {
+                                Button { selectedListing = item } label: { VStack(alignment: .leading, spacing: 14) {
                                 Group {
                                     if let preview = previews[previewKey(item)] { MarketplaceLayoutThumbnail(document: preview.document) }
                                     else { RoundedRectangle(cornerRadius: 14).fill(Color.accentColor.opacity(0.08)).overlay { Text(loading ? "Loading preview…" : "Preview unavailable").font(.callout).foregroundStyle(.secondary) } }
                                 }.frame(height: 140)
                                 Text(item.title).font(.headline)
                                 Text(item.description).foregroundStyle(.secondary)
+                                }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle()) }.buttonStyle(.plain)
                                 HStack {
                                     Text(inputCategory(item)).foregroundStyle(.secondary)
                                     Spacer()
                                     Button(isSaved(item) ? "Saved" : "Get layout") {
-                                        guard let layout = previews[previewKey(item)] else { return }
-                                        if model.importMarketplaceDocument(layout.document, provenance: layout.provenance) { notice = nil }
-                                        else { notice = model.profileNotice }
+                                        save(item)
                                     }.disabled(isSaved(item) || previews[previewKey(item)] == nil)
                                 }
                             }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 18))
@@ -120,6 +137,11 @@ struct MarketplaceView: View {
                 HStack { Spacer(); Button("Done") { selectedExample = nil } }
             }.padding(24).frame(width: 440)
         }
+    }
+    private func save(_ item: PublicListing) {
+        guard let layout = previews[previewKey(item)] else { return }
+        if model.importMarketplaceDocument(layout.document, provenance: layout.provenance) { notice = nil }
+        else { notice = model.profileNotice }
     }
     private func artwork(_ symbol: String) -> some View {
         Image(systemName: symbol).font(.system(size: 44)).foregroundStyle(Color.accentColor)

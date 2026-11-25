@@ -203,7 +203,7 @@ struct MarketplaceAccountView: View {
 }
 
 /// A read-only rendering of the exact document captured for submission.
-private struct SubmissionLayoutPreview: View {
+struct SubmissionLayoutPreview: View {
     let layout: LocalLayout
     let screen: PhoneScreen?
     @State private var selectedModeID = ""

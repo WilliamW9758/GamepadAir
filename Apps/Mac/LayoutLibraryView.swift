@@ -16,11 +16,26 @@ extension HostModel {
         localLayouts = store.catalog.layouts; portable = store.selected; libraryModeID = store.activeModeID
     }
     func selectLibrary(_ id: String) {
+        unreadGeneratedLayouts.remove(id)
         do { try layoutStore?.select(id); refreshLibrary() }
         catch { profileNotice = error.localizedDescription }
     }
-    func createLibrary(_ layout: LocalLayout) {
-        do { try layoutStore?.receive(layout, select: true); refreshLibrary(); syncLibrarySelection() }
+    func createLibrary(_ layout: LocalLayout, aiPrompt: String? = nil) {
+        do {
+            guard let store = layoutStore else { throw LayoutDocumentError("Local library unavailable.") }
+            try store.receive(layout, select: true); refreshLibrary()
+            if let aiPrompt {
+                aiPreviewRequests[layout.id] = aiPrompt
+                generatingLayouts.insert(layout.id)
+                // Preview only. A real service must validate its returned document before saving it.
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .seconds(5))
+                    guard let self, self.generatingLayouts.remove(layout.id) != nil,
+                          self.localLayouts.contains(where: { $0.id == layout.id }) else { return }
+                    self.unreadGeneratedLayouts.insert(layout.id)
+                }
+            } else { syncLibrarySelection() }
+        }
         catch { profileNotice = error.localizedDescription }
     }
     func saveLibrary(_ value: LocalLayout, base: LocalLayout) {
@@ -47,7 +62,7 @@ extension HostModel {
         catch { profileNotice = error.localizedDescription }
     }
     func syncLibrarySelection() {
-        guard update.connected, let layout = portable else { return }
+        guard update.connected, let layout = portable, !generatingLayouts.contains(layout.id) else { return }
         guard !layoutConflicts.contains(where: { $0.mac.id == layout.id || $0.phone.id == layout.id }) else {
             profileNotice = "Choose which version to keep before syncing."; return
         }
@@ -142,12 +157,18 @@ struct LayoutLibraryView: View {
         HSplitView {
             VStack(alignment: .leading, spacing: 12) {
                 HStack { Text("My layouts").font(.headline); Spacer(); Button(action: create) { Image(systemName: "plus") }.help("New layout") }.padding(.horizontal, 12)
-                List(selection: Binding(get: { model.portable?.id }, set: { if let id = $0, id != model.portable?.id { if isDirty { pendingSelection = id } else { model.selectLibrary(id) } } })) {
+                List(selection: Binding(get: { model.portable?.id }, set: { if let id = $0 { model.unreadGeneratedLayouts.remove(id); if id != model.portable?.id { if isDirty { pendingSelection = id } else { model.selectLibrary(id) } } } })) {
                     ForEach(model.localLayouts) { layout in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(layout.name).font(.headline)
+                            HStack {
+                                Text(layout.name).font(.headline)
+                                Spacer()
+                                if model.generatingLayouts.contains(layout.id) { Image(systemName: "sparkles").symbolEffect(.pulse, options: .repeating).accessibilityLabel("Generating preview") }
+                                else if model.unreadGeneratedLayouts.contains(layout.id) { Circle().fill(Color.accentColor).frame(width: 8, height: 8).accessibilityLabel("New layout ready") }
+                            }
                             Text(layout.isPreset ? "Preset" : layout.effectiveInputType.title).font(.callout).foregroundStyle(.secondary)
                         }.padding(.vertical, 6).tag(layout.id)
+                            .simultaneousGesture(TapGesture().onEnded { model.unreadGeneratedLayouts.remove(layout.id) })
                     }
                 }.listStyle(.sidebar)
             }.padding(.top, 16).frame(minWidth: 190, idealWidth: 220, maxWidth: 280)
@@ -164,7 +185,17 @@ struct LayoutLibraryView: View {
                         }.disabled(model.layoutCommandID != nil)
                     }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(.orange.opacity(0.12))
                 }
-                if let layout = model.portable {
+                if let layout = model.portable, model.generatingLayouts.contains(layout.id) {
+                    VStack(spacing: 20) {
+                        Image(systemName: "sparkles").font(.system(size: 48)).foregroundStyle(Color.accentColor).symbolEffect(.pulse, options: .repeating)
+                        Text("Preparing your layout preview…").font(.title2)
+                        Text(model.aiPreviewRequests[layout.id] ?? "").foregroundStyle(.secondary)
+                        Text("AI generation preview · No AI request is sent yet.").font(.callout).foregroundStyle(.secondary)
+                    }.padding(32).frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let layout = model.portable {
+                    if model.aiPreviewRequests[layout.id] != nil {
+                        Text("AI preview complete · This is a sample starter layout, not an AI-generated result.").font(.callout).foregroundStyle(.secondary).padding(16)
+                    }
                     HStack {
                         Text(layout.name).font(.headline)
                         Spacer()

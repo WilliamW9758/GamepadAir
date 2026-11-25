@@ -19,6 +19,9 @@ final class HostModel: ObservableObject {
     @Published var portable: LocalLayout?
     var layoutStore: LayoutDocumentStore?
     @Published var localLayouts: [LocalLayout] = []
+    @Published var generatingLayouts: Set<String> = []
+    @Published var unreadGeneratedLayouts: Set<String> = []
+    @Published var aiPreviewRequests: [String: String] = [:]
     @Published var libraryScreen: PhoneScreen? = UserDefaults.standard.data(forKey: "library-phone-screen").flatMap { try? JSONDecoder().decode(PhoneScreen.self, from: $0) }
     @Published var libraryEditorID = UUID()
     @Published var libraryModeID: String = "play"
@@ -235,6 +238,7 @@ struct HostView: View {
     @State private var quickConnection = false
     @State private var showingSettings = false
     @State private var newLayoutName = ""
+    @State private var startNewLayoutWithAI = false
     @State private var newLayoutPrompt = false
     @State private var newLayoutType = LayoutInputType.keyboardMouse
     @State private var duplicateSource: LocalLayout?
@@ -377,8 +381,9 @@ struct HostView: View {
         }
         .onAppear { model.refreshApps() }
         .sheet(isPresented: $newLayoutPrompt) {
-            LayoutCreationView(name: $newLayoutName, type: $newLayoutType, source: $duplicateSource, style: model.update.layout?.layout.style ?? .xbox) { layout in
-                model.createLibrary(layout)
+            LayoutCreationView(name: $newLayoutName, type: $newLayoutType, source: $duplicateSource, style: model.update.layout?.layout.style ?? .xbox, startWithAI: startNewLayoutWithAI) { layout, prompt in
+                model.createLibrary(layout, aiPrompt: prompt)
+                startNewLayoutWithAI = false
                 newLayoutPrompt = false
             }
         }
@@ -481,8 +486,6 @@ struct HostView: View {
                 Spacer()
                 Label(model.update.connected ? "Connected" : model.running ? "Connecting…" : "Not connected",
                       systemImage: model.update.connected ? "checkmark.circle.fill" : "iphone").foregroundStyle(.secondary)
-                Button { openSettings(.assistant) } label: { Label("AI helper", systemImage: "sparkles") }
-                    .help("Preview the layout assistant")
                 Button { openSettings(.general) } label: { Image(systemName: "gearshape").frame(width: 32, height: 32) }
                     .buttonStyle(.plain).help("Settings").accessibilityLabel("Settings")
             }.padding(24)
@@ -517,7 +520,7 @@ struct HostView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Button { showingSettings = false } label: { Label("Back to controller", systemImage: "chevron.left") }
                     .buttonStyle(.plain).padding(.horizontal, 12).padding(.top, 20)
-                List(WorkspaceSection.allCases, selection: Binding<WorkspaceSection?>(get: { section }, set: { if let value = $0 { section = value } })) { item in
+                List(WorkspaceSection.allCases.filter { $0 != .assistant }, selection: Binding<WorkspaceSection?>(get: { section }, set: { if let value = $0 { section = value } })) { item in
                     Label(item.rawValue, systemImage: item.icon).tag(item)
                 }.listStyle(.sidebar)
                 Label(model.update.connected ? "Connected" : model.running ? "Connecting…" : "Not connected",
@@ -760,7 +763,7 @@ struct HostView: View {
         VStack(alignment: .leading, spacing: 24) {
             if controlsPage == -1 {
                 heading("How would you like to get started?", "Find a layout for your game, or make it your own.")
-                setupChoice("AI assist", detail: "Describe what you want to play and try sample layout edits.", icon: "sparkles", preview: true) { finishSetup(in: .assistant) }
+                setupChoice("AI assist", detail: "Describe your game and how you want to play.", icon: "sparkles", preview: true) { finishSetup(in: .layouts); duplicateSource = nil; newLayoutName = ""; startNewLayoutWithAI = true; newLayoutPrompt = true }
                 setupChoice("Marketplace", detail: "Explore example layouts. Game search and downloads are coming later.", icon: "square.grid.2x2", preview: true) { finishSetup(in: .marketplace) }
                 setupChoice("Build manually", detail: "Choose your input type and customize your controls.", icon: "slider.horizontal.3", preview: false) { controlsPage = 0 }
             } else if controlsPage == 0 {
