@@ -39,8 +39,6 @@ struct PhoneConnectionView: View {
                 }.frame(minHeight: 72)
             }
             HStack {
-                Label(server.connected ? "Finishing connection…" : server.status, systemImage: "antenna.radiowaves.left.and.right")
-                    .foregroundStyle(.secondary).lineLimit(2)
                 Spacer()
                 Button("Use disconnected", action: dismiss).buttonStyle(PadActionStyle())
             }.frame(height: 44)

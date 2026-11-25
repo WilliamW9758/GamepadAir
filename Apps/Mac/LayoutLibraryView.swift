@@ -209,7 +209,6 @@ struct LayoutLibraryView: View {
                         Text("AI preview complete · This is a sample starter layout, not an AI-generated result.").font(.callout).foregroundStyle(.secondary).padding(16)
                     }
                     HStack {
-                        Text(layout.name).font(.headline)
                         Spacer()
                         Button("Duplicate") { duplicate(layout) }
                         Button("Delete…", role: .destructive) { delete(layout) }.disabled(layout.isPreset)

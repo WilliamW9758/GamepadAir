@@ -152,6 +152,12 @@ final class HostModel: ObservableObject {
         session.setOutputPaused(outputPaused)
         self.session = session; session.start()
     }
+    func changeInputTarget(_ pid: Int32?) {
+        targetPID = pid; globalInput = pid == nil
+        UserDefaults.standard.set(globalInput, forKey: "last-global-input")
+        UserDefaults.standard.set(applications.first(where: { $0.processIdentifier == pid })?.bundleIdentifier, forKey: "last-target-bundle")
+        session?.setInputTarget(pid: pid, global: globalInput)
+    }
     func refreshApps() {
         applications = NSWorkspace.shared.runningApplications.filter { $0.activationPolicy == .regular && $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
             .sorted { ($0.localizedName ?? "") < ($1.localizedName ?? "") }
@@ -520,7 +526,7 @@ struct HostView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Button { showingSettings = false } label: { Label("Back to controller", systemImage: "chevron.left") }
                     .buttonStyle(.plain).padding(.horizontal, 12).padding(.top, 20)
-                List(WorkspaceSection.allCases.filter { $0 != .assistant }, selection: Binding<WorkspaceSection?>(get: { section }, set: { if let value = $0 { section = value } })) { item in
+                List(WorkspaceSection.allCases.filter { $0 != .assistant && $0 != .diagnostics }, selection: Binding<WorkspaceSection?>(get: { section }, set: { if let value = $0 { section = value } })) { item in
                     Label(item.rawValue, systemImage: item.icon).tag(item)
                 }.listStyle(.sidebar)
                 Label(model.update.connected ? "Connected" : model.running ? "Connecting…" : "Not connected",
@@ -576,29 +582,24 @@ struct HostView: View {
             Form {
                 Section("Controls") {
                     LabeledContent("Layout input", value: model.update.layout?.layout.effectiveInputType.title ?? "Keyboard & mouse")
-                    Button("Manage layouts") { section = .layouts }
                     if model.mode == .keyboardMouse {
-                        Toggle("Control the active app", isOn: $model.globalInput).disabled(model.running)
-                        if !model.globalInput {
-                            Picker("App", selection: $model.targetPID) {
-                                Text("Choose an app").tag(nil as Int32?)
-                                ForEach(model.applications, id: \.processIdentifier) { app in
-                                    Text(app.localizedName ?? "App").tag(Optional(app.processIdentifier))
-                                }
-                            }.disabled(model.running)
-                        }
-                    }
-                    if model.running {
-                        Button("Disconnect to change target app") { model.stop(); pairingAttempt = false }
+                        Picker("Target app", selection: Binding<Int32?>(get: { model.globalInput ? nil : model.targetPID }, set: model.changeInputTarget)) {
+                            Text("Active app").tag(nil as Int32?)
+                            ForEach(model.applications, id: \.processIdentifier) { app in
+                                Text(app.localizedName ?? "App").tag(Optional(app.processIdentifier))
+                            }
+                        }.onAppear { model.refreshApps() }
                     }
                 }
                 Section("Permissions") {
                     Button("Accessibility settings") { AccessibilityHelper.shared.show() }
                 }
-                Section("Profiles") {
-                    Button("Import layout…") { model.importProfile() }
-                    Button("Export layout…") { model.exportProfile() }.disabled(model.portable == nil)
-                    if let notice = model.profileNotice { Text(notice).foregroundStyle(.secondary) }
+                Section("Diagnostics") {
+                    LabeledContent("Status", value: model.update.message)
+                    LabeledContent("Transport", value: model.transport.rawValue)
+                    Button("Open input log") { NSWorkspace.shared.open(InputDiagnostics.url) }
+                    Text("Keeps the last five minutes, up to 512 KB.").foregroundStyle(.secondary)
+                    Button("Local Network settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")!) }
                 }
                 Section("Local data") {
                     Button("Clear saved layouts on iPhone…", role: .destructive) { dataAction = "clear"; confirmDataAction = true }

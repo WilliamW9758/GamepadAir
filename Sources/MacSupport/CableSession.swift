@@ -50,8 +50,8 @@ public final class CableSession {
     private let pairingCode: String
     private let mode: OutputMode
     private let serial: String?
-    private let globalInput: Bool
-    private let targetPID: Int32?
+    private var globalInput: Bool
+    private var targetPID: Int32?
     private let update: (HostUpdate) -> Void
     private var connectOverride: (() throws -> StreamSocket)?
     private var outputOverride: (() throws -> GamepadOutput)?
@@ -63,6 +63,14 @@ public final class CableSession {
     convenience init(connect: @escaping () throws -> StreamSocket, output: @escaping () throws -> GamepadOutput, update: @escaping (HostUpdate) -> Void) {
         self.init(mode: .monitor, update: update)
         connectOverride = connect; outputOverride = output
+    }
+    private var pendingTarget: (pid: Int32?, global: Bool)?
+    public func setInputTarget(pid: Int32?, global: Bool) {
+        lock.lock(); pendingTarget = (pid, global); lock.unlock()
+    }
+    private func takeInputTarget() -> (pid: Int32?, global: Bool)? {
+        lock.lock(); defer { lock.unlock() }
+        let value = pendingTarget; pendingTarget = nil; return value
     }
     public func start() { queue.async { self.run() } }
     public func stop() {
@@ -108,6 +116,18 @@ public final class CableSession {
                 var lastRumble = RumbleFrame()
                 var lastRumbleSent: TimeInterval = 0
                 while !isStopped {
+                    if let target = takeInputTarget() {
+                        targetPID = target.pid; globalInput = target.global
+                        if activeMode == .keyboardMouse, let layout = appliedLayout {
+                            try output.reset(); output.close()
+                            do {
+                                output = try KeyboardMouseOutput(profile: layout.keyboardProfile, targetPID: targetPID, global: globalInput)
+                                outputFailure = nil
+                            } catch {
+                                output = MonitorOutput(); outputFailure = "Input unavailable: " + error.localizedDescription
+                            }
+                        }
+                    }
                     let command = nextCommandBytes()
                     if !command.isEmpty { try stream.write(command) }
                     if let stage = currentSetupStage, stage != sentSetupStage, stage != .play || count > 0 {

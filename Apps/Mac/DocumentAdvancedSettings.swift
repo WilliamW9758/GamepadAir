@@ -17,19 +17,6 @@ struct DocumentAdvancedSettings: View {
     }
     var body: some View {
         Form {
-            Section("Motion") {
-                Picker("While holding RT / R2", selection: Binding(get: { document.motion?.mode ?? "off" }, set: { value in
-                    if document.motion == nil { document.motion = DocumentMotionSettings() }
-                    document.motion?.mode = value
-                    if value != "off" { try? document.setControlVisible(role: "rightTrigger", visible: true, modeID: document.initialMode) }
-                })) {
-                    Text("Off").tag("off"); Text("Gyro aim").tag("aim")
-                    if document.inputType == "gamepad" { Text("Analog steering").tag("steering") }
-                }
-                Slider(value: Binding(get: { document.motion?.sensitivity ?? 1 }, set: { if document.motion == nil { document.motion = DocumentMotionSettings() }; document.motion?.sensitivity = $0 }), in: 0.1...4) { Text("Sensitivity") }
-                Slider(value: Binding(get: { document.motion?.deadZone ?? 0.03 }, set: { if document.motion == nil { document.motion = DocumentMotionSettings() }; document.motion?.deadZone = $0 }), in: 0...0.3) { Text("Dead zone") }
-                Text("Hold RT / R2 to calibrate at your current angle and activate motion. Release to stop; hold again to recalibrate. RT keeps its normal mapping. Aim controls the right stick; steering controls left X. Requires a physical iPhone.").foregroundStyle(.secondary)
-            }
             Picker("Button haptics", selection: Binding(get: { document.haptics ?? "medium" }, set: { document.haptics = $0 })) {
                 Text("Off").tag("off"); Text("Light").tag("light"); Text("Medium").tag("medium"); Text("Strong").tag("strong")
             }
@@ -66,6 +53,27 @@ struct DocumentAdvancedSettings: View {
                 Slider(value: keyboard(\.tapDuration, 0.12), in: 0.05...0.5) { Text("Tap duration") }
             }
             if let error { Text(error).foregroundStyle(.red) }
+        }.formStyle(.grouped)
+    }
+}
+
+struct DocumentMotionSettingsView: View {
+    @Binding var document: LayoutDocument
+    var body: some View {
+        Form {
+            Section("Motion") {
+                Picker("While holding RT / R2", selection: Binding(get: { document.motion?.mode ?? "off" }, set: { value in
+                    if document.motion == nil { document.motion = DocumentMotionSettings() }
+                    document.motion?.mode = value
+                    if value != "off" { try? document.setControlVisible(role: "rightTrigger", visible: true, modeID: document.initialMode) }
+                })) {
+                    Text("Off").tag("off"); Text("Gyro aim").tag("aim")
+                    if document.inputType == "gamepad" { Text("Analog steering").tag("steering") }
+                }
+                Slider(value: Binding(get: { document.motion?.sensitivity ?? 1 }, set: { if document.motion == nil { document.motion = DocumentMotionSettings() }; document.motion?.sensitivity = $0 }), in: 0.1...4) { Text("Sensitivity") }
+                Slider(value: Binding(get: { document.motion?.deadZone ?? 0.03 }, set: { if document.motion == nil { document.motion = DocumentMotionSettings() }; document.motion?.deadZone = $0 }), in: 0...0.3) { Text("Dead zone") }
+                Text("Hold RT / R2 to calibrate at your current angle and activate motion. Release to stop; hold again to recalibrate. RT keeps its normal mapping. Aim controls the right stick; steering controls left X. Requires a physical iPhone.").foregroundStyle(.secondary)
+            }
         }.formStyle(.grouped)
     }
 }

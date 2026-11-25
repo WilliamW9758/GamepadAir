@@ -14,6 +14,7 @@ struct LayoutEditor: View {
     @State private var error: String?
     @State private var saved = false
     @State private var advanced = false
+    @State private var motionSettings = false
     @State private var snap = false
     @State private var preview = "current"
     let embedded: Bool
@@ -94,7 +95,7 @@ struct LayoutEditor: View {
                         inspector
                         mappingOverview
                         HStack { Text(layout.effectiveInputType.title).foregroundStyle(.secondary); Spacer(); Button("Advanced settings") { advanced = true } }
-                    }.padding(24)
+                    }.padding(16)
                 }.frame(width: embedded ? nil : 848)
             }
         }.background { PadBackdrop() }.buttonStyle(PadActionStyle())
@@ -107,6 +108,12 @@ struct LayoutEditor: View {
             .onChange(of: layout.document) { _, _ in dirtyChanged?(hasChanges) }
             .onChange(of: sourceMode) { _, value in if liveState != nil { modeID = value } }
             .onChange(of: modeID) { _, value in selected = nil; dragBaseDocument = nil; if liveState == nil { selectMode?(value) } }
+            .sheet(isPresented: $motionSettings) {
+                VStack(spacing: 0) {
+                    HStack { Text("Gyro & motion").font(.headline); Spacer(); Button("Done") { motionSettings = false } }.padding(20)
+                    DocumentMotionSettingsView(document: Binding(get: { layout.document }, set: { value in change { $0 = value } }))
+                }.frame(width: 580, height: 420).buttonStyle(PadActionStyle())
+            }
             .sheet(isPresented: $advanced) {
                 VStack {
                     HStack { Text("Advanced settings").font(.headline); Spacer(); Button("Done") { advanced = false } }.padding()
@@ -117,6 +124,14 @@ struct LayoutEditor: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
+                TextField("Layout name", text: Binding(get: { layout.name }, set: { value in change { $0.name = value } })).font(.headline)
+                Spacer()
+                Button { if let value = past.popLast() { future.append(layout.document); layout.document = value; saved = false } } label: { Image(systemName: "arrow.uturn.backward") }.disabled(past.isEmpty).help("Undo")
+                Button { if let value = future.popLast() { past.append(layout.document); layout.document = value; saved = false } } label: { Image(systemName: "arrow.uturn.forward") }.disabled(future.isEmpty).help("Redo")
+                if !embedded { Button("Cancel") { dismiss() } }
+                Button("Save") { save(layout, baseLayout); if !embedded { dismiss() } }.buttonStyle(PadActionStyle(prominent: hasChanges)).disabled(!hasChanges)
+            }
+            HStack {
                 Menu("Add control") {
                     ForEach(["customButton", "leftStick", "rightStick", "dpad", "radial"] + (layout.effectiveInputType == .keyboardMouse ? ["trackpad"] : []), id: \.self) { role in
                         Button(["customButton": "Button", "leftStick": "Left joystick", "rightStick": "Right joystick", "dpad": "D-pad", "radial": "Radial", "trackpad": "Trackpad"][role]!) {
@@ -124,28 +139,22 @@ struct LayoutEditor: View {
                         }.disabled(role != "customButton" && layout.document.controls.contains { $0.role == role })
                     }
                 }
-                TextField("Layout name", text: Binding(get: { layout.name }, set: { value in change { $0.name = value } })).font(.headline)
-                if layout.document.modes.count > 1 { Picker("Mode", selection: $modeID) { ForEach(layout.document.modes, id: \.id) { Text($0.name).tag($0.id) } }.frame(width: 180) }
-                Button { if let value = past.popLast() { future.append(layout.document); layout.document = value; saved = false } } label: { Image(systemName: "arrow.uturn.backward") }.disabled(past.isEmpty)
-                Button { if let value = future.popLast() { past.append(layout.document); layout.document = value; saved = false } } label: { Image(systemName: "arrow.uturn.forward") }.disabled(future.isEmpty)
-                if !embedded { Button("Cancel") { dismiss() } }
-                Button("Save") { save(layout, baseLayout); if !embedded { dismiss() } }.buttonStyle(PadActionStyle(prominent: hasChanges)).disabled(!hasChanges)
+                Toggle("Snap and align", isOn: $snap).fixedSize()
+                Spacer()
+                Button("Gyro & motion…") { motionSettings = true }.fixedSize()
             }
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Toggle("Snap and align", isOn: $snap).fixedSize()
-                    Spacer()
-                    Button("Gyro & motion…") { advanced = true }.fixedSize()
-                }
-                HStack {
+                Text("Preview")
                 Picker("Preview", selection: $preview) {
                     Text(screen == nil ? "Default canvas" : "Connected phone").tag("current")
                     Text("Compact · 667 × 375").tag("compact")
                     Text("Wide · 932 × 430").tag("wide")
-                }.frame(maxWidth: 300)
+                }.labelsHidden().frame(width: 210)
                 Text("\(Int(width)) × \(Int(height)) pt").foregroundStyle(.secondary).fixedSize()
                 }
             }
+            if layout.document.modes.count > 1 { Picker("Mode", selection: $modeID) { ForEach(layout.document.modes, id: \.id) { Text($0.name).tag($0.id) } }.frame(width: 280) }
             if layout.effectiveInputType == .gamepad {
                 Picker("Emulate controller", selection: Binding(get: { layout.document.controllerStyle ?? "xbox" }, set: { value in change { $0.controllerStyle = value } })) {
                     Text("Xbox").tag("xbox"); Text("PlayStation").tag("playstation")
