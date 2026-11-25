@@ -47,13 +47,15 @@ final class HostModel: ObservableObject {
             profileNotice = "Layout imported as a new local copy."
         } catch { profileNotice = "Import failed: \(error.localizedDescription)" }
     }
-    func importMarketplaceDocument(_ document: LayoutDocument, provenance: LayoutProvenance? = nil) {
-        guard let store = layoutStore else { return }
+    @discardableResult
+    func importMarketplaceDocument(_ document: LayoutDocument, provenance: LayoutProvenance? = nil) -> Bool {
+        guard let store = layoutStore else { profileNotice = "The local layout library is unavailable."; return false }
         do {
             try store.importDocument(document.validatedData(), provenance: provenance); refreshLibrary()
             if update.connected { syncLibrarySelection() }
-            profileNotice = "Layout imported as a new local copy."
-        } catch { profileNotice = error.localizedDescription }
+            profileNotice = nil
+            return true
+        } catch { profileNotice = error.localizedDescription; return false }
     }
     func saveLocal(_ value: LocalLayout) { saveLibrary(value, base: portable ?? value) }
     func eraseLocalLayouts() throws {
