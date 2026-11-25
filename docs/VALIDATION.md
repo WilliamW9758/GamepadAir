@@ -191,3 +191,8 @@ Run `swift test` to validate the current checkout. Report your OS versions, tran
 - Added a visible Gyro & motion entry beside the editor's snapping option; it opens the Motion section at the top of Advanced settings. Activation remains RT/R2 hold with automatic calibration.
 - 116 Swift tests passed, including separated circles with overlapping bounding boxes and empty D-pad corners. Both signed app builds passed at the existing PocketPadControls/PocketPadControlsPhone derived-data paths.
 - Did not restart the running Mac app: UI inspection found an unsaved user layout draft. The newly built UI awaits reopening after that draft is saved; no user draft was discarded or saved by the agent.
+
+### Unified editor notification row (2026-11-25)
+- Replaced duplicate local-save/status text with one fixed-height, single-line row beneath the layout title. Default is “Saved on Mac.”; latest save/sync status or editor warning replaces the prior message. Long messages truncate with full text available on hover.
+- Moved overlap and editor validation messages into that row; removed the reserved overlap block above the canvas. Clearing an editor warning only clears that warning, not a newer save/sync message.
+- Signed Mac build passed. Reopened the exact PocketPadControls build after checking Save was disabled. Verified adding a temporary trackpad changes the same notification row to “5 controls overlap.” and Undo restores “Saved on Mac.” without saving any test edits.

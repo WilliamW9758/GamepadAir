@@ -22,12 +22,18 @@ struct LayoutEditor: View {
     let screen: PhoneScreen?
     let dirtyChanged: ((Bool) -> Void)?
     let selectMode: ((String) -> Void)?
+    let noticeChanged: ((String?) -> Void)?
     let save: (LocalLayout, LocalLayout) -> Void
-    init(layout: LocalLayout, embedded: Bool = false, liveState: GamepadState? = nil, modeID: String? = nil, screen: PhoneScreen? = nil, selectMode: ((String) -> Void)? = nil, dirtyChanged: ((Bool) -> Void)? = nil, save: @escaping (LocalLayout, LocalLayout) -> Void) {
+    init(layout: LocalLayout, embedded: Bool = false, liveState: GamepadState? = nil, modeID: String? = nil, screen: PhoneScreen? = nil, selectMode: ((String) -> Void)? = nil, dirtyChanged: ((Bool) -> Void)? = nil, noticeChanged: ((String?) -> Void)? = nil, save: @escaping (LocalLayout, LocalLayout) -> Void) {
         _layout = State(initialValue: layout); _baseLayout = State(initialValue: layout)
         let mode = modeID ?? layout.document.initialMode
         _modeID = State(initialValue: mode); sourceMode = mode
-        sourceLayout = layout; self.embedded = embedded; self.liveState = liveState; self.screen = screen; self.selectMode = selectMode; self.dirtyChanged = dirtyChanged; self.save = save
+        sourceLayout = layout; self.embedded = embedded; self.liveState = liveState; self.screen = screen; self.selectMode = selectMode; self.dirtyChanged = dirtyChanged; self.noticeChanged = noticeChanged; self.save = save
+    }
+    private var editorNotice: String? {
+        if let error { return error }
+        let count = LayoutGeometry.overlappingIDs(items, width: width, height: height).count
+        return count == 0 ? nil : "\(count) controls overlap."
     }
     private var hasChanges: Bool { layout.document != baseLayout.document }
     private var width: Double { preview == "compact" ? 667 : preview == "wide" ? 932 : screen?.width ?? 800 }
@@ -67,7 +73,10 @@ struct LayoutEditor: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         header
-                        if let error { Text(error).foregroundStyle(.red) }
+                        if noticeChanged == nil {
+                            Text(editorNotice ?? " ").font(.callout).foregroundStyle(.orange)
+                                .lineLimit(1).frame(height: 20).help(editorNotice ?? "")
+                        }
                         canvas.aspectRatio(width / height, contentMode: .fit).frame(maxWidth: .infinity)
                         inspector
                         mappingOverview
@@ -76,6 +85,8 @@ struct LayoutEditor: View {
                 }.frame(width: embedded ? nil : 848)
             }
         }.background { PadBackdrop() }.buttonStyle(PadActionStyle())
+            .onAppear { if liveState == nil { noticeChanged?(editorNotice) } }
+            .onChange(of: editorNotice) { _, value in if liveState == nil { noticeChanged?(value) } }
             .onChange(of: sourceLayout) { _, value in
                 if liveState != nil || value.document == layout.document || layout.document == baseLayout.document { layout = value; baseLayout = value; saved = true; dirtyChanged?(false) }
             }
@@ -121,13 +132,6 @@ struct LayoutEditor: View {
                 Text("\(Int(width)) × \(Int(height))").foregroundStyle(.secondary).fixedSize()
                 }
             }
-            let overlaps = LayoutGeometry.overlappingIDs(items, width: width, height: height)
-            Text("\(overlaps.count) controls overlap (orange outlines). Check each preview size.")
-                .foregroundStyle(.orange)
-                .lineLimit(2, reservesSpace: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .opacity(overlaps.isEmpty ? 0 : 1)
-                .accessibilityHidden(overlaps.isEmpty)
             if layout.effectiveInputType == .gamepad {
                 Picker("Emulate controller", selection: Binding(get: { layout.document.controllerStyle ?? "xbox" }, set: { value in change { $0.controllerStyle = value } })) {
                     Text("Xbox").tag("xbox"); Text("PlayStation").tag("playstation")

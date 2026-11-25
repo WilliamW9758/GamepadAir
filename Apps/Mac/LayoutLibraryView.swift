@@ -151,6 +151,18 @@ struct LayoutLibraryView: View {
     let duplicate: (LocalLayout) -> Void
     let delete: (LocalLayout) -> Void
     @State private var isDirty = false
+    @State private var notification: String?
+    @State private var notificationIsWarning = false
+    @State private var lastEditorNotice: String?
+    private func showStatus(_ text: String?) {
+        guard let text else { return }
+        notification = text; notificationIsWarning = false
+    }
+    private func showEditorNotice(_ text: String?) {
+        if let text { notification = text; notificationIsWarning = true }
+        else if notificationIsWarning && notification == lastEditorNotice { notification = nil; notificationIsWarning = false }
+        lastEditorNotice = text
+    }
     @State private var pendingSelection: String?
     @State private var olderChoice: (LibraryConflict, Bool)?
     var body: some View {
@@ -203,13 +215,23 @@ struct LayoutLibraryView: View {
                         Button("Delete…", role: .destructive) { delete(layout) }.disabled(layout.isPreset)
                         if model.update.connected { Button("Send to iPhone") { model.syncLibrarySelection() }.disabled(model.layoutCommandID != nil) }
                     }.padding(16)
-                    Text(model.update.connected ? "Saved locally. Changes can sync to your iPhone." : "Saved on this Mac · Connect an iPhone to sync.").font(.callout).foregroundStyle(.secondary).padding(.horizontal, 16)
-                    if let notice = model.profileNotice ?? model.layoutCommandNotice { Text(notice).font(.callout).foregroundStyle(.secondary).padding(.horizontal, 16) }
-                    LayoutEditor(layout: layout, embedded: true, modeID: model.libraryModeID, screen: model.libraryScreen, selectMode: model.selectLibraryMode, dirtyChanged: { isDirty = $0 }) { edited, base in
+                    Text(notification ?? "Saved on Mac.")
+                        .font(.callout)
+                        .foregroundStyle(notificationIsWarning ? Color.orange : Color.secondary)
+                        .lineLimit(1).truncationMode(.tail)
+                        .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20, alignment: .leading)
+                        .help(notification ?? "Saved on Mac.")
+                        .padding(.horizontal, 16)
+                    LayoutEditor(layout: layout, embedded: true, modeID: model.libraryModeID, screen: model.libraryScreen, selectMode: model.selectLibraryMode, dirtyChanged: { isDirty = $0 }, noticeChanged: showEditorNotice) { edited, base in
                         model.saveLibrary(edited, base: base)
                     }.id(layout.id + model.libraryEditorID.uuidString)
                 } else { ContentUnavailableView("Local library unavailable", systemImage: "exclamationmark.triangle", description: Text(model.profileNotice ?? "Saved data could not be opened.")) }
             }.frame(minWidth: 500)
+        }
+        .onReceive(model.$profileNotice) { showStatus($0) }
+        .onReceive(model.$layoutCommandNotice) { showStatus($0) }
+        .onChange(of: model.portable?.id) { _, _ in
+            notification = nil; notificationIsWarning = false; lastEditorNotice = nil
         }
         .confirmationDialog("Discard unsaved layout edits?", isPresented: Binding(get: { pendingSelection != nil }, set: { if !$0 { pendingSelection = nil } }), titleVisibility: .visible) {
             Button("Discard edits", role: .destructive) { if let id = pendingSelection { model.selectLibrary(id) }; pendingSelection = nil; isDirty = false }
