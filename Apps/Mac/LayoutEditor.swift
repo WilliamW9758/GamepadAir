@@ -9,7 +9,8 @@ struct LayoutEditor: View {
     @State private var selected: String?
     @State private var past: [LayoutDocument] = []
     @State private var future: [LayoutDocument] = []
-    @State private var dragOrigin: ControlPlacement?
+    @GestureState private var dragPreview: ControlDragPreview?
+    @State private var dragBaseDocument: LayoutDocument?
     @State private var error: String?
     @State private var saved = false
     @State private var advanced = false
@@ -39,7 +40,19 @@ struct LayoutEditor: View {
     private var width: Double { preview == "compact" ? 667 : preview == "wide" ? 932 : screen?.width ?? 800 }
     private var height: Double { preview == "compact" ? 375 : preview == "wide" ? 430 : screen?.height ?? 360 }
     private var mode: DocumentMode { layout.document.modes.first { $0.id == modeID } ?? layout.document.modes[0] }
-    private var items: [ResolvedLayoutControl] { LayoutGeometry.resolve(layout.document, modeID: mode.id, width: width, height: height).filter { !$0.hidden } }
+    private var storedItems: [ResolvedLayoutControl] { LayoutGeometry.resolve(layout.document, modeID: mode.id, width: width, height: height).filter { !$0.hidden } }
+    private var items: [ResolvedLayoutControl] {
+        storedItems.map { item in
+            guard let dragPreview, dragPreview.id == item.id else { return item }
+            var preview = item; preview.placement = dragPreview.placement; return preview
+        }
+    }
+    private func draggedPlacement(_ item: ResolvedLayoutControl, translation: CGSize, others: [ResolvedLayoutControl]) -> ControlPlacement {
+        var p = ControlPlacement(x: item.placement.x + translation.width / width,
+                                 y: item.placement.y + translation.height / height, scale: item.placement.scale)
+        if snap { p = LayoutGeometry.snapped(p, others: others.filter { $0.id != item.id }.map(\.placement)) }
+        return LayoutGeometry.fitted(p, canvasWidth: width, canvasHeight: height, controlWidth: item.width, controlHeight: item.height)
+    }
     private func change(record: Bool = true, _ edit: (inout LayoutDocument) throws -> Void) {
         do {
             var next = layout.document; try edit(&next); try next.validate()
@@ -86,13 +99,14 @@ struct LayoutEditor: View {
             }
         }.background { PadBackdrop() }.buttonStyle(PadActionStyle())
             .onAppear { if liveState == nil { noticeChanged?(editorNotice) } }
+            .onChange(of: dragPreview == nil) { _, ended in if ended { dragBaseDocument = nil } }
             .onChange(of: editorNotice) { _, value in if liveState == nil { noticeChanged?(value) } }
             .onChange(of: sourceLayout) { _, value in
                 if liveState != nil || value.document == layout.document || layout.document == baseLayout.document { layout = value; baseLayout = value; saved = true; dirtyChanged?(false) }
             }
             .onChange(of: layout.document) { _, _ in dirtyChanged?(hasChanges) }
             .onChange(of: sourceMode) { _, value in if liveState != nil { modeID = value } }
-            .onChange(of: modeID) { _, value in selected = nil; dragOrigin = nil; if liveState == nil { selectMode?(value) } }
+            .onChange(of: modeID) { _, value in selected = nil; dragBaseDocument = nil; if liveState == nil { selectMode?(value) } }
             .sheet(isPresented: $advanced) {
                 VStack {
                     HStack { Text("Advanced settings").font(.headline); Spacer(); Button("Done") { advanced = false } }.padding()
@@ -142,7 +156,9 @@ struct LayoutEditor: View {
     private var canvas: some View {
         GeometryReader { geometry in
             let scale = max(0.01, min(geometry.size.width / width, geometry.size.height / height))
-            let overlaps = LayoutGeometry.overlappingIDs(items, width: width, height: height)
+            let baseItems = storedItems
+            let displayItems = items
+            let overlaps = LayoutGeometry.overlappingIDs(displayItems, width: width, height: height)
             let unmapped = Set(layout.unmappedControls.map(\.canvasID))
             ZStack {
                 RoundedRectangle(cornerRadius: 24).fill(PadAppearance.surface).contentShape(Rectangle()).onTapGesture { selected = nil }
@@ -151,14 +167,15 @@ struct LayoutEditor: View {
                         for i in 1..<40 { let x = Double(i) * width / 40; path.move(to: CGPoint(x: x, y: 0)); path.addLine(to: CGPoint(x: x, y: height)) }
                         for i in 1..<20 { let y = Double(i) * height / 20; path.move(to: CGPoint(x: 0, y: y)); path.addLine(to: CGPoint(x: width, y: y)) }
                     }.stroke(Color.secondary.opacity(0.15), lineWidth: 0.5).allowsHitTesting(false)
-                    if let selected, let chosen = items.first(where: { $0.id == selected }) {
+                    if let selected, let chosen = displayItems.first(where: { $0.id == selected }) {
                         Path { path in
                             path.move(to: CGPoint(x: chosen.placement.x * width, y: 0)); path.addLine(to: CGPoint(x: chosen.placement.x * width, y: height))
                             path.move(to: CGPoint(x: 0, y: chosen.placement.y * height)); path.addLine(to: CGPoint(x: width, y: chosen.placement.y * height))
                         }.stroke(Color.accentColor.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [4, 4])).allowsHitTesting(false)
                     }
                 }
-                ForEach(items) { item in
+                ForEach(baseItems) { item in
+                    let position = dragPreview?.id == item.id ? dragPreview!.placement : item.placement
                     let diameter = item.radius * 2
                     let four = item.role == "dpad" && mode.dpadStyle == "fourWay"
                     let invalid = unmapped.contains(item.runtimeID)
@@ -179,17 +196,26 @@ struct LayoutEditor: View {
                         }
                         if item.role == "dpad" { DPadPreview(hat: liveState?.hat ?? 8, style: DPadStyle(rawValue: mode.dpadStyle ?? "eightWay") ?? .eightWay) }
                         else { Text(item.label).font(.system(size: 14 / scale, weight: .medium)).fixedSize() }
-                    }.frame(width: item.width, height: item.height).position(x: item.placement.x * width, y: item.placement.y * height)
+                    }.frame(width: item.width, height: item.height).position(x: position.x * width, y: position.y * height)
                         .onTapGesture { selected = item.id }
-                        .gesture(DragGesture(minimumDistance: 2, coordinateSpace: .named("canvas")).onChanged { value in
-                            if dragOrigin == nil { past.append(layout.document); future.removeAll(); dragOrigin = item.placement; selected = item.id }
-                            guard let origin = dragOrigin else { return }
-                            var p = ControlPlacement(x: origin.x + value.translation.width / width, y: origin.y + value.translation.height / height, scale: origin.scale)
-
-                            if snap { p = LayoutGeometry.snapped(p, others: items.filter { $0.id != item.id }.map(\.placement)) }
-                            p = LayoutGeometry.fitted(p, canvasWidth: width, canvasHeight: height, controlWidth: item.width, controlHeight: item.height)
-                            change(record: false) { try $0.placeControl(item.id, at: DocumentPlacement(x: p.x, y: p.y, scale: p.scale), modeID: mode.id) }
-                        }.onEnded { _ in dragOrigin = nil })
+                        .gesture(DragGesture(minimumDistance: 2, coordinateSpace: .named("canvas"))
+                            .updating($dragPreview) { value, preview, transaction in
+                                transaction.disablesAnimations = true
+                                preview = ControlDragPreview(id: item.id, placement: draggedPlacement(item, translation: value.translation, others: baseItems))
+                            }
+                            .onChanged { _ in
+                                if dragBaseDocument == nil { dragBaseDocument = layout.document }
+                                if selected != item.id { selected = item.id }
+                            }
+                            .onEnded { value in
+                                defer { dragBaseDocument = nil }
+                                guard dragBaseDocument == layout.document else {
+                                    error = "Layout changed during dragging. Try again."; return
+                                }
+                                let p = draggedPlacement(item, translation: value.translation, others: baseItems)
+                                // Only the final placement enters validation, history and dirty-state notifications.
+                                change { try $0.placeControl(item.id, at: DocumentPlacement(x: p.x, y: p.y, scale: p.scale), modeID: mode.id) }
+                            })
                 }
             }.frame(width: width, height: height).coordinateSpace(name: "canvas")
                 .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(Color.primary.opacity(0.4), lineWidth: 2))
@@ -351,4 +377,10 @@ struct DPadCross: Shape {
             path.closeSubpath()
         }
     }
+}
+
+
+private struct ControlDragPreview: Equatable {
+    let id: String
+    let placement: ControlPlacement
 }

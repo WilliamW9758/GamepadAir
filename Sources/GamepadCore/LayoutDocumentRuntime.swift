@@ -107,7 +107,7 @@ public struct ResolvedLayoutControl: Equatable, Identifiable {
     public let runtimeID: String
     public let role: String
     public let label: String
-    public let placement: ControlPlacement
+    public var placement: ControlPlacement
     public let radius: Double
     public let width: Double
     public let height: Double
