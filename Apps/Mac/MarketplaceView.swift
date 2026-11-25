@@ -28,7 +28,7 @@ struct MarketplaceView: View {
             VStack(alignment: .leading, spacing: 24) {
                 if showingSubmissions {
                     Button { showingSubmissions = false } label: { Label("Back to Marketplace", systemImage: "chevron.left") }
-                    MarketplaceAccountView(account: account, layouts: model.localLayouts) { document in model.importMarketplaceDocument(document) }
+                    MarketplaceAccountView(account: account, layouts: model.localLayouts, screen: model.libraryScreen) { document in model.importMarketplaceDocument(document) }
                 } else {
                     HStack {
                         Image(systemName: "magnifyingglass").foregroundStyle(.secondary)

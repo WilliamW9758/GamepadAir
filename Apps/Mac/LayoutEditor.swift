@@ -278,7 +278,7 @@ private struct DPadPreview: View {
     }
 }
 
-private struct DPadCross: Shape {
+struct DPadCross: Shape {
     func path(in rect: CGRect) -> Path {
         let r = min(rect.width, rect.height) / 2
         let points: [(CGFloat, CGFloat)] = [(-0.32,-0.92),(0.32,-0.92),(0.32,-0.32),(0.92,-0.32),(0.92,0.32),(0.32,0.32),(0.32,0.92),(-0.32,0.92),(-0.32,0.32),(-0.92,0.32),(-0.92,-0.32),(-0.32,-0.32)]
