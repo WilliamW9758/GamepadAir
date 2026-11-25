@@ -119,20 +119,25 @@ No new center-hold or arbitrary radial activation semantics are introduced.
 `geometry: runtimePresetV1` deliberately replaces the old shorter-edge `size` field. Placement
 uses normalized `x`, `y`, and `scale` (0.65–1.8, default 1). Each mode has `sizeFactor` (default 1).
 Omitted placement uses that role's existing preset placement, including template-specific offsets.
-This preserves current resizing behavior instead of pretending two different sizing formulas
-are equivalent across phone aspect ratios.
+Controls use consistent UIKit point sizes, independent of screen dimensions and pixel density.
+This is the development v2 point-sizing update; older proportional sizing is no longer used.
+Both devices must use layout sync protocol 5.
 
-For a canvas W × H, radius is:
+For a canvas W × H, the requested radius is:
 
-    roleBaseRadius × min(H / 320, W / 800) × mode.sizeFactor × placement.scale
+    roleBaseRadius × mode.sizeFactor × placement.scale
+
+The resolved radius is at least 22 points (44-point diameter). Four-way D-pads use
+22 / 0.92 so the visible cross spans at least 44 points. Oversized controls shrink
+only as needed to fit the playable canvas with a four-point margin. Normal phone
+canvases must be at least 52 points per axis to satisfy both fitting and minimum size.
 
 Base radii: sticks 62; D-pad 50; radial 30; triggers/shoulders 27; mode switch 25;
 face buttons 23; back/start/stick-click buttons 22; guide 20; custom buttons 19.
-Use the existing full-bounds fitting rule with its 4-point margin on the actual playable canvas.
-Coordinates mean requested positions before that device-dependent fitting. Exact visible fit
-cannot be validated from JSON alone. Legacy-canvas coordinates are unsupported and rejected;
-no reference-device migration is needed. Shared geometry code and cross-device fixtures are
-required for consistent phone rendering and Mac previews.
+Guide and custom buttons therefore resolve to at least 44-point diameters by default.
+Positions remain normalized; default template offsets retain relative placement.
+Coordinates are fitted after sizing. Phone and Mac previews use the same resolver;
+fit-to-window previews scale the complete control, including its label.
 
 `templateStyle` chooses the Xbox/PlayStation geometry template. `controllerStyle` separately
 chooses gamepad emulation identity and is required only for gamepad documents. Global haptics
@@ -182,10 +187,12 @@ fails if the app contract drifts from the checked-in schema.
 
 ## Extended controls (development v2)
 
-Optional placement `width` and `height` form a pair of normalized canvas dimensions
+Optional placement `width` and `height` form a pair of normalized dimensions
 (0.03–1 each), supported by `customButton` and the dedicated keyboard/mouse-only
 `trackpad` role. These dimensions take precedence over radius/scale/sizeFactor;
-rectangles fit within the same four-point canvas margin. An omitted trackpad size
+trackpad dimensions use the actual canvas, while custom button dimensions use a fixed
+800 × 320-point design reference. Both have a 44-point minimum extent and fit within
+the same four-point canvas margin. An omitted trackpad size
 resolves to 28% canvas width and 40% height. Ordinary buttons remain circular until
 both dimensions are supplied. Position edits preserve dimensions; reset placement
 clears them. Mac, phone, and marketplace previews use the shared resolver.
@@ -196,7 +203,7 @@ clicks, and stationary hold right-clicks in either pointer mode. Two fingers sup
 clicks until both lift; mode `trackpadScroll` enables scrolling (default true).
 The existing right-stick cursor behavior remains available. Pointer wire action 3
 carries bounded two-axis scroll deltas, using the displacement fixed-point format.
-Layout sync protocol is 4; both apps must be updated together.
+Layout sync protocol is 5; both apps must be updated together.
 
 Optional document `motion` has `mode` (`off`, `aim`, `steering`), `sensitivity`
 (0.1–4, default 1), and `deadZone` (0–0.3, default .03). Omission is off. Steering

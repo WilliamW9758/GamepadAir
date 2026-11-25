@@ -25,7 +25,7 @@ final class ExtendedControlsTests: XCTestCase {
         let data = try JSONEncoder().encode(snapshot)
         let decoded = try DocumentLayoutTransport.decodeSnapshot(data)
         XCTAssertEqual(decoded.layout.document, doc)
-        XCTAssertEqual(decoded.protocolVersion, 4)
+        XCTAssertEqual(decoded.protocolVersion, 5)
         var changed = doc
         try changed.placeControl("trackpad", at: DocumentPlacement(x: 0.2, y: 0.65), modeID: doc.initialMode)
         let items = LayoutGeometry.resolve(changed, modeID: doc.initialMode, width: 800, height: 360)
@@ -74,6 +74,43 @@ final class ExtendedControlsTests: XCTestCase {
         XCTAssertTrue(overlaps().isEmpty)
         doc.controls[0].placement = DocumentPlacement(x: 0.55, y: 0.5, scale: 0.65)
         XCTAssertEqual(overlaps(), ["button", "pad"])
+    }
+    func testPointSizedControlsStayConstantAcrossPhoneCanvases() throws {
+        let doc = LayoutDocument.starter(name: "Points", style: .xbox, input: .keyboardMouse)
+        let compact = LayoutGeometry.resolve(doc, modeID: doc.initialMode, width: 667, height: 375)
+        let wide = LayoutGeometry.resolve(doc, modeID: doc.initialMode, width: 932, height: 430)
+        for a in compact {
+            let b = try XCTUnwrap(wide.first { $0.id == a.id })
+            XCTAssertEqual(a.width, b.width, accuracy: 0.001)
+            XCTAssertEqual(a.height, b.height, accuracy: 0.001)
+            XCTAssertGreaterThanOrEqual(a.width, 44)
+            XCTAssertGreaterThan(a.width / 667, b.width / 932)
+        }
+        XCTAssertEqual(compact.first { $0.role == "south" }?.width, 46)
+        XCTAssertEqual(compact.first { $0.role == "leftStick" }?.width, 124)
+    }
+    func testMinimumTargetsSurviveSmallSizeSettings() {
+        var doc = LayoutDocument.starter(name: "Minimum", style: .xbox, input: .gamepad)
+        doc.modes[0].sizeFactor = 0.05
+        doc.modes[0].dpadStyle = "fourWay"
+        for index in doc.controls.indices { doc.controls[index].placement = DocumentPlacement(x: 0, y: 1, scale: 0.65) }
+        for item in LayoutGeometry.resolve(doc, modeID: doc.initialMode, width: 667, height: 375) {
+            XCTAssertGreaterThanOrEqual(item.width, 44)
+            XCTAssertGreaterThanOrEqual(item.height, 44)
+            if item.outline == "cross" { XCTAssertGreaterThanOrEqual(item.radius * 2 * 0.92, 44) }
+            XCTAssertGreaterThanOrEqual(item.placement.x * 667 - item.width / 2, 3.999)
+            XCTAssertLessThanOrEqual(item.placement.y * 375 + item.height / 2, 371.001)
+        }
+    }
+    func testRectangularButtonsUsePointsAndTrackpadsUseCanvas() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let doc = try LayoutDocument.decode(Data(contentsOf: root.appendingPathComponent("docs/layout-format/fixtures/point-sizing.layout.json")))
+        for width in [667.0, 932.0] {
+            let items = LayoutGeometry.resolve(doc, modeID: doc.initialMode, width: width, height: 430)
+            XCTAssertEqual(items.first { $0.id == "fixed-button" }?.width, 80)
+            XCTAssertEqual(items.first { $0.id == "fixed-button" }?.height, 48)
+            XCTAssertEqual(try XCTUnwrap(items.first { $0.role == "trackpad" }).width, width * 0.3, accuracy: 0.001)
+        }
     }
     func testSnappingUsesCenters() {
         let p = LayoutGeometry.snapped(ControlPlacement(x: 0.506, y: 0.299), others: [ControlPlacement(x: 0.2, y: 0.3)])

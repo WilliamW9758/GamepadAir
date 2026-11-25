@@ -29,3 +29,9 @@ These examples are canonical documents, not inputs for a SavedLayout conversion 
 and opt-in calibrated gyro aim. The matching rejection cases cover unsupported
 rectangle roles, incomplete dimensions, trackpad bindings, keyboard steering,
 and out-of-range motion sensitivity.
+
+`point-sizing.layout.json` adds a custom rectangular button with width 0.1 and
+height 0.15. It resolves to 80 × 48 points on both 667- and 932-point-wide canvases;
+the trackpad retains its 30%-of-canvas width. Swift tests also cover consistent
+46-point face buttons, 124-point sticks, minimum 44-point extents at small scale
+settings, fitting at edges, and smaller relative appearance on wider previews.

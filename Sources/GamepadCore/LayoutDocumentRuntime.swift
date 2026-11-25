@@ -122,7 +122,9 @@ public enum LayoutGeometry {
     public static func resolve(_ document: LayoutDocument, modeID: String, width: Double, height: Double) -> [ResolvedLayoutControl] {
         guard width.isFinite, height.isFinite, width > 0, height > 0,
               let mode = document.modes.first(where: { $0.id == modeID }) else { return [] }
-        let unit = min(height / 320, width / 800) * (mode.sizeFactor ?? 1)
+        // UIKit canvas dimensions are points, not pixels. Screen size must not scale touch controls.
+        let unit = mode.sizeFactor ?? 1
+        let positionUnit = min(height / 320, width / 800) * unit
         let ps = document.templateStyle == "playstation"
         let identity = document.inputType == "gamepad" ? document.outputStyle : document.padStyle
         return document.controls.compactMap { base in
@@ -133,7 +135,7 @@ public enum LayoutGeometry {
             case "south", "east", "west", "north":
                 let offsets: [String: (Double, Double)] = ["south": (0,1), "east": (1,0), "west": (-1,0), "north": (0,-1)]
                 let offset = offsets[control.role]!
-                x = 0.85 + offset.0 * 48 * unit / width; y = 0.44 + offset.1 * 48 * unit / height
+                x = 0.85 + offset.0 * 48 * positionUnit / width; y = 0.44 + offset.1 * 48 * positionUnit / height
             case "leftShoulder": x = 0.26; y = 0.12; radius = 27
             case "rightShoulder": x = 0.74; y = 0.12; radius = 27
             case "leftTrigger": x = 0.12; y = 0.12; radius = 27; label = identity == .playStation ? "L2" : "LT"
@@ -155,16 +157,17 @@ public enum LayoutGeometry {
             default: break
             }
             let p = control.placement.map { ControlPlacement(x: $0.x, y: $0.y, scale: $0.scale ?? 1) } ?? ControlPlacement(x: x, y: y)
-            var fitted = p.fitting(width: width, height: height, baseRadius: radius * unit)
             let rectangular = control.role == "trackpad" || control.placement?.width != nil
-            let w = rectangular ? min(max(0, width - 8), (control.placement?.width ?? 0.28) * width) : radius * unit * fitted.scale * 2
-            let h = rectangular ? min(max(0, height - 8), (control.placement?.height ?? 0.4) * height) : radius * unit * fitted.scale * 2
-            if rectangular {
-                fitted.x = min(1 - (w / 2 + 4) / width, max((w / 2 + 4) / width, p.x))
-                fitted.y = min(1 - (h / 2 + 4) / height, max((h / 2 + 4) / height, p.y))
-            }
+            let cross = control.role == "dpad" && mode.dpadStyle == "fourWay"
+            let minimumRadius = cross ? 22 / 0.92 : 22
+            let effectiveRadius = min(max(minimumRadius, (min(width, height) - 8) / 2), max(minimumRadius, radius * unit * p.scale))
+            let basisWidth = control.role == "trackpad" ? width : 800
+            let basisHeight = control.role == "trackpad" ? height : 320
+            let w = rectangular ? min(max(44, width - 8), max(44, (control.placement?.width ?? 0.28) * basisWidth)) : effectiveRadius * 2
+            let h = rectangular ? min(max(44, height - 8), max(44, (control.placement?.height ?? 0.4) * basisHeight)) : effectiveRadius * 2
+            let fitted = Self.fitted(p, canvasWidth: width, canvasHeight: height, controlWidth: w, controlHeight: h)
             return ResolvedLayoutControl(id: control.id, runtimeID: control.runtimeID, role: control.role,
-                                         label: control.label ?? label, placement: fitted, radius: radius * unit * fitted.scale,
+                                         label: control.label ?? label, placement: fitted, radius: effectiveRadius,
                                          width: w, height: h, rectangular: rectangular,
                                          outline: rectangular || (control.role == "rightStick" && mode.pointerMode == "cursor") ? "rectangle" : control.role == "dpad" && mode.dpadStyle == "fourWay" ? "cross" : "circle", hidden: control.hidden ?? false, feedback: control.feedback)
         }

@@ -478,12 +478,14 @@ final class TouchPadView: UIView {
                 UIColor.systemBlue.withAlphaComponent(0.5).setStroke(); guide.setLineDash([4, 4], count: 2, phase: 0); guide.stroke()
             }
         }
-        if editing, showGhost, let id = selectedID, let item = items.first(where: { $0.control.id == id }), let p = reference(for: item), let base = presetItems.first(where: { $0.control.id == id }) {
-            let radius = base.radius * p.scale
-            let ghost = UIBezierPath(ovalIn: CGRect(x: p.x * bounds.width - radius, y: p.y * bounds.height - radius, width: radius * 2, height: radius * 2))
+        if editing, showGhost, referenceAvailable, let id = selectedID,
+           let other = resolved(referenceModeID).first(where: { $0.runtimeID == id && !$0.hidden }) {
+            let rect = CGRect(x: other.placement.x * bounds.width - other.width / 2,
+                              y: other.placement.y * bounds.height - other.height / 2, width: other.width, height: other.height)
+            let ghost = other.rectangular ? UIBezierPath(roundedRect: rect, cornerRadius: 14) : UIBezierPath(ovalIn: rect)
             UIColor.label.withAlphaComponent(0.2).setStroke(); ghost.lineWidth = 1
             ghost.setLineDash([3, 5], count: 2, phase: 0); ghost.stroke()
-            text("OTHER MODE", at: CGPoint(x: p.x * bounds.width, y: p.y * bounds.height - radius - 10), color: muted, size: 8)
+            text("OTHER MODE", at: CGPoint(x: rect.midX, y: rect.minY - 10), color: muted, size: 8)
         }
         for original in items {
             let tint = buttonFeedback[original.control.id]?.tint ?? .automatic

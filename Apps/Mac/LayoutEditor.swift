@@ -143,7 +143,7 @@ struct LayoutEditor: View {
                     Text("Compact · 667 × 375").tag("compact")
                     Text("Wide · 932 × 430").tag("wide")
                 }.frame(maxWidth: 300)
-                Text("\(Int(width)) × \(Int(height))").foregroundStyle(.secondary).fixedSize()
+                Text("\(Int(width)) × \(Int(height)) pt").foregroundStyle(.secondary).fixedSize()
                 }
             }
             if layout.effectiveInputType == .gamepad {
@@ -195,7 +195,7 @@ struct LayoutEditor: View {
                             Circle().fill(Color.accentColor).frame(width: 18, height: 18).offset(x: sin(angle) * diameter * 0.42, y: -cos(angle) * diameter * 0.42)
                         }
                         if item.role == "dpad" { DPadPreview(hat: liveState?.hat ?? 8, style: DPadStyle(rawValue: mode.dpadStyle ?? "eightWay") ?? .eightWay) }
-                        else { Text(item.label).font(.system(size: 14 / scale, weight: .medium)).fixedSize() }
+                        else { Text(item.label).font(.system(size: item.rectangular || item.label.count > 3 ? 10 : 17, weight: .medium)).lineLimit(1).minimumScaleFactor(0.5).frame(maxWidth: item.width * 0.9) }
                     }.frame(width: item.width, height: item.height).position(x: position.x * width, y: position.y * height)
                         .onTapGesture { selected = item.id }
                         .gesture(DragGesture(minimumDistance: 2, coordinateSpace: .named("canvas"))
@@ -259,7 +259,7 @@ struct LayoutEditor: View {
             HStack {
                 TextField("Control name", text: Binding(get: { item.label }, set: { value in change { try $0.renameControl(selected, caption: value, modeID: mode.id) } })).frame(width: 180)
                 Button("Remove", role: .destructive) { change { try $0.removeControl(selected) }; self.selected = nil }.fixedSize()
-                Text(item.rectangular ? "Rectangle" : "Size")
+                Text(item.rectangular ? "Rectangle" : "Size · \(Int(item.width)) pt")
                 if !item.rectangular { Slider(value: Binding(get: { item.placement.scale }, set: { value in change { try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: value), modeID: mode.id) } }), in: 0.65...1.8).frame(width: 160) }
                 if layout.document.modes.count > 1 {
                     Toggle("Keep position in both modes", isOn: Binding(get: { layout.document.linkedControls?.contains(selected) == true }, set: { linked in change { try $0.linkControl(selected, linked: linked, modeID: mode.id, placement: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale)) } }))
@@ -267,11 +267,11 @@ struct LayoutEditor: View {
             }
             if ["customButton", "trackpad"].contains(control.role) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Rectangle dimensions")
+                    Text(control.role == "trackpad" ? "Trackpad area · relative to screen" : "Button dimensions · minimum 44 pt")
                     ForEach(["Width", "Height"], id: \.self) { axis in
-                        Slider(value: Binding(get: { axis == "Width" ? item.width / width : item.height / height }, set: { value in
+                        Slider(value: Binding(get: { axis == "Width" ? item.width / (control.role == "trackpad" ? width : 800) : item.height / (control.role == "trackpad" ? height : 320) }, set: { value in
                             change { try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale,
-                                width: axis == "Width" ? value : item.width / width, height: axis == "Height" ? value : item.height / height), modeID: mode.id) }
+                                width: axis == "Width" ? value : item.width / (control.role == "trackpad" ? width : 800), height: axis == "Height" ? value : item.height / (control.role == "trackpad" ? height : 320)), modeID: mode.id) }
                         }), in: 0.03...1) { Text(axis) }
                     }
                     Button("Reset shape and position") { change { try $0.resetPlacement(selected, modeID: mode.id) } }

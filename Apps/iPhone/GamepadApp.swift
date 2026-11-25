@@ -239,7 +239,7 @@ struct PhoneGamepadApp: App {
                 Toggle("Snap and align", isOn: $snapLayout)
                 if let id = selectedID, let controlID = layout.controlID(runtimeID: id),
                    let control = layout.document.controls.first(where: { $0.id == controlID }), ["trackpad", "customButton"].contains(control.role) {
-                    Section("Rectangle dimensions") {
+                    Section(control.role == "trackpad" ? "Trackpad area · relative to screen" : "Button dimensions · minimum 44 pt") {
                         ForEach(["Width", "Height"], id: \.self) { axis in
                             Slider(value: Binding(get: {
                                 let p = layout.document.resolvedControl(controlID, modeID: modeID)?.placement

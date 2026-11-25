@@ -1,0 +1,112 @@
+{
+  "format": "pocketpad-layout",
+  "schemaVersion": 2,
+  "runtimeProfile": "pocketpad-fixed-v1",
+  "name": "Point-sized controls",
+  "inputType": "keyboardMouse",
+  "templateStyle": "xbox",
+  "geometry": "runtimePresetV1",
+  "actions": {
+    "forward": {
+      "label": "Forward",
+      "outputs": [
+        "key.w"
+      ]
+    },
+    "backward": {
+      "label": "Backward",
+      "outputs": [
+        "key.s"
+      ]
+    },
+    "left": {
+      "label": "Left",
+      "outputs": [
+        "key.a"
+      ]
+    },
+    "right": {
+      "label": "Right",
+      "outputs": [
+        "key.d"
+      ]
+    },
+    "jump": {
+      "label": "Jump",
+      "outputs": [
+        "key.space"
+      ]
+    }
+  },
+  "controls": [
+    {
+      "id": "movement",
+      "role": "leftStick",
+      "placement": {
+        "x": 0.2,
+        "y": 0.65
+      },
+      "bindings": {
+        "up": "forward",
+        "down": "backward",
+        "left": "left",
+        "right": "right"
+      }
+    },
+    {
+      "id": "jump",
+      "role": "south",
+      "label": "Jump",
+      "placement": {
+        "x": 0.8,
+        "y": 0.65
+      },
+      "bindings": {
+        "press": "jump"
+      }
+    },
+    {
+      "id": "trackpad",
+      "role": "trackpad",
+      "placement": {
+        "x": 0.65,
+        "y": 0.5,
+        "width": 0.3,
+        "height": 0.4
+      }
+    },
+    {
+      "id": "activation",
+      "role": "rightTrigger"
+    },
+    {
+      "id": "fixed-button",
+      "role": "customButton",
+      "customSlot": 0,
+      "label": "Fixed",
+      "placement": {
+        "x": 0.5,
+        "y": 0.85,
+        "width": 0.1,
+        "height": 0.15
+      }
+    }
+  ],
+  "modes": [
+    {
+      "id": "explore",
+      "name": "Explore",
+      "holdAimEnabled": false,
+      "trackpadScroll": true
+    }
+  ],
+  "initialMode": "explore",
+  "keyboard": {
+    "rightStickMouse": true
+  },
+  "motion": {
+    "mode": "aim",
+    "sensitivity": 1.2,
+    "deadZone": 0.04
+  }
+}
