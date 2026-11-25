@@ -50,9 +50,10 @@ Automated tests cover PKCE, exact callbacks, rejected duplicate/state/error call
 endpoint rejection, real RSA signature verification and claim failures, concurrent refresh,
 ambiguous refresh, logout during refresh, and Keychain failure before refresh transmission.
 The signed Mac build passes, and anonymous browsing works against the local Docker API.
-Real Apple sign-in, token exchange, `/v1/me`, submit/revision/conflict, and logout verification
-are pending operator completion of the Apple login page. No claim of full end-to-end readiness
-or public publication should be made until those checks pass.
+The user confirmed the sign-in/submission test succeeded. The Mac UI subsequently restored the
+account and displayed the private test listing at revision 2. Public approval/download of that
+listing and logout verification have not been independently observed. Marketplace browsing is
+now separate from My submissions, which contains account and publishing controls.
 
 References: [AWS token endpoint](https://docs.aws.amazon.com/cognito/latest/developerguide/token-endpoint.html),
 [AWS refresh tokens](https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-the-refresh-token.html),

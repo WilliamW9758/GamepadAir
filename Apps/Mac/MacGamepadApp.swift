@@ -17,7 +17,15 @@ final class HostModel: ObservableObject {
         return WirelessSettings.validCode(saved) ? saved : ""
     }()
     @Published var portable: LocalLayout?
-    private var layoutStore: LayoutDocumentStore?
+    var layoutStore: LayoutDocumentStore?
+    @Published var localLayouts: [LocalLayout] = []
+    @Published var libraryScreen: PhoneScreen? = UserDefaults.standard.data(forKey: "library-phone-screen").flatMap { try? JSONDecoder().decode(PhoneScreen.self, from: $0) }
+    @Published var libraryEditorID = UUID()
+    @Published var libraryModeID: String = "play"
+    @Published var layoutConflicts: [LibraryConflict] = []
+    var hiddenPhoneLayoutIDs = Set(UserDefaults.standard.stringArray(forKey: "library-hidden-phone-layouts") ?? [])
+    var phoneLayouts: [String: LocalLayout] = [:]
+    var pendingLibraryCommand: LayoutCommand?
     private var layoutStoreURL: URL?
     @Published var profileNotice: String?
     init() {
@@ -26,7 +34,7 @@ final class HostModel: ObservableObject {
             let url = directory.appendingPathComponent("PocketPad/layout-documents-v1.json")
             layoutStoreURL = url
             let store = try LayoutDocumentStore(url: url)
-            layoutStore = store; portable = store.selected
+            layoutStore = store; refreshLibrary()
         } catch { profileNotice = "Saved layouts were not overwritten: " + error.localizedDescription }
     }
     func importProfile() {
@@ -35,26 +43,19 @@ final class HostModel: ObservableObject {
         do {
             let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Int.max
             guard size <= 256 * 1024 else { throw LayoutDocumentError("Layout file is too large") }
-            try store.importDocument(Data(contentsOf: url)); portable = store.selected
+            try store.importDocument(Data(contentsOf: url)); refreshLibrary()
             profileNotice = "Layout imported as a new local copy."
         } catch { profileNotice = "Import failed: \(error.localizedDescription)" }
     }
     func importMarketplaceDocument(_ document: LayoutDocument, provenance: LayoutProvenance? = nil) {
         guard let store = layoutStore else { return }
         do {
-            try store.importDocument(document.validatedData(), provenance: provenance); portable = store.selected
-            if update.connected { sendLayout(LayoutCommand(action: .create, document: document, provenance: provenance)) }
+            try store.importDocument(document.validatedData(), provenance: provenance); refreshLibrary()
+            if update.connected { syncLibrarySelection() }
             profileNotice = "Layout imported as a new local copy."
         } catch { profileNotice = error.localizedDescription }
     }
-    func saveLocal(_ value: LocalLayout) {
-        guard let store = layoutStore else { return }
-        do {
-            if store.selected.isPreset { try store.duplicate(name: value.name) }
-            try store.edit { $0 = value.document }; portable = store.selected
-            profileNotice = "Layout saved on this Mac."
-        } catch { profileNotice = error.localizedDescription }
-    }
+    func saveLocal(_ value: LocalLayout) { saveLibrary(value, base: portable ?? value) }
     func eraseLocalLayouts() throws {
         if let layoutStore { try layoutStore.resetLayouts(); portable = layoutStore.selected }
         else if let layoutStoreURL {
@@ -89,6 +90,7 @@ final class HostModel: ObservableObject {
         guard let session, update.connected, layoutCommandID == nil else { return }
         do {
             try session.sendLayoutCommand(command)
+            pendingLibraryCommand = command
             layoutCommandID = command.id; layoutCommandNotice = "Updating iPhone…"
             DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in
                 guard let self, self.layoutCommandID == command.id else { return }
@@ -101,6 +103,7 @@ final class HostModel: ObservableObject {
 
     func start() {
         stop()
+        phoneLayouts.removeAll()
         let token = UUID(); generation = token
         running = true
         practicePressCount = 0; practiceMoved = false; practiceWasPressed = false
@@ -131,6 +134,7 @@ final class HostModel: ObservableObject {
                 self.practiceWasPressed = pressed
                 if abs(Int(event.state.leftX)) > 4000 || abs(Int(event.state.leftY)) > 4000 { self.practiceMoved = true }
                 self.update = event
+                if event.connected, let snapshot = event.layout { self.receiveLibrarySnapshot(snapshot) }
                 if let type = event.layout?.layout.effectiveInputType, self.mode != .monitor, self.setupStage == .play {
                     let nextMode: OutputMode = type == .gamepad ? .gamepad : .keyboardMouse
                     if self.mode != nextMode { self.mode = nextMode }
@@ -152,6 +156,7 @@ final class HostModel: ObservableObject {
         }
     }
     func stop() {
+        pendingLibraryCommand = nil; layoutCommandID = nil
         generation = UUID()
         session?.stop(); session = nil
         running = false
@@ -371,14 +376,14 @@ struct HostView: View {
         .onAppear { model.refreshApps() }
         .sheet(isPresented: $newLayoutPrompt) {
             LayoutCreationView(name: $newLayoutName, type: $newLayoutType, source: $duplicateSource, style: model.update.layout?.layout.style ?? .xbox) { layout in
-                model.sendLayout(LayoutCommand(action: .create, document: layout.document, provenance: layout.provenance))
+                model.createLibrary(layout)
                 newLayoutPrompt = false
             }
         }
-        .confirmationDialog(dataAction == "delete" ? "Delete \(deletionLayout?.name ?? "layout") from iPhone?" : dataAction == "clear" ? "Clear saved layouts on the connected iPhone?" : "Erase local data on this Mac?", isPresented: $confirmDataAction, titleVisibility: .visible) {
+        .confirmationDialog(dataAction == "delete" ? "Delete \(deletionLayout?.name ?? "layout") from this Mac?" : dataAction == "clear" ? "Clear saved layouts on the connected iPhone?" : "Erase local data on this Mac?", isPresented: $confirmDataAction, titleVisibility: .visible) {
             Button(dataAction == "delete" ? "Delete layout" : dataAction == "clear" ? "Clear saved layouts" : "Erase data and quit", role: .destructive) {
                 if dataAction == "delete", let layout = deletionLayout {
-                    model.sendLayout(LayoutCommand(action: .delete, layoutID: layout.id, baseEditRevision: layout.editRevision))
+                    model.deleteLibrary(layout.id)
                 } else if dataAction == "clear" {
                     model.sendLayout(LayoutCommand(action: .clear, layoutID: model.update.layout?.layout.id, baseEditRevision: model.update.layout?.layout.editRevision, catalogRevisions: Dictionary(uniqueKeysWithValues: (model.update.layout?.catalog ?? []).map { ($0.id, $0.editRevision) })))
                 } else if dataAction == "erase" {
@@ -391,7 +396,7 @@ struct HostView: View {
             }
             Button("Cancel", role: .cancel) { deletionLayout = nil }
         } message: {
-            Text(dataAction == "erase" ? "Deletes this Mac's preferences, saved mappings, imported profiles, pairing settings, and diagnostic logs, then quits. iPhone data, exported files, and macOS permissions remain unchanged. This cannot be undone." : "Deletes personal layout data and recovery history on your iPhone. Built-in presets and exported files remain. This cannot be undone.")
+            Text(dataAction == "delete" ? "Removes this copy from the Mac library. The iPhone copy and exported files are unchanged." : dataAction == "erase" ? "Deletes this Mac's preferences, saved mappings, imported profiles, pairing settings, and diagnostic logs, then quits. iPhone data, exported files, and macOS permissions remain unchanged. This cannot be undone." : "Deletes personal layout data and recovery history on your iPhone. Built-in presets and exported files remain. This cannot be undone.")
         }
         .sheet(isPresented: $tour) { MacOnboarding(transport: $model.transport) { tourComplete = true; tour = false } }
         .onChange(of: model.update.frames) { _, _ in
@@ -551,54 +556,13 @@ struct HostView: View {
                 }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
             }.onAppear { if !model.running { discovery.search(model.transport) } }
         case .layouts:
-            if let snapshot = model.update.layout, model.update.connected {
-                VStack(spacing: 0) {
-                    HStack {
-                        Picker("Phone layout", selection: Binding(get: { snapshot.layout.id }, set: { id in
-                            model.sendLayout(LayoutCommand(action: .select, layoutID: id, baseEditRevision: snapshot.catalog.first { $0.id == id }?.editRevision))
-                        })) {
-                            ForEach(snapshot.catalog) { item in
-                                Text(item.name + (item.isPreset ? " · preset" : "")).tag(item.id)
-                            }
-                        }
-                        Button { section = .assistant } label: { Label("AI helper", systemImage: "sparkles") }
-                        Button("New") { duplicateSource = nil; newLayoutType = .keyboardMouse; newLayoutName = ""; newLayoutPrompt = true }
-                        Button("Duplicate") {
-                            let source = snapshot.layout
-                            duplicateSource = source; newLayoutType = source.effectiveInputType
-                            newLayoutName = source.name + " Copy"; newLayoutPrompt = true
-                        }
-                        Button("Delete…", role: .destructive) {
-                            deletionLayout = snapshot.layout; dataAction = "delete"; confirmDataAction = true
-                        }.disabled(snapshot.layout.isPreset)
-                            .help("Delete a saved layout. Requires the updated iPhone app.")
-                    }.disabled(model.layoutCommandID != nil).padding(.horizontal, 24).padding(.top, 16)
-                    if let screen = snapshot.screen {
-                        Text("\(screen.model) · \(Int(screen.width)) × \(Int(screen.height)) pt")
-                            .font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 24).padding(.top, 8)
-                    }
-                    if let notice = model.layoutCommandNotice {
-                        Text(notice).foregroundStyle(.secondary).padding(.top, 8)
-                    }
-                    LayoutEditor(layout: snapshot.layout, embedded: true, modeID: snapshot.activeModeID, screen: snapshot.screen, selectMode: { modeID in
-                        guard snapshot.layout.document.modes.contains(where: { $0.id == modeID }) else { return }
-                        model.sendLayout(LayoutCommand(action: .selectMode, layoutID: snapshot.layout.id, baseEditRevision: snapshot.layout.editRevision, activeModeID: modeID))
-                    }) { layout, base in
-                        if base.isPreset {
-                            var copy = layout; copy.name += " Copy"; copy.isPreset = false
-                            model.sendLayout(LayoutCommand(action: .create, document: copy.document, provenance: copy.provenance))
-                        } else {
-                            model.sendLayout(LayoutCommand(action: .save, layoutID: base.id, baseEditRevision: base.editRevision, document: layout.document))
-                        }
-                    }.id(snapshot.layout.id).disabled(model.layoutCommandID != nil)
-                }
-            } else {
-                VStack(spacing: 16) {
-                    Text("Connect your iPhone to manage its layouts.").font(.title3)
-                    Button("Connect iPhone") { section = .connection }
-                }.frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
+            LayoutLibraryView(model: model, create: {
+                duplicateSource = nil; newLayoutType = .keyboardMouse; newLayoutName = ""; newLayoutPrompt = true
+            }, duplicate: { source in
+                duplicateSource = source; newLayoutType = source.effectiveInputType; newLayoutName = source.name + " Copy"; newLayoutPrompt = true
+            }, delete: { source in
+                deletionLayout = source; dataAction = "delete"; confirmDataAction = true
+            })
         case .assistant:
             LayoutAssistantView(model: model) { section = .marketplace }
         case .marketplace:

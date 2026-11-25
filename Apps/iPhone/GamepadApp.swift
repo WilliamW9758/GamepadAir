@@ -545,6 +545,9 @@ struct PhoneGamepadApp: App {
         server.updateLayout(snapshot)
     }
     private func receiveLayoutCommand(_ command: DocumentLayoutCommand) {
+        if command.action == .fetch {
+            lastAcknowledgment = layouts.apply(command); publishLayout(); return
+        }
         guard !editing && !naming else {
             lastAcknowledgment = DocumentLayoutAcknowledgment(commandID: command.id, error: "Finish editing on the phone before applying Mac changes.")
             publishLayout(); return

@@ -3,6 +3,7 @@ import SwiftUI
 struct MarketplaceView: View {
     @ObservedObject var model: HostModel
     @StateObject private var account = MarketplaceAccountModel()
+    @State private var showingSubmissions = false
     @State private var query = ""
     @State private var category = "All"
     @State private var listings: [PublicListing] = []
@@ -14,11 +15,14 @@ struct MarketplaceView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                MarketplaceAccountView(account: account, currentLayout: model.update.layout?.layout ?? model.portable) { document in model.importMarketplaceDocument(document) }
-                Divider()
+                if showingSubmissions {
+                    Button { showingSubmissions = false } label: { Label("Back to Marketplace", systemImage: "chevron.left") }
+                    MarketplaceAccountView(account: account, currentLayout: model.portable) { document in model.importMarketplaceDocument(document) }
+                } else {
                 HStack {
                     Text("Community layouts").font(.largeTitle.bold())
                     Spacer()
+                    Button("My submissions") { showingSubmissions = true }
                     Button("Refresh") { Task { await browse() } }.disabled(loading)
                 }
                 HStack {
@@ -43,6 +47,7 @@ struct MarketplaceView: View {
                             } }
                         }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 18))
                     }
+                }
                 }
             }.padding(24)
         }.task { account.restore(); await browse() }

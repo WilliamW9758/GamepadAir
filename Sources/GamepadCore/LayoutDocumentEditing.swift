@@ -109,10 +109,11 @@ public struct LocalLayout: Codable, Equatable, Identifiable {
     public var document: LayoutDocument
     public var provenance: LayoutProvenance?
     public var editRevision: UInt64
+    public var modifiedAt: Date?
     public var isPreset: Bool
     public init(document: LayoutDocument, provenance: LayoutProvenance? = nil, isPreset: Bool = false) {
         id = UUID().uuidString; self.document = document; self.provenance = provenance
-        editRevision = 0; self.isPreset = isPreset
+        editRevision = 0; self.isPreset = isPreset; modifiedAt = Date()
     }
     public func duplicate(name: String) throws -> Self {
         var value = LocalLayout(document: document, provenance: provenance)
@@ -121,7 +122,7 @@ public struct LocalLayout: Codable, Equatable, Identifiable {
     public mutating func edit(baseRevision: UInt64, _ command: (inout LayoutDocument) throws -> Void) throws {
         guard !isPreset, baseRevision == editRevision, editRevision < UInt64.max else { throw LayoutDocumentError("Layout changed; reload before editing") }
         var next = document; try command(&next); try next.validate()
-        if next != document { document = next; editRevision += 1 }
+        if next != document { document = next; editRevision += 1; modifiedAt = Date() }
     }
     public static func importDocument(_ data: Data, provenance: LayoutProvenance? = nil) throws -> Self {
         Self(document: try LayoutDocument.decode(data), provenance: provenance)

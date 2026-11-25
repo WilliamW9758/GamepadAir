@@ -29,7 +29,7 @@ public struct LocalLayoutCatalog: Codable, Equatable {
               Set(root.keys).isSubset(of: ["storageVersion", "layouts", "selectedID", "activeModes"]),
               let values = root["layouts"] as? [[String: Any]] else { throw LayoutDocumentError("Invalid local catalog") }
         for value in values {
-            guard Set(value.keys).isSubset(of: ["id", "document", "provenance", "editRevision", "isPreset"]), let doc = value["document"] else { throw LayoutDocumentError("Invalid local layout") }
+            guard Set(value.keys).isSubset(of: ["id", "document", "provenance", "editRevision", "isPreset", "modifiedAt"]), let doc = value["document"] else { throw LayoutDocumentError("Invalid local layout") }
             _ = try LayoutDocument.decode(JSONSerialization.data(withJSONObject: doc, options: [.sortedKeys, .withoutEscapingSlashes]))
         }
         let result = try JSONDecoder().decode(Self.self, from: data); try result.validate(); return result
@@ -80,6 +80,7 @@ public struct DocumentLayoutHistory {
             let revision = max(previous, max(highWater[id] ?? 0, result.layouts[i].editRevision))
             guard revision < UInt64.max else { throw LayoutDocumentError("Layout revision limit reached") }
             result.layouts[i].editRevision = revision + 1
+            result.layouts[i].modifiedAt = Date()
         }
         return result
     }

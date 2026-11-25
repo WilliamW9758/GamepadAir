@@ -74,6 +74,16 @@ public final class LayoutDocumentStore {
         var next = catalog; try next.delete(id)
         try commit(next)
     }
+    /// Reconcile a confirmed device copy, retaining its shared identity and edit timestamp.
+    public func receive(_ layout: LocalLayout, replacing oldID: String? = nil, select: Bool = false) throws {
+        var next = catalog
+        if let oldID, oldID != layout.id { next.layouts.removeAll { $0.id == oldID }; next.activeModes[oldID] = nil }
+        if let index = next.layouts.firstIndex(where: { $0.id == layout.id }) { next.layouts[index] = layout }
+        else { next.layouts.append(layout) }
+        if select || !next.layouts.contains(where: { $0.id == next.selectedID }) { next.selectedID = layout.id }
+        if let mode = next.activeModes[layout.id], !layout.document.modes.contains(where: { $0.id == mode }) { next.activeModes[layout.id] = nil }
+        try commit(next)
+    }
     public func resetLayouts() throws {
         try commit(.fresh(), record: false)
         history = DocumentLayoutHistory(); editStart = nil

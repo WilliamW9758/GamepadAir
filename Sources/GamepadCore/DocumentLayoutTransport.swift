@@ -4,12 +4,12 @@ import CoreFoundation
 /// The transport envelope is separate from the downloadable layout document.
 /// Its byte bound includes catalog summaries and local provenance.
 public enum DocumentLayoutTransport {
-    public static let maximumBytes = 512 * 1024
+    public static let maximumBytes = 768 * 1024
     private static func object(_ data: Data, keys: Set<String>) throws -> [String: Any] {
         guard data.count <= maximumBytes,
               let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               Set(root.keys).isSubset(of: keys) else { throw LayoutDocumentError("Invalid layout sync envelope") }
-        guard let version = root["protocolVersion"] as? NSNumber, CFGetTypeID(version) != CFBooleanGetTypeID(), version == 2 else {
+        guard let version = root["protocolVersion"] as? NSNumber, CFGetTypeID(version) != CFBooleanGetTypeID(), version == 3 else {
             throw LayoutDocumentError("Update Pocket Pad on both devices: layout sync versions differ")
         }
         return root
@@ -25,23 +25,30 @@ public enum DocumentLayoutTransport {
     public static func decodeSnapshot(_ data: Data) throws -> DocumentLayoutSnapshot {
         let root = try object(data, keys: ["protocolVersion", "layout", "activeModeID", "screen", "catalog", "acknowledgment"])
         guard let layout = root["layout"] as? [String: Any],
-              Set(layout.keys).isSubset(of: ["id", "document", "provenance", "editRevision", "isPreset"]),
+              Set(layout.keys).isSubset(of: ["id", "document", "provenance", "editRevision", "isPreset", "modifiedAt"]),
               let document = layout["document"] else { throw LayoutDocumentError("Missing layout") }
         _ = try LayoutDocument.decode(JSONSerialization.data(withJSONObject: document))
+        if let ack = root["acknowledgment"] as? [String: Any], let fetched = ack["fetchedLayout"] as? [String: Any], let document = fetched["document"] {
+            _ = try LayoutDocument.decode(JSONSerialization.data(withJSONObject: document))
+        }
         let value = try JSONDecoder().decode(DocumentLayoutSnapshot.self, from: data)
+        if let fetched = value.acknowledgment?.fetchedLayout {
+            guard UUID(uuidString: fetched.id) != nil else { throw LayoutDocumentError("Invalid fetched layout identity") }
+            try fetched.document.validate()
+        }
         try value.validate(); return value
     }
 }
 
 extension DocumentLayoutCommand {
     public func validate() throws {
-        guard protocolVersion == 2 else { throw LayoutDocumentError("Update Pocket Pad on both devices: layout sync versions differ") }
+        guard protocolVersion == 3 else { throw LayoutDocumentError("Update Pocket Pad on both devices: layout sync versions differ") }
         guard UUID(uuidString: id) != nil else { throw LayoutDocumentError("Invalid command ID") }
         guard action == .create || provenance == nil else { throw LayoutDocumentError("Source provenance cannot be changed by an edit") }
         guard action == .clear || catalogRevisions == nil else { throw LayoutDocumentError("Unexpected catalog revisions") }
         if action == .clear && catalogRevisions == nil { throw LayoutDocumentError("Missing catalog revisions") }
         if action == .create {
-            guard layoutID == nil, baseEditRevision == nil, activeModeID == nil, let document else { throw LayoutDocumentError("Invalid create command") }
+            guard (layoutID == nil || UUID(uuidString: layoutID!) != nil), baseEditRevision == nil, activeModeID == nil, let document else { throw LayoutDocumentError("Invalid create command") }
             try document.validate()
         } else {
             guard let layoutID, UUID(uuidString: layoutID) != nil, baseEditRevision != nil else { throw LayoutDocumentError("Missing layout or base revision") }

@@ -1,7 +1,7 @@
 import Foundation
 
 public struct DocumentLayoutSnapshot: Codable, Equatable {
-    public var protocolVersion = 2
+    public var protocolVersion = 3
     public var layout: LocalLayout
     public var activeModeID: String
     public var screen: PhoneScreen?
@@ -11,7 +11,7 @@ public struct DocumentLayoutSnapshot: Codable, Equatable {
         self.layout = layout; self.activeModeID = activeModeID; self.catalog = catalog
     }
     public func validate() throws {
-        guard protocolVersion == 2 else { throw LayoutDocumentError("Update Pocket Pad on both devices: layout sync versions differ") }
+        guard protocolVersion == 3 else { throw LayoutDocumentError("Update Pocket Pad on both devices: layout sync versions differ") }
         guard UUID(uuidString: layout.id) != nil, catalog.count <= 500, Set(catalog.map(\.id)).count == catalog.count,
               catalog.allSatisfy({ UUID(uuidString: $0.id) != nil }) else { throw LayoutDocumentError("Invalid layout identity") }
         try layout.document.validate()
@@ -26,9 +26,11 @@ public struct DocumentLayoutSummary: Codable, Equatable, Identifiable {
     public var name: String
     public var isPreset: Bool
     public var editRevision: UInt64
-    public init(_ layout: LocalLayout) { id = layout.id; name = layout.name; isPreset = layout.isPreset; editRevision = layout.editRevision }
+    public var modifiedAt: Date?
+    public init(_ layout: LocalLayout) { id = layout.id; name = layout.name; isPreset = layout.isPreset; editRevision = layout.editRevision; modifiedAt = layout.modifiedAt }
 }
 public struct DocumentLayoutAcknowledgment: Codable, Equatable {
+    public var fetchedLayout: LocalLayout?
     public var commandID: String
     public var error: String?
     public var layoutID: String?
@@ -38,8 +40,8 @@ public struct DocumentLayoutAcknowledgment: Codable, Equatable {
     }
 }
 public struct DocumentLayoutCommand: Codable, Equatable {
-    public enum Action: String, Codable { case select, create, save, delete, selectMode, clear }
-    public var protocolVersion = 2
+    public enum Action: String, Codable { case select, create, save, delete, selectMode, clear, fetch }
+    public var protocolVersion = 3
     public var id = UUID().uuidString
     public var action: Action
     public var layoutID: String?
@@ -59,6 +61,17 @@ public struct DocumentLayoutCommandProcessor {
     private var acknowledgments: [String: DocumentLayoutAcknowledgment] = [:]
     public init() {}
     public mutating func apply(_ command: DocumentLayoutCommand, to catalog: inout LocalLayoutCatalog) -> DocumentLayoutAcknowledgment {
+        // Reads do not enter the mutation ledger: retaining full documents there could
+        // multiply memory use by thousands of requests. Revision checks still protect reads.
+        if command.action == .fetch {
+            var result = DocumentLayoutAcknowledgment(commandID: command.id)
+            do {
+                try command.validate()
+                guard let layout = catalog.layouts.first(where: { $0.id == command.layoutID }), layout.editRevision == command.baseEditRevision else { throw LayoutDocumentError("Layout changed; refresh before fetching") }
+                result.fetchedLayout = layout; result.layoutID = layout.id; result.editRevision = layout.editRevision
+            } catch { result.error = error.localizedDescription }
+            return result
+        }
         if let previous = acknowledgments[command.id] { return previous }
         guard acknowledgments.count < 4096 else { return DocumentLayoutAcknowledgment(commandID: command.id, error: "Reconnect to start a new layout editing session") }
         var result = DocumentLayoutAcknowledgment(commandID: command.id)
@@ -68,12 +81,17 @@ public struct DocumentLayoutCommandProcessor {
             if command.action == .create {
                 guard let document = command.document else { throw LayoutDocumentError("Missing layout document") }
                 try document.validate()
-                let local = LocalLayout(document: document, provenance: command.provenance)
+                var local = LocalLayout(document: document, provenance: command.provenance)
+                if let id = command.layoutID {
+                    guard !next.layouts.contains(where: { $0.id == id }) else { throw LayoutDocumentError("Layout already exists; refresh before syncing") }
+                    local.id = id
+                }
                 next.layouts.append(local); next.selectedID = local.id; result.layoutID = local.id; result.editRevision = 0
             } else {
                 guard let id = command.layoutID, let index = next.layouts.firstIndex(where: { $0.id == id }) else { throw LayoutDocumentError("Layout no longer exists") }
                 guard command.baseEditRevision == next.layouts[index].editRevision else { throw LayoutDocumentError("Layout changed on the phone. Refresh before editing.") }
                 switch command.action {
+                case .fetch: result.fetchedLayout = next.layouts[index]
                 case .save:
                     guard let document = command.document else { throw LayoutDocumentError("Missing layout document") }
                     try next.layouts[index].edit(baseRevision: command.baseEditRevision!) { $0 = document }

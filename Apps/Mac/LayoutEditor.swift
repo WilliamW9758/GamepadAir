@@ -18,13 +18,14 @@ struct LayoutEditor: View {
     let sourceLayout: LocalLayout
     let sourceMode: String
     let screen: PhoneScreen?
+    let dirtyChanged: ((Bool) -> Void)?
     let selectMode: ((String) -> Void)?
     let save: (LocalLayout, LocalLayout) -> Void
-    init(layout: LocalLayout, embedded: Bool = false, liveState: GamepadState? = nil, modeID: String? = nil, screen: PhoneScreen? = nil, selectMode: ((String) -> Void)? = nil, save: @escaping (LocalLayout, LocalLayout) -> Void) {
+    init(layout: LocalLayout, embedded: Bool = false, liveState: GamepadState? = nil, modeID: String? = nil, screen: PhoneScreen? = nil, selectMode: ((String) -> Void)? = nil, dirtyChanged: ((Bool) -> Void)? = nil, save: @escaping (LocalLayout, LocalLayout) -> Void) {
         _layout = State(initialValue: layout); _baseLayout = State(initialValue: layout)
         let mode = modeID ?? layout.document.initialMode
         _modeID = State(initialValue: mode); sourceMode = mode
-        sourceLayout = layout; self.embedded = embedded; self.liveState = liveState; self.screen = screen; self.selectMode = selectMode; self.save = save
+        sourceLayout = layout; self.embedded = embedded; self.liveState = liveState; self.screen = screen; self.selectMode = selectMode; self.dirtyChanged = dirtyChanged; self.save = save
     }
     private var width: Double { screen?.width ?? 800 }
     private var height: Double { screen?.height ?? 360 }
@@ -35,7 +36,7 @@ struct LayoutEditor: View {
             var next = layout.document; try edit(&next); try next.validate()
             guard next != layout.document else { return }
             if record { past.append(layout.document); if past.count > 50 { past.removeFirst() }; future.removeAll() }
-            layout.document = next; saved = false; error = nil
+            layout.document = next; saved = false; error = nil; dirtyChanged?(next != baseLayout.document)
             if !next.modes.contains(where: { $0.id == modeID }) { modeID = next.initialMode }
         } catch { self.error = error.localizedDescription }
     }
@@ -73,7 +74,7 @@ struct LayoutEditor: View {
             }
         }.background { PadBackdrop() }.buttonStyle(PadActionStyle())
             .onChange(of: sourceLayout) { _, value in
-                if liveState != nil || value.document == layout.document { layout = value; baseLayout = value }
+                if liveState != nil || value.document == layout.document || layout.document == baseLayout.document { layout = value; baseLayout = value; saved = true; dirtyChanged?(false) }
             }
             .onChange(of: sourceMode) { _, value in if liveState != nil { modeID = value } }
             .onChange(of: modeID) { _, value in selected = nil; dragOrigin = nil; if liveState == nil { selectMode?(value) } }
@@ -99,7 +100,7 @@ struct LayoutEditor: View {
                 Button { if let value = past.popLast() { future.append(layout.document); layout.document = value; saved = false } } label: { Image(systemName: "arrow.uturn.backward") }.disabled(past.isEmpty)
                 Button { if let value = future.popLast() { past.append(layout.document); layout.document = value; saved = false } } label: { Image(systemName: "arrow.uturn.forward") }.disabled(future.isEmpty)
                 if !embedded { Button("Cancel") { dismiss() } }
-                Button(saved ? "Saved" : "Save") { save(layout, baseLayout); saved = true; if !embedded { dismiss() } }.buttonStyle(PadActionStyle(prominent: true))
+                Button(saved ? "Saved" : "Save") { save(layout, baseLayout); if !embedded { dismiss() } }.buttonStyle(PadActionStyle(prominent: true))
             }
             if layout.effectiveInputType == .gamepad {
                 Picker("Emulate controller", selection: Binding(get: { layout.document.controllerStyle ?? "xbox" }, set: { value in change { $0.controllerStyle = value } })) {
