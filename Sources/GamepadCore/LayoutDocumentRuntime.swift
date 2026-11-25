@@ -112,6 +112,7 @@ public struct ResolvedLayoutControl: Equatable, Identifiable {
     public let width: Double
     public let height: Double
     public let rectangular: Bool
+    public let outline: String
     public let hidden: Bool
     public let feedback: DocumentFeedback?
 }
@@ -164,22 +165,53 @@ public enum LayoutGeometry {
             }
             return ResolvedLayoutControl(id: control.id, runtimeID: control.runtimeID, role: control.role,
                                          label: control.label ?? label, placement: fitted, radius: radius * unit * fitted.scale,
-                                         width: w, height: h, rectangular: rectangular, hidden: control.hidden ?? false, feedback: control.feedback)
+                                         width: w, height: h, rectangular: rectangular,
+                                         outline: rectangular || (control.role == "rightStick" && mode.pointerMode == "cursor") ? "rectangle" : control.role == "dpad" && mode.dpadStyle == "fourWay" ? "cross" : "circle", hidden: control.hidden ?? false, feedback: control.feedback)
         }
     }
 }
 
 extension LayoutGeometry {
-    /// Conservative bounds feedback includes round controls' bounding boxes.
+    // Visible shapes are unions of circles and rectangles, including rounded corners.
+    // This avoids false positives where only circular controls' bounding boxes intersect.
+    private struct Part {
+        var x: Double, y: Double, halfWidth: Double, halfHeight: Double
+        var circle = false
+        func intersects(_ other: Part) -> Bool {
+            let dx = abs(x - other.x), dy = abs(y - other.y)
+            if circle && other.circle { return hypot(dx, dy) < halfWidth + other.halfWidth }
+            if !circle && !other.circle { return dx < halfWidth + other.halfWidth && dy < halfHeight + other.halfHeight }
+            let round = circle ? self : other, box = circle ? other : self
+            return hypot(max(0, dx - box.halfWidth), max(0, dy - box.halfHeight)) < round.halfWidth
+        }
+    }
+    private static func parts(_ control: ResolvedLayoutControl, width: Double, height: Double) -> [Part] {
+        let x = control.placement.x * width, y = control.placement.y * height
+        let w = control.width / 2, h = control.height / 2
+        if control.outline == "cross" {
+            let r = control.radius
+            return [Part(x: x, y: y, halfWidth: r * 0.32, halfHeight: r * 0.92),
+                    Part(x: x, y: y, halfWidth: r * 0.92, halfHeight: r * 0.32)]
+        }
+        if control.outline == "rectangle" {
+            let r = min(14, w, h)
+            var result = [Part(x: x, y: y, halfWidth: w - r, halfHeight: h),
+                          Part(x: x, y: y, halfWidth: w, halfHeight: h - r)]
+            for sx in [-1.0, 1.0] { for sy in [-1.0, 1.0] {
+                result.append(Part(x: x + sx * (w - r), y: y + sy * (h - r), halfWidth: r, halfHeight: r, circle: true))
+            } }
+            return result
+        }
+        return [Part(x: x, y: y, halfWidth: control.radius, halfHeight: control.radius, circle: true)]
+    }
     public static func overlappingIDs(_ controls: [ResolvedLayoutControl], width: Double, height: Double) -> Set<String> {
         let visible = controls.filter { !$0.hidden }
+        let shapes = visible.map { parts($0, width: width, height: height) }
         var result = Set<String>()
         for i in visible.indices {
             for j in visible.indices where j > i {
-                let a = visible[i], b = visible[j]
-                if abs(a.placement.x - b.placement.x) * width < (a.width + b.width) / 2,
-                   abs(a.placement.y - b.placement.y) * height < (a.height + b.height) / 2 {
-                    result.insert(a.id); result.insert(b.id)
+                if shapes[i].contains(where: { a in shapes[j].contains(where: { a.intersects($0) }) }) {
+                    result.insert(visible[i].id); result.insert(visible[j].id)
                 }
             }
         }

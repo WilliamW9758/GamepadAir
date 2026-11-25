@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Carbon
 
 /// Additional slots are a chord, not separate controller inputs.
 struct ComboBindingEditor: View {
@@ -43,6 +44,9 @@ struct ComboBindingEditor: View {
                         .buttonStyle(PadActionStyle(prominent: binding.behavior == behavior))
                 }
             }
+            if SystemShortcutConflict.matches(binding.outputs) {
+                Label("This shortcut conflicts with a macOS system shortcut.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
+            }
             if binding.outputs.count > 1 {
                 Text("Combo: " + binding.outputs.map(\.label).joined(separator: " + "))
                     .foregroundStyle(.secondary)
@@ -62,17 +66,20 @@ private struct ShortcutRecorder: View {
     @State private var outputs: [OutputToken] = []
     @State private var monitor: Any?
     @State private var captured = false
-    @State private var message = "Press keys together, then click Use shortcut."
+    @State private var message = ""
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Record shortcut").font(.headline)
-            Text(message)
+            if !message.isEmpty { Text(message).foregroundStyle(.orange) }
             Text(outputs.isEmpty ? "Waiting for keys…" : outputs.map(\.label).joined(separator: " + "))
                 .font(.title2).frame(minHeight: 40)
-            Text("Physical key positions (US labels), up to four keys. Escape cancels; use the picker to map Escape. System-reserved shortcuts may be handled by macOS.").foregroundStyle(.secondary)
+            if SystemShortcutConflict.matches(outputs) {
+                Label("This shortcut conflicts with a macOS system shortcut.", systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+            }
             HStack {
                 Button("Cancel") { dismiss() }
-                Button("Start over") { outputs = []; captured = false; message = "Press keys together, then click Use shortcut." }
+                Button("Start over") { outputs = []; captured = false; message = "" }
                 Spacer()
                 Button("Use shortcut") { save(outputs); dismiss() }.disabled(outputs.isEmpty)
             }
@@ -90,7 +97,7 @@ private struct ShortcutRecorder: View {
                         for (flag, token) in pairs where event.modifierFlags.contains(flag) { append(token) }
                     }
                     if !outputs.isEmpty && (event.type == .keyUp || (event.type == .flagsChanged && event.modifierFlags.intersection([.shift, .control, .option, .command]).isEmpty)) {
-                        captured = true; message = "Shortcut captured. Review it, then click Use shortcut."
+                        captured = true
                     }
                     return nil
                 }
@@ -102,5 +109,28 @@ private struct ShortcutRecorder: View {
         guard !outputs.contains(token) else { return }
         guard outputs.count < 4 else { message = "Four-key limit reached. Start over to replace the shortcut."; return }
         outputs.append(token)
+    }
+}
+
+
+/// Reads enabled, user-configured macOS shortcuts rather than assuming defaults.
+private enum SystemShortcutConflict {
+    static func matches(_ outputs: [OutputToken]) -> Bool {
+        let modifierTokens: Set<OutputToken> = [.command, .shift, .option, .control]
+        let keys = outputs.filter { !modifierTokens.contains($0) }
+        guard keys.count == 1, let key = keys[0].keyCode else { return false }
+        var modifiers = 0
+        for (token, flag) in [(OutputToken.command, cmdKey), (.shift, shiftKey), (.option, optionKey), (.control, controlKey)] where outputs.contains(token) { modifiers |= flag }
+        var hotKeys: Unmanaged<CFArray>?
+        if CopySymbolicHotKeys(&hotKeys) == noErr, let entries = hotKeys?.takeRetainedValue() as? [[String: Any]] {
+            if entries.contains(where: {
+                ($0[kHISymbolicHotKeyEnabled as String] as? NSNumber)?.boolValue == true &&
+                ($0[kHISymbolicHotKeyCode as String] as? NSNumber)?.intValue == Int(key) &&
+                ($0[kHISymbolicHotKeyModifiers as String] as? NSNumber)?.intValue == modifiers
+            }) { return true }
+        }
+        // App switching and force-quit are not listed among configurable symbolic hotkeys.
+        return (key == 48 && (modifiers == cmdKey || modifiers == cmdKey | shiftKey)) ||
+            (key == 53 && modifiers == cmdKey | optionKey)
     }
 }

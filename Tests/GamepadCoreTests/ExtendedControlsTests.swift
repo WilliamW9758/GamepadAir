@@ -52,6 +52,29 @@ final class ExtendedControlsTests: XCTestCase {
         XCTAssertEqual(try PointerFrame(data: frame.encode()), frame)
         XCTAssertThrowsError(try PointerFrame(data: PointerFrame(sequence: 7, action: .scroll, dy: 4097).encode()))
     }
+    func testOverlapUsesVisibleCirclesRatherThanBoundingSquares() throws {
+        var doc = LayoutDocument(name: "Shapes", inputType: "keyboardMouse", templateStyle: "xbox", actions: [:], controls: [
+            DocumentControl(id: "left", role: "leftStick", placement: DocumentPlacement(x: 0.3, y: 0.4)),
+            DocumentControl(id: "pad", role: "dpad", placement: DocumentPlacement(x: 0.42, y: 0.65))
+        ], modes: [DocumentMode(id: "play", name: "Play")], initialMode: "play")
+        func overlaps() -> Set<String> { LayoutGeometry.overlappingIDs(LayoutGeometry.resolve(doc, modeID: "play", width: 800, height: 320), width: 800, height: 320) }
+        // 96 × 80 displacement: squares overlap, but the 62 + 50 radii do not.
+        XCTAssertTrue(overlaps().isEmpty)
+        doc.controls[1].placement = DocumentPlacement(x: 0.4, y: 0.55)
+        XCTAssertEqual(overlaps(), ["left", "pad"])
+        doc.controls[1].hidden = true
+        XCTAssertTrue(overlaps().isEmpty)
+    }
+    func testFourWayDPadEmptyCornersDoNotOverlap() {
+        var doc = LayoutDocument(name: "Shapes", inputType: "keyboardMouse", templateStyle: "xbox", actions: [:], controls: [
+            DocumentControl(id: "button", role: "customButton", customSlot: 0, placement: DocumentPlacement(x: 0.55, y: 0.625, scale: 0.65)),
+            DocumentControl(id: "pad", role: "dpad", placement: DocumentPlacement(x: 0.5, y: 0.5))
+        ], modes: [DocumentMode(id: "play", name: "Play", dpadStyle: "fourWay")], initialMode: "play")
+        func overlaps() -> Set<String> { LayoutGeometry.overlappingIDs(LayoutGeometry.resolve(doc, modeID: "play", width: 800, height: 320), width: 800, height: 320) }
+        XCTAssertTrue(overlaps().isEmpty)
+        doc.controls[0].placement = DocumentPlacement(x: 0.55, y: 0.5, scale: 0.65)
+        XCTAssertEqual(overlaps(), ["button", "pad"])
+    }
     func testSnappingUsesCenters() {
         let p = LayoutGeometry.snapped(ControlPlacement(x: 0.506, y: 0.299), others: [ControlPlacement(x: 0.2, y: 0.3)])
         XCTAssertEqual(p.x, 0.5); XCTAssertEqual(p.y, 0.3)

@@ -184,3 +184,10 @@ Run `swift test` to validate the current checkout. Report your OS versions, tran
 - `swift test`: 114 tests passed. `server/.venv/bin/python -m pytest tests/test_layout_format.py -q` from server: 45 passed.
 - Signed builds passed: MacGamepad-HID / Gamepad at `/tmp/PocketPadControls`, PhoneGamepad / Debug generic iOS at `/tmp/PocketPadControlsPhone`. UI inspected using `/tmp/PocketPadControls/Build/Products/Gamepad/MacGamepad.app`, after stopping the old PocketPadCreationFlow process. Narrow-window toolbar wrapping corrected and rechecked.
 - Pending physical-device acceptance: two-finger scrolling and tap/hold arbitration, motion axis direction/feel and recalibration in both landscape orientations, settings-handle fading/touch reachability, and live phone/Mac sync of extended documents. No phone installation, release, or TestFlight upload in this change.
+
+### Editor feedback follow-up (2026-11-25)
+- Reserved two lines for overlap feedback even when no warning is visible, keeping canvas placement stable. Replaced bounding-box overlap with visible-shape intersections for circles, rounded rectangles, and four-way D-pad crosses.
+- Removed shortcut-recorder explanatory copy. Conflict warnings now compare against enabled macOS symbolic hotkeys (including user customization), plus app-switching/force-quit combinations; warnings also appear for picker-assigned bindings. App-specific customized shortcuts are outside this system-hotkey API.
+- Added a visible Gyro & motion entry beside the editor's snapping option; it opens the Motion section at the top of Advanced settings. Activation remains RT/R2 hold with automatic calibration.
+- 116 Swift tests passed, including separated circles with overlapping bounding boxes and empty D-pad corners. Both signed app builds passed at the existing PocketPadControls/PocketPadControlsPhone derived-data paths.
+- Did not restart the running Mac app: UI inspection found an unsaved user layout draft. The newly built UI awaits reopening after that draft is saved; no user draft was discarded or saved by the agent.

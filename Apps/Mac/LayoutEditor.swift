@@ -107,7 +107,11 @@ struct LayoutEditor: View {
                 Button("Save") { save(layout, baseLayout); if !embedded { dismiss() } }.buttonStyle(PadActionStyle(prominent: hasChanges)).disabled(!hasChanges)
             }
             VStack(alignment: .leading, spacing: 8) {
-                Toggle("Snap and align", isOn: $snap).fixedSize()
+                HStack {
+                    Toggle("Snap and align", isOn: $snap).fixedSize()
+                    Spacer()
+                    Button("Gyro & motion…") { advanced = true }.fixedSize()
+                }
                 HStack {
                 Picker("Preview", selection: $preview) {
                     Text(screen == nil ? "Default canvas" : "Connected phone").tag("current")
@@ -118,7 +122,12 @@ struct LayoutEditor: View {
                 }
             }
             let overlaps = LayoutGeometry.overlappingIDs(items, width: width, height: height)
-            if !overlaps.isEmpty { Text("\(overlaps.count) controls have overlapping bounds (orange outlines). Check each preview size.").foregroundStyle(.orange) }
+            Text("\(overlaps.count) controls overlap (orange outlines). Check each preview size.")
+                .foregroundStyle(.orange)
+                .lineLimit(2, reservesSpace: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .opacity(overlaps.isEmpty ? 0 : 1)
+                .accessibilityHidden(overlaps.isEmpty)
             if layout.effectiveInputType == .gamepad {
                 Picker("Emulate controller", selection: Binding(get: { layout.document.controllerStyle ?? "xbox" }, set: { value in change { $0.controllerStyle = value } })) {
                     Text("Xbox").tag("xbox"); Text("PlayStation").tag("playstation")
