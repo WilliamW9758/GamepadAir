@@ -65,7 +65,8 @@ struct LayoutAssistantView: View {
                         Button("Make controls 15% larger") { preview(larger: true) }
                         Button("Use lighter button feedback") { preview(larger: false) }
                         Button("Find community layouts") { openMarketplace() }
-                        Text("Marketplace browsing is also a preview.").font(.callout).foregroundStyle(.secondary)
+                        Button("Manage account") { openMarketplace() }
+                        Text("AI generation is not available yet. It will require sign-in; community browsing and downloads do not.").font(.callout).foregroundStyle(.secondary)
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }
                 Divider()

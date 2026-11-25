@@ -39,6 +39,14 @@ final class HostModel: ObservableObject {
             profileNotice = "Layout imported as a new local copy."
         } catch { profileNotice = "Import failed: \(error.localizedDescription)" }
     }
+    func importMarketplaceDocument(_ document: LayoutDocument, provenance: LayoutProvenance? = nil) {
+        guard let store = layoutStore else { return }
+        do {
+            try store.importDocument(document.validatedData(), provenance: provenance); portable = store.selected
+            if update.connected { sendLayout(LayoutCommand(action: .create, document: document, provenance: provenance)) }
+            profileNotice = "Layout imported as a new local copy."
+        } catch { profileNotice = error.localizedDescription }
+    }
     func saveLocal(_ value: LocalLayout) {
         guard let store = layoutStore else { return }
         do {
@@ -594,7 +602,7 @@ struct HostView: View {
         case .assistant:
             LayoutAssistantView(model: model) { section = .marketplace }
         case .marketplace:
-            MarketplaceView()
+            MarketplaceView(model: model)
         case .general:
             Form {
                 Section("Controls") {

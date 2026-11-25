@@ -56,10 +56,10 @@
 "CLANG_WARN_INT_CONVERSION" = "YES";
 "CLANG_WARN_STRICT_PROTOTYPES" = "YES";
 "CLANG_WARN_CONSTANT_CONVERSION" = "YES";
-"GCC_WARN_UNUSED_VARIABLE" = "YES";
+"GCC_WARN_UNDECLARED_SELECTOR" = "YES";
 "DEAD_CODE_STRIPPING" = "YES";
 "CLANG_WARN_OBJC_LITERAL_CONVERSION" = "YES";
-"SWIFT_COMPILATION_MODE" = "wholemodule";
+"GCC_WARN_UNUSED_VARIABLE" = "YES";
 "CLANG_WARN__DUPLICATE_METHOD_MATCH" = "YES";
 "CLANG_WARN_EMPTY_BODY" = "YES";
 "GCC_WARN_64_TO_32_BIT_CONVERSION" = "YES";
@@ -72,7 +72,7 @@
 "CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS" = "YES";
 "CLANG_WARN_UNREACHABLE_CODE" = "YES";
 "ENABLE_STRICT_OBJC_MSGSEND" = "YES";
-"GCC_WARN_UNDECLARED_SELECTOR" = "YES";
+"SWIFT_COMPILATION_MODE" = "wholemodule";
 };
 "name" = "Release";
 };
@@ -126,7 +126,10 @@
 "34316FD487C56D2E36B540CC",
 "D4DCE1B3321CD991EDDAAFEC",
 "1FECBC8E9A29AEE1AC293B41",
-"824D1FCBD628C0A32A2DBA09");
+"824D1FCBD628C0A32A2DBA09",
+"A1460EC25C0C24D58CFE9ED1",
+"995621A1CB0F0B2F50FE1535",
+"DA21244C70FC6D07FDA166E6");
 "runOnlyForDeploymentPostprocessing" = "0";
 };
 "0E1C89339712AB68BF99E120" = {
@@ -167,7 +170,7 @@
 "INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Pocket Pad controls between your iPhone and Mac using Bluetooth.";
 "ENABLE_APP_SANDBOX" = "NO";
 "CLANG_ENABLE_OBJC_WEAK" = "YES";
-"INFOPLIST_FILE" = "Config/AppInfo.plist";
+"INFOPLIST_FILE" = "Config/MacInfo.plist";
 "GENERATE_INFOPLIST_FILE" = "YES";
 };
 "name" = "Debug";
@@ -239,7 +242,7 @@
 "ENABLE_APP_SANDBOX" = "NO";
 "CLANG_ENABLE_OBJC_WEAK" = "YES";
 "ENABLE_HARDENED_RUNTIME" = "YES";
-"INFOPLIST_FILE" = "Config/AppInfo.plist";
+"INFOPLIST_FILE" = "Config/MacInfo.plist";
 "GENERATE_INFOPLIST_FILE" = "YES";
 };
 "name" = "Gamepad";
@@ -247,6 +250,12 @@
 "D16C4AA1F380487F72B504F5" = {
 "isa" = "PBXBuildFile";
 "fileRef" = "1C5F9F0EE39E70A936BB75AE";
+};
+"D957E6971E7B70D4FC3564C5" = {
+"path" = "Sources/MacSupport/MarketplaceAPI.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
 };
 "EFE690086BD0AEE7C36F56CE" = {
 "isa" = "PBXBuildFile";
@@ -474,6 +483,14 @@
 "isa" = "PBXBuildFile";
 "fileRef" = "4F0A7421EF19DA8198C31184";
 };
+"4FE00AD12F334EAF0D39A87D" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "6F991C31935CD99CD1B4E8E1";
+};
+"9C967550478535B9ED78F7EA" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "59D1B8D158AA842CA6E4BEA0";
+};
 "6AEEF38C189FFEFC3105B1C2" = {
 "baseConfigurationReference" = "CAE662172FD450BB0CD710A7";
 "isa" = "XCBuildConfiguration";
@@ -506,14 +523,6 @@
 };
 "name" = "Gamepad";
 };
-"9C967550478535B9ED78F7EA" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "59D1B8D158AA842CA6E4BEA0";
-};
-"EAD664DDC17E5728936199DB" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "84CF1F1F62B8413349735B51";
-};
 "9F819B227D655BD9F3048260" = {
 "isa" = "PBXBuildFile";
 "fileRef" = "422C5064DE5AF9352F527826";
@@ -536,9 +545,9 @@
 "lastKnownFileType" = "sourcecode.swift";
 "sourceTree" = "SOURCE_ROOT";
 };
-"4FE00AD12F334EAF0D39A87D" = {
+"EAD664DDC17E5728936199DB" = {
 "isa" = "PBXBuildFile";
-"fileRef" = "6F991C31935CD99CD1B4E8E1";
+"fileRef" = "84CF1F1F62B8413349735B51";
 };
 "A49C76DD093E887FA20EDB97" = {
 "path" = "Sources/GamepadCore/LayoutDocumentStore.swift";
@@ -549,6 +558,12 @@
 "773860AF86E1880EEB92B069" = {
 "isa" = "PBXBuildFile";
 "fileRef" = "73B8EEE998C35FEAC532BCDC";
+};
+"756F45E9DC33E8F4298CB912" = {
+"path" = "Apps/Mac/MarketplaceAccount.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
 };
 "245FBCA2EBE732A28EE91D85" = {
 "isa" = "PBXBuildFile";
@@ -564,16 +579,22 @@
 "isa" = "PBXBuildFile";
 "fileRef" = "6D3D0598E50E8980AF9292EC";
 };
-"60CE342E42FD8E2976C8F92C" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "7839B040121CA952E6B34C56";
-};
 "824D1FCBD628C0A32A2DBA09" = {
 "isa" = "PBXBuildFile";
 "fileRef" = "6F991C31935CD99CD1B4E8E1";
 };
+"60CE342E42FD8E2976C8F92C" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "7839B040121CA952E6B34C56";
+};
 "73B8EEE998C35FEAC532BCDC" = {
 "path" = "Sources/GamepadCore/LayoutDocumentEditing.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
+"FB74A5AADB707C9E46385C8A" = {
+"path" = "Sources/MacSupport/MarketplaceAuth.swift";
 "isa" = "PBXFileReference";
 "lastKnownFileType" = "sourcecode.swift";
 "sourceTree" = "SOURCE_ROOT";
@@ -671,6 +692,10 @@
 "14610EE4779958040EEC8527" = {
 "isa" = "PBXBuildFile";
 "fileRef" = "5B3A614FEC46DD837B8459EB";
+};
+"995621A1CB0F0B2F50FE1535" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "FB74A5AADB707C9E46385C8A";
 };
 "BADB184D74523941B42A2DB3" = {
 "baseConfigurationReference" = "CAE662172FD450BB0CD710A7";
@@ -953,6 +978,10 @@
 "lastKnownFileType" = "sourcecode.swift";
 "sourceTree" = "SOURCE_ROOT";
 };
+"A1460EC25C0C24D58CFE9ED1" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "D957E6971E7B70D4FC3564C5";
+};
 "5FA60A3B83D7A007A802F3E4" = {
 "isa" = "PBXBuildFile";
 "fileRef" = "EAD05F50CF6E0E565C57D43E";
@@ -1101,7 +1130,7 @@
 "ENABLE_APP_SANDBOX" = "NO";
 "CLANG_ENABLE_OBJC_WEAK" = "YES";
 "ENABLE_HARDENED_RUNTIME" = "YES";
-"INFOPLIST_FILE" = "Config/AppInfo.plist";
+"INFOPLIST_FILE" = "Config/MacInfo.plist";
 "GENERATE_INFOPLIST_FILE" = "YES";
 };
 "name" = "Release";
@@ -1272,7 +1301,10 @@
 "0CCD2A7BF7919099491D73F2",
 "A49C76DD093E887FA20EDB97",
 "1C5B04236BD09C2EA6689AED",
-"6F991C31935CD99CD1B4E8E1");
+"6F991C31935CD99CD1B4E8E1",
+"D957E6971E7B70D4FC3564C5",
+"FB74A5AADB707C9E46385C8A",
+"756F45E9DC33E8F4298CB912");
 };
 "5E20270B8D83FA3B205C2A6A" = {
 "isa" = "PBXBuildFile";
@@ -1315,6 +1347,10 @@
 "isa" = "PBXFileReference";
 "lastKnownFileType" = "sourcecode.swift";
 "sourceTree" = "SOURCE_ROOT";
+};
+"DA21244C70FC6D07FDA166E6" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "756F45E9DC33E8F4298CB912";
 };
 "2813C9D34CE1009D5721C232" = {
 "isa" = "PBXBuildFile";
