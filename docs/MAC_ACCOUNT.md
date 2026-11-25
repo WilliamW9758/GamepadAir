@@ -38,7 +38,7 @@ usable by offline JWT verifiers until expiry, as described in the backend contra
 - Marketplace loads approved community layouts without signing in.
 - Sign in with Apple opens the system-managed browser session, then verifies `/v1/me`.
 - Your layouts shows owned listings. Choose a saved layout from the dropdown and submit its canonical v2 JSON for review.
-- Open latest fetches an owned revision, including pending ones, as a fresh local copy.
+- Download a copy fetches the newest owned revision, including pending ones, as a fresh local copy.
 - Submit selected as revision uses the dropdown selection and displayed expected revision; HTTP 409 requires refresh.
 - Remove unpublishes a listing; already downloaded copies remain on other devices.
 - Writes are never automatically retried. A lost response tells the user to check Your layouts
@@ -58,3 +58,8 @@ now separate from My submissions, which contains account and publishing controls
 References: [AWS token endpoint](https://docs.aws.amazon.com/cognito/latest/developerguide/token-endpoint.html),
 [AWS refresh tokens](https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-the-refresh-token.html),
 [Apple web authentication](https://developer.apple.com/documentation/authenticationservices/authenticating-a-user-through-a-web-service).
+
+The storefront uses illustrated cards and labeled, non-downloadable examples when empty. Catalog
+and submission status reload on page entry, app activation, and every minute while visible; no
+manual Refresh or permanent reauthentication button is shown. Expired sessions expose ordinary
+Sign in with Apple only when authentication is actually required.

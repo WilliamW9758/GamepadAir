@@ -4,7 +4,8 @@ import CryptoKit
 
 public struct MarketplaceAuthError: LocalizedError {
     public let message: String
-    public init(_ message: String) { self.message = message }
+    public let requiresSignIn: Bool
+    public init(_ message: String, requiresSignIn: Bool = false) { self.message = message; self.requiresSignIn = requiresSignIn }
     public var errorDescription: String? { message }
 }
 public enum MarketplaceOAuth {

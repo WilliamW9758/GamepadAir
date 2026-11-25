@@ -33,9 +33,30 @@ import AuthenticationServices
             do { try await operation() }
             catch {
                 notice = error.localizedDescription
-                if (try? await MarketplaceAuth.shared.identity()) == nil {
+                let storedIdentity = try? await MarketplaceAuth.shared.identity()
+                if (error as? MarketplaceAuthError)?.requiresSignIn == true || storedIdentity == nil {
                     identity = nil; accountID = nil; listings = []
                 }
+            }
+        }
+    }
+    private var refreshing = false
+    func updateInBackground() async {
+        guard !busy, !refreshing, let startingIdentity = identity else { return }
+        refreshing = true
+        defer { refreshing = false }
+        do {
+            let client = try api
+            let loadedAccount = try await client.me()
+            let loadedListings = try await client.owned()
+            guard !busy, identity == startingIdentity else { return }
+            accountID = loadedAccount.id; listings = loadedListings
+        } catch {
+            guard !busy, identity == startingIdentity else { return }
+            notice = error.localizedDescription
+            let storedIdentity = try? await MarketplaceAuth.shared.identity()
+            if (error as? MarketplaceAuthError)?.requiresSignIn == true || storedIdentity == nil {
+                identity = nil; accountID = nil; listings = []
             }
         }
     }
@@ -97,12 +118,12 @@ struct MarketplaceAccountView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
                 VStack(alignment: .leading) {
-                    Text("Your layouts").font(.title2.bold())
+                    Text("My submissions").font(.title2.bold())
                     Text(account.accountID == nil ? "Sign in to share layouts. Browsing needs no account." : "Submissions are reviewed before publication.").foregroundStyle(.secondary)
                 }
                 Spacer()
                 if account.identity == nil { Button("Sign in with Apple") { account.signIn() } }
-                else { Button("Sign in again") { account.signIn() }; Button("Refresh") { account.perform { try await account.loadAccount() } }; Button("Sign out") { account.signOut() } }
+                else { Button("Sign out") { account.signOut() } }
             }
             if account.busy { ProgressView().controlSize(.small) }
             if let notice = account.notice { Text(notice).textSelection(.enabled).foregroundStyle(.secondary) }
@@ -125,7 +146,7 @@ struct MarketplaceAccountView: View {
                         Text(item.title).font(.headline)
                         Text("Revision \(item.latest_revision) · \(item.status)" + (item.published_revision.map { " · Published revision \($0)" } ?? " · Not yet public")).foregroundStyle(.secondary)
                         HStack {
-                            Button("Open latest") { account.perform { importLayout(try await account.api.revision(item)) } }
+                            Button("Download a copy") { account.perform { importLayout(try await account.api.revision(item)); account.notice = "Downloaded revision \(item.latest_revision) to your layout library." } }.help("Download the newest submitted revision, including one awaiting review, as a new local copy.")
                             Button("Submit selected as revision…") { submissionLayout = selectedLayout; revising = item }.disabled(selectedLayout == nil || item.status == "removed")
                             Button("Remove…", role: .destructive) { removing = item }.disabled(item.status == "removed")
                         }

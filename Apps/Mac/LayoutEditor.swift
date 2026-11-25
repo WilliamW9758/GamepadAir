@@ -27,6 +27,7 @@ struct LayoutEditor: View {
         _modeID = State(initialValue: mode); sourceMode = mode
         sourceLayout = layout; self.embedded = embedded; self.liveState = liveState; self.screen = screen; self.selectMode = selectMode; self.dirtyChanged = dirtyChanged; self.save = save
     }
+    private var hasChanges: Bool { layout.document != baseLayout.document }
     private var width: Double { screen?.width ?? 800 }
     private var height: Double { screen?.height ?? 360 }
     private var mode: DocumentMode { layout.document.modes.first { $0.id == modeID } ?? layout.document.modes[0] }
@@ -76,6 +77,7 @@ struct LayoutEditor: View {
             .onChange(of: sourceLayout) { _, value in
                 if liveState != nil || value.document == layout.document || layout.document == baseLayout.document { layout = value; baseLayout = value; saved = true; dirtyChanged?(false) }
             }
+            .onChange(of: layout.document) { _, _ in dirtyChanged?(hasChanges) }
             .onChange(of: sourceMode) { _, value in if liveState != nil { modeID = value } }
             .onChange(of: modeID) { _, value in selected = nil; dragOrigin = nil; if liveState == nil { selectMode?(value) } }
             .sheet(isPresented: $advanced) {
@@ -100,7 +102,7 @@ struct LayoutEditor: View {
                 Button { if let value = past.popLast() { future.append(layout.document); layout.document = value; saved = false } } label: { Image(systemName: "arrow.uturn.backward") }.disabled(past.isEmpty)
                 Button { if let value = future.popLast() { past.append(layout.document); layout.document = value; saved = false } } label: { Image(systemName: "arrow.uturn.forward") }.disabled(future.isEmpty)
                 if !embedded { Button("Cancel") { dismiss() } }
-                Button(saved ? "Saved" : "Save") { save(layout, baseLayout); if !embedded { dismiss() } }.buttonStyle(PadActionStyle(prominent: true))
+                Button("Save") { save(layout, baseLayout); if !embedded { dismiss() } }.buttonStyle(PadActionStyle(prominent: hasChanges)).disabled(!hasChanges)
             }
             if layout.effectiveInputType == .gamepad {
                 Picker("Emulate controller", selection: Binding(get: { layout.document.controllerStyle ?? "xbox" }, set: { value in change { $0.controllerStyle = value } })) {

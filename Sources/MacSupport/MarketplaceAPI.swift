@@ -37,7 +37,7 @@ public struct MarketplaceAPI {
         }
         guard (200..<300).contains(status) else {
             switch status {
-            case 401: throw MarketplaceAuthError("Your session was rejected. Sign out and sign in again.")
+            case 401: throw MarketplaceAuthError("Your session has expired. Please sign in to continue.", requiresSignIn: true)
             case 403: throw MarketplaceAuthError("This account is not allowed to perform this action.")
             case 409: throw MarketplaceAuthError("This listing changed. Refresh Your layouts before submitting a revision.")
             case 422: throw MarketplaceAuthError("The server rejected this layout or its metadata.")
