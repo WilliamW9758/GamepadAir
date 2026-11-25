@@ -53,7 +53,7 @@ final class VirtualGamepadOutput: GamepadOutput {
         let properties: [String: Any] = [
             "ReportDescriptor": style == .playStation ? CompatibilityHIDReport.descriptor : XboxHIDReport.descriptor,
             "VendorID": style == .playStation ? 0x054C : 0x045E, "ProductID": style == .playStation ? 0x09CC : 0x0B13, "VersionNumber": 1,
-            "Product": style == .playStation ? "PocketPad PlayStation Controller" : "Xbox PocketPad Wireless Controller", "Manufacturer": "PocketPad",
+            "Product": style == .playStation ? "Gamepad Air PlayStation Controller" : "Xbox Gamepad Air Wireless Controller", "Manufacturer": "Gamepad Air",
             "Transport": "Virtual", "PrimaryUsagePage": 1, "PrimaryUsage": 5
         ]
         guard let device = IOHIDUserDeviceCreateWithProperties(kCFAllocatorDefault, properties as CFDictionary, 1) else {

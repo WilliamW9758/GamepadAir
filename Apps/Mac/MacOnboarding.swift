@@ -7,7 +7,7 @@ struct MacOnboarding: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
             HStack {
-                Label("Pocket Pad", systemImage: "gamecontroller")
+                Label("Gamepad Air", systemImage: "gamecontroller")
                 Spacer()
                 Button("Skip tour", action: finish)
             }
@@ -25,7 +25,7 @@ struct MacOnboarding: View {
             Text(["Your next controller is already in your pocket.", "", "Try it before you play.", "Start simple. Make it yours."][step])
                 .font(.system(size: 32, weight: .medium)).fixedSize(horizontal: false, vertical: true)
             Text([
-                "Open Pocket Pad on your iPhone. We’ll connect the devices, check your controls, and help you choose how your game receives input.",
+                "Open Gamepad Air on your iPhone. We’ll connect the devices, check your controls, and help you choose how your game receives input.",
                 "",
                 "Move a stick and press a button on your phone. The Mac will show what arrives, without sending input to your game. Then choose a virtual gamepad or keyboard and mouse.",
                 "Use your current layout to get started. Later, hold the gear on your phone to arrange controls. On your Mac, open Settings to change mappings. Your saved layouts are preserved."

@@ -26,8 +26,8 @@ jobs:
       - name: Build Mac app without signing
         run: xcodebuild -project iPhoneGamepad.xcodeproj -scheme MacGamepad -configuration Release -destination 'generic/platform=macOS' -derivedDataPath build/ci-mac CODE_SIGNING_ALLOWED=NO build
       - name: Check Mac release resources
-        run: python3 Scripts/check_release_bundle.py build/ci-mac/Build/Products/Release/MacGamepad.app
+        run: python3 Scripts/check_release_bundle.py 'build/ci-mac/Build/Products/Release/Gamepad Air.app'
       - name: Build iPhone app without signing
         run: xcodebuild -project iPhoneGamepad.xcodeproj -scheme PhoneGamepad -configuration Release -destination 'generic/platform=iOS' -derivedDataPath build/ci-phone CODE_SIGNING_ALLOWED=NO build
       - name: Check iPhone release resources
-        run: python3 Scripts/check_release_bundle.py build/ci-phone/Build/Products/Release-iphoneos/PhoneGamepad.app
+        run: python3 Scripts/check_release_bundle.py 'build/ci-phone/Build/Products/Release-iphoneos/Gamepad Air.app'

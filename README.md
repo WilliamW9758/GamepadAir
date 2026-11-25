@@ -1,17 +1,17 @@
 <div align="center">
 
-# PocketPad
+# Gamepad Air
 
 **Your iPhone. Your Mac controller. Your layout.**
 
 Xbox · PlayStation · Keyboard & mouse<br>
 USB · Wi-Fi · Bluetooth
 
-[Get started](docs/SETUP.md) · [Report a bug](https://github.com/WilliamW9758/PocketPad/issues) · [Roadmap](docs/RELEASE_PLAN.md)
+[Get started](docs/SETUP.md) · [Report a bug](https://github.com/WilliamW9758/GamepadAir/issues) · [Roadmap](docs/RELEASE_PLAN.md)
 
 </div>
 
-![PocketPad on Mac, mirroring a PlayStation touch layout from a connected iPhone Air](docs/screenshots/mac-controller.png)
+![Gamepad Air on Mac, mirroring a PlayStation touch layout from a connected iPhone Air](docs/screenshots/mac-controller.png)
 
 ### Make it yours
 
@@ -21,7 +21,7 @@ USB · Wi-Fi · Bluetooth
 - **Feel the feedback.** Adjustable button haptics and supported game rumble, with floating or fixed sticks.
 - **Keep your favorites.** Save, duplicate, switch, share, and delete layouts. No account needed for local play.
 
-![PocketPad layout editor with the iPhone Air canvas and control settings](docs/screenshots/mac-layout-editor.png)
+![Gamepad Air layout editor with the iPhone Air canvas and control settings](docs/screenshots/mac-layout-editor.png)
 
 ### Try it
 
@@ -54,4 +54,4 @@ swift run gamepad-host --monitor
 
 ---
 
-[MIT licensed](LICENSE). Contributions and compatibility reports welcome. PocketPad is not affiliated with Apple, Microsoft, Sony, or the games used with it.
+[MIT licensed](LICENSE). Contributions and compatibility reports welcome. Gamepad Air is not affiliated with Apple, Microsoft, Sony, or the games used with it.

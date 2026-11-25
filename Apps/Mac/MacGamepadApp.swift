@@ -207,7 +207,7 @@ struct MacGamepadApp: App {
         }
     }
     var body: some Scene {
-        WindowGroup("Pocket Pad · Mac") {
+        WindowGroup("Gamepad Air · Mac") {
             HostView(model: model)
                 .onAppear { delegate.stop = model.stop }
                 .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.willSleepNotification)) { _ in model.stop() }
@@ -360,7 +360,7 @@ struct HostView: View {
                             .popover(isPresented: $connectionHelp) {
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text("Connection help").font(.headline)
-                                    Text("Keep Pocket Pad open on your iPhone. Both devices should show the practice screen.")
+                                    Text("Keep Gamepad Air open on your iPhone. Both devices should show the practice screen.")
                                     Text("If controls don’t respond, go Back and reconnect using the same connection method on both devices.")
                                         .foregroundStyle(.secondary)
                                     Button("Got it") { connectionHelp = false }.buttonStyle(PadActionStyle())
@@ -463,7 +463,7 @@ struct HostView: View {
     }
     private var connectionView: some View {
         VStack(alignment: .leading, spacing: 24) {
-            heading("Connect your iPhone.", "Open Pocket Pad on your phone and choose a connection.")
+            heading("Connect your iPhone.", "Open Gamepad Air on your phone and choose a connection.")
             ConnectionChoices(selection: $model.transport)
             HStack {
                 Button("Back") { companionReady = false }
@@ -482,7 +482,7 @@ struct HostView: View {
     private var liveControllerView: some View {
         VStack(spacing: 0) {
             HStack {
-                Label("Pocket Pad", systemImage: "gamecontroller").font(.title2.weight(.semibold))
+                Label("Gamepad Air", systemImage: "gamecontroller").font(.title2.weight(.semibold))
                 Spacer()
                 Label(model.update.connected ? "Connected" : model.running ? "Connecting…" : "Not connected",
                       systemImage: model.update.connected ? "checkmark.circle.fill" : "iphone").foregroundStyle(.secondary)
@@ -611,12 +611,12 @@ struct HostView: View {
                 LabeledContent("Status", value: model.update.message)
                 LabeledContent("Transport", value: model.transport.rawValue)
                 Button("Open input log") { NSWorkspace.shared.open(InputDiagnostics.url) }
-                Text("Pocket Pad output only. Keeps the last five minutes, up to 512 KB; older entries are discarded.").foregroundStyle(.secondary)
+                Text("Gamepad Air output only. Keeps the last five minutes, up to 512 KB; older entries are discarded.").foregroundStyle(.secondary)
                 Button("Local Network settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")!) }
             }.formStyle(.grouped)
         case .about:
             Form {
-                Text("Pocket Pad").font(.title2)
+                Text("Gamepad Air").font(.title2)
                 Text(AppInformation.privacy)
                 Link("Support", destination: AppInformation.supportURL)
                 Link("Source and setup", destination: AppInformation.projectURL)
@@ -647,7 +647,7 @@ struct HostView: View {
     private var pairingView: some View {
         VStack(alignment: .leading, spacing: 16) {
             heading(model.transport == .usb ? "Connect your iPhone." : "Pair your iPhone.",
-                    model.transport == .usb ? "Open Pocket Pad and plug your phone into this Mac." : "Choose \(model.transport.rawValue) in Pocket Pad on your iPhone.")
+                    model.transport == .usb ? "Open Gamepad Air and plug your phone into this Mac." : "Choose \(model.transport.rawValue) in Gamepad Air on your iPhone.")
             if model.transport == .usb {
                 Label("Unlock your iPhone and trust this Mac if asked.", systemImage: "cable.connector")
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -771,8 +771,8 @@ struct HostView: View {
                 modeChoice(.keyboardMouse, title: "Emulate keyboard & mouse", detail: "Send key presses, clicks, and mouse movement.", icon: "keyboard")
                 modeChoice(.gamepad, title: "Emulate controller", detail: "Send gamepad buttons and analog stick input.", icon: "gamecontroller")
             } else if controlsPage == 1 {
-                heading("Allow keyboard & mouse.", "Enable Pocket Pad in macOS Accessibility settings.")
-                Text("A small helper stays beside System Settings so you can drag Pocket Pad into the permissions list.")
+                heading("Allow keyboard & mouse.", "Enable Gamepad Air in macOS Accessibility settings.")
+                Text("A small helper stays beside System Settings so you can drag Gamepad Air into the permissions list.")
                     .foregroundStyle(.secondary)
                 Button("Open Accessibility Settings") {
                     AccessibilityHelper.shared.show()
@@ -982,7 +982,7 @@ struct HostView: View {
                         if model.running { Text("Disconnect before changing profiles.").font(.callout).foregroundStyle(.secondary) }
                         if let notice = model.profileNotice { Text(notice).font(.callout) }
                     } else if settingsTab == 3 {
-                        Text("PocketPad").font(.headline)
+                        Text("Gamepad Air").font(.headline)
                         Button("Replay getting started") { model.stop(); testing = false; pairingAttempt = false; connectionWalkthroughComplete = false; pairing = false; step = 0; panel = nil; companionReady = false; replaySetup = true }
                         HStack {
                             Link("Support", destination: AppInformation.supportURL)
@@ -996,7 +996,7 @@ struct HostView: View {
                             Button("Local Network settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")!) }
                             Button("Accessibility settings") { AccessibilityHelper.shared.show() }
                             Button("Open input log") { NSWorkspace.shared.open(InputDiagnostics.url) }
-                Text("Pocket Pad output only. Keeps the last five minutes, up to 512 KB; older entries are discarded.").foregroundStyle(.secondary)
+                Text("Gamepad Air output only. Keeps the last five minutes, up to 512 KB; older entries are discarded.").foregroundStyle(.secondary)
                         }
                         Divider()
                         Text("Live input").font(.headline)

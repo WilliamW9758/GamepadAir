@@ -59,7 +59,7 @@ struct ComboBindingEditor: View {
 }
 
 /// A local event monitor consumes key events before menu shortcuts or text fields see them.
-/// The surrounding mapping editor pauses Pocket Pad output throughout this sheet.
+/// The surrounding mapping editor pauses Gamepad Air output throughout this sheet.
 private struct ShortcutRecorder: View {
     @Environment(\.dismiss) private var dismiss
     let save: ([OutputToken]) -> Void

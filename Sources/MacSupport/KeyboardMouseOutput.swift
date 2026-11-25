@@ -13,7 +13,7 @@ public enum InputDiagnostics {
     }
 }
 
-/// Records only Pocket Pad input edges/output decisions, never system keyboard activity.
+/// Records only Gamepad Air input edges/output decisions, never system keyboard activity.
 private final class InputTrace {
     static let shared = InputTrace()
     private let writer = DispatchQueue(label: "gamepad.input-trace", qos: .utility)

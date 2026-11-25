@@ -1,4 +1,4 @@
-# Pocket Pad release preparation
+# Gamepad Air release preparation
 
 ## Beta 11 — November 24, 2026
 
@@ -7,7 +7,7 @@ This status supersedes the build 6 rehearsal notes below.
 - Version 1.0 (11), source commit `4a39a93aa48fc8486fb241afaa0f8243f80e856e`, archived and exported for iPhone and Mac.
 - iPhone upload and processing succeeded. Encryption compliance information was saved based on use of Apple-provided encryption APIs. Submitted to TestFlight Beta App Review on November 24, 2026. TestFlight shows **Waiting for Review** for the **Friends** external group. Automatic tester notification is off; no invitations have been sent. An empty Internal group was created as Apple's prerequisite for external groups.
 - Mac Developer ID notarization and stapled export succeeded. Signature validation, Gatekeeper assessment, and DMG verification passed.
-- [Mac beta download and installation instructions](https://github.com/WilliamW9758/PocketPad/releases/tag/v1.0-beta.11). GitHub's uploaded asset digest matches the local SHA-256 checksum.
+- [Mac beta download and installation instructions](https://github.com/WilliamW9758/GamepadAir/releases/tag/v1.0-beta.11). GitHub's uploaded asset digest matches the local SHA-256 checksum.
 - All 127 Swift package tests passed; both app bundles passed release resource checks.
 - TestFlight feedback/review contact information is saved in App Store Connect (not in this repository). Review notes include the signed Mac download and connection/editing test steps.
 - Clean installation on a separate Mac and TestFlight installation on a phone remain to be verified. No friend invitations have been sent.
@@ -36,17 +36,17 @@ Updated November 23, 2026. This is a preparation packet, not an approval or publ
 
 ## Store copy draft
 
-Name: PocketPad Remote Controller
+Name: Gamepad Air
 Subtitle: Your iPhone controls your Mac
 Keywords: controller,gamepad,remote,keyboard,mouse,layout,custom,buttons,trackpad,mac
-Promotional text: Turn your iPhone into a customizable controller for your Mac. Arrange your controls, save layouts, and connect with the free Pocket Pad Mac companion.
+Promotional text: Turn your iPhone into a customizable controller for your Mac. Arrange your controls, save layouts, and connect with the free Gamepad Air Mac companion.
 Suggested category: Utilities. Price: Free. No in-app purchases currently implemented.
 
 Description:
 
 Turn your iPhone into a touch controller built around the way you play.
 
-Connect to the free Pocket Pad Mac companion using a USB cable, local Wi-Fi, or Bluetooth. Create layouts with buttons, joysticks, a D-pad, and radial controls, then arrange them on your phone or Mac.
+Connect to the free Gamepad Air Mac companion using a USB cable, local Wi-Fi, or Bluetooth. Create layouts with buttons, joysticks, a D-pad, and radial controls, then arrange them on your phone or Mac.
 
 • Move, resize, and rename controls.
 • Save separate layouts for your games and switch between them from either device.
@@ -56,32 +56,32 @@ Connect to the free Pocket Pad Mac companion using a USB cable, local Wi-Fi, or 
 • Adjust stick behavior and per-layout haptic feedback.
 • Export layouts and backups as files you control.
 
-Requires an iPhone running iOS 17 or later and a Mac running macOS 15 or later with the free Pocket Pad companion installed. Keep the phone app open during play. Keyboard and mouse output requires Accessibility permission on the Mac. Wireless connections require the relevant system permissions; some guest networks prevent devices from communicating.
+Requires an iPhone running iOS 17 or later and a Mac running macOS 15 or later with the free Gamepad Air companion installed. Keep the phone app open during play. Keyboard and mouse output requires Accessibility permission on the Mac. Wireless connections require the relevant system permissions; some guest networks prevent devices from communicating.
 
-Your games run on your Mac. Pocket Pad does not stream games. Controller support and button prompts depend on the game and its input settings. Pocket Pad is not affiliated with Apple, Microsoft, Sony, or individual game publishers.
+Your games run on your Mac. Gamepad Air does not stream games. Controller support and button prompts depend on the game and its input settings. Gamepad Air is not affiliated with Apple, Microsoft, Sony, or individual game publishers.
 
 Editorial gate: the controller sentence above is conditional on successful Developer ID HID distribution validation. Add AI/Marketplace copy only when those services are implemented and tested; do not describe preview examples as a live catalog.
 
 ## URLs and contact
 
-- Support: https://github.com/WilliamW9758/PocketPad/issues
-- Project: https://github.com/WilliamW9758/PocketPad
-- Privacy policy intended URL: https://github.com/WilliamW9758/PocketPad/blob/main/docs/PRIVACY.md
+- Support: https://github.com/WilliamW9758/GamepadAir/issues
+- Project: https://github.com/WilliamW9758/GamepadAir
+- Privacy policy intended URL: https://github.com/WilliamW9758/GamepadAir/blob/main/docs/PRIVACY.md
 - Public checks on November 23: project and Issues URLs load without sign-in; the intended privacy URL returns 404. Publish the updated policy before using that URL for submission.
 - Mac download: pending a signed, notarized release; a source archive is not an installer.
 - Review contact and copyright holder need account-owner confirmation. Do not copy private contact details into this repository.
 
 ## Reviewer instructions draft
 
-Pocket Pad turns iPhone touch controls into input on a separate Mac companion. No app account is required for the current core features. It does not stream or download games.
+Gamepad Air turns iPhone touch controls into input on a separate Mac companion. No app account is required for the current core features. It does not stream or download games.
 
 Prerequisites: an iPhone, a Mac running macOS 15 or later, and a USB data cable. Install the Mac companion from the final download URL supplied here before submission. No Xcode, Developer Mode, or development provisioning should be required for the distributed apps.
 
-1. Open Pocket Pad on both devices. Select USB cable, unlock the iPhone, and trust the Mac if prompted. Complete pairing.
+1. Open Gamepad Air on both devices. Select USB cable, unlock the iPhone, and trust the Mac if prompted. Complete pairing.
 2. In the Mac practice step, move a phone stick and press the indicated button. The Mac visualization should respond in the same direction.
 3. Select Build manually, choose keyboard and mouse input, and grant Mac Accessibility permission. Keep Active app selected and start playing.
-4. Open a blank TextEdit document on the Mac and focus it. Check the layout mappings in Pocket Pad; press a control mapped to a printable key and confirm the corresponding text appears in TextEdit.
-5. Return to Pocket Pad. Open Layout & mappings, duplicate the layout, move/rename a control, and save. Verify the connected phone updates. Editing pauses game output while keeping the connection alive.
+4. Open a blank TextEdit document on the Mac and focus it. Check the layout mappings in Gamepad Air; press a control mapped to a printable key and confirm the corresponding text appears in TextEdit.
+5. Return to Gamepad Air. Open Layout & mappings, duplicate the layout, move/rename a control, and save. Verify the connected phone updates. Editing pauses game output while keeping the connection alive.
 6. Return to the main screen and check live input. Disconnect while holding a control; held output should release. Reconnect and verify the saved layout remains.
 7. Controller test, after distribution authorization: select a controller layout and use a compatible Mac game. Valheim was exercised with Steam Input disabled. Recognition and prompts vary by game. Do not require the reviewer to purchase a game to verify the basic connection and editing features.
 
@@ -140,12 +140,12 @@ The first command uploads to Apple’s notarization service. Wait for acceptance
 Use an authorized Apple notarytool keychain credential profile (or Xcode Organizer's Developer ID distribution flow). Keep passwords and API private keys out of this repository and chat. Example commands below assume a credential profile named PocketPad-Notary has already been configured by the account owner:
 
 ```sh
-ditto -c -k --keepParent '/path/to/export/MacGamepad.app' '/path/to/PocketPad-notarization.zip'
+ditto -c -k --keepParent '/path/to/export/Gamepad Air.app' '/path/to/PocketPad-notarization.zip'
 xcrun notarytool submit '/path/to/PocketPad-notarization.zip' --keychain-profile PocketPad-Notary --wait
 # Continue only after status Accepted. Fetch the submission log if rejected.
-xcrun stapler staple '/path/to/export/MacGamepad.app'
-xcrun stapler validate '/path/to/export/MacGamepad.app'
-Scripts/package_mac_release.sh '/path/to/export/MacGamepad.app' '/path/to/PocketPad-1.0.dmg'
+xcrun stapler staple '/path/to/export/Gamepad Air.app'
+xcrun stapler validate '/path/to/export/Gamepad Air.app'
+Scripts/package_mac_release.sh '/path/to/export/Gamepad Air.app' '/path/to/GamepadAir-1.0.dmg'
 ```
 
 The notarytool commands above are an alternative route. This rehearsal instead succeeded through Xcode’s signed-in account: exportArchive with method developer-id and destination upload, followed by exportNotarizedApp. An App Store Connect upload and a notarization submission are different operations; neither publishes the app on its own.

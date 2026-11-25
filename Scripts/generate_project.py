@@ -36,13 +36,13 @@ for name, folder, platform in [("PhoneGamepad", "iPhone", "iphoneos"), ("MacGame
     sources = [ref for path, ref in files.items() if path.startswith("Sources/GamepadCore/") or path.startswith(f"Apps/{folder}/") or (folder == "Mac" and path.startswith("Sources/MacSupport/"))]
     builds = [add(f"{name}-{ref}", isa="PBXBuildFile", fileRef=ref) for ref in sources]
     phase = add(f"{name}-sources", isa="PBXSourcesBuildPhase", buildActionMask=2147483647, files=builds, runOnlyForDeploymentPostprocessing=0)
-    product = add(f"{name}-app", isa="PBXFileReference", explicitFileType="wrapper.application", path=f"{name}.app", sourceTree="BUILT_PRODUCTS_DIR")
+    product = add(f"{name}-app", isa="PBXFileReference", explicitFileType="wrapper.application", path="Gamepad Air.app", sourceTree="BUILT_PRODUCTS_DIR")
     products.append(product)
     configs = []
     for config in ["Debug", "Release", "Gamepad"]:
-        settings = dict(PRODUCT_NAME=name, PRODUCT_BUNDLE_IDENTIFIER=f"$(BUNDLE_PREFIX).{folder.lower()}", SDKROOT=platform,
+        settings = dict(PRODUCT_NAME="Gamepad Air", EXECUTABLE_NAME=name, PRODUCT_BUNDLE_IDENTIFIER=f"$(BUNDLE_PREFIX).{folder.lower()}", SDKROOT=platform,
                         GENERATE_INFOPLIST_FILE="YES", CODE_SIGN_STYLE="Automatic", SWIFT_OPTIMIZATION_LEVEL="-Onone" if config == "Debug" else "-O",
-                        INFOPLIST_KEY_CFBundleDisplayName="Pocket Pad", CURRENT_PROJECT_VERSION="1", MARKETING_VERSION="0.1.0")
+                        INFOPLIST_KEY_CFBundleDisplayName="Gamepad Air", INFOPLIST_KEY_CFBundleName="Gamepad Air", CURRENT_PROJECT_VERSION="1", MARKETING_VERSION="0.1.0")
         if folder == "iPhone":
             settings.update(IPHONEOS_DEPLOYMENT_TARGET="17.0", TARGETED_DEVICE_FAMILY="1", SUPPORTED_PLATFORMS="iphoneos iphonesimulator",
                             INFOPLIST_KEY_UILaunchScreen_Generation="YES", INFOPLIST_KEY_UISupportedInterfaceOrientations="UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight",

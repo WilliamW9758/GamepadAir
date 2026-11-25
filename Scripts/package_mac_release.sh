@@ -17,9 +17,9 @@ xcrun stapler validate "$app"
 spctl --assess --type execute --verbose=2 "$app"
 staging="$(mktemp -d "${TMPDIR:-/tmp}/pocketpad-package.XXXXXX")"
 trap 'rm -rf "$staging"' EXIT
-ditto "$app" "$staging/Pocket Pad.app"
+ditto "$app" "$staging/Gamepad Air.app"
 ln -s /Applications "$staging/Applications"
-hdiutil create -volname 'Pocket Pad' -srcfolder "$staging" -format UDZO "$dmg"
+hdiutil create -volname 'Gamepad Air' -srcfolder "$staging" -format UDZO "$dmg"
 hdiutil verify "$dmg"
 shasum -a 256 "$dmg"
 echo 'Test this DMG on a clean Mac before publishing.'

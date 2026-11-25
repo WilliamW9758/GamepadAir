@@ -49,7 +49,7 @@ def main():
         parser.error("No installed signing identity matches this profile. Set up signing in Xcode first.")
     sdk = run("xcrun", "--sdk", "iphoneos", "--show-sdk-path", capture_output=True, text=True).stdout.strip()
     output = Path(tempfile.mkdtemp(prefix="PocketPad-device-"))
-    app = output / "PhoneGamepad.app"
+    app = output / "Gamepad Air.app"
     app.mkdir()
     sources = sorted((root / "Apps/Shared").glob("*.swift")) + sorted((root / "Sources/GamepadCore").glob("*.swift")) + sorted((root / "Apps/iPhone").glob("*.swift"))
     # File Provider may change source metadata in iCloud Documents during compilation.
@@ -72,12 +72,12 @@ def main():
         parser.error("Source contents changed while building; run again to install the latest version.")
     info = {
         "CFBundleExecutable": "PhoneGamepad", "CFBundleIdentifier": bundle_id,
-        "CFBundleName": "Pocket Pad", "CFBundleDisplayName": "Pocket Pad",
+        "CFBundleName": "Gamepad Air", "CFBundleDisplayName": "Gamepad Air",
         "CFBundlePackageType": "APPL", "CFBundleVersion": args.build_number, "CFBundleShortVersionString": "1.0",
         "CFBundleSupportedPlatforms": ["iPhoneOS"], "MinimumOSVersion": "17.0",
         "NSBonjourServices": ["_pocketpad._tcp"],
-        "NSLocalNetworkUsageDescription": "Connect Pocket Pad to your Mac over your local Wi-Fi network.",
-        "NSBluetoothAlwaysUsageDescription": "Connect Pocket Pad controls to your Mac using Bluetooth.",
+        "NSLocalNetworkUsageDescription": "Connect Gamepad Air to your Mac over your local Wi-Fi network.",
+        "NSBluetoothAlwaysUsageDescription": "Connect Gamepad Air controls to your Mac using Bluetooth.",
         "LSRequiresIPhoneOS": True, "UIDeviceFamily": [1], "UILaunchScreen": {},
         "UISupportedInterfaceOrientations": ["UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"],
     }
@@ -118,9 +118,9 @@ def main():
     except subprocess.CalledProcessError:
         print(f"App installed, but launch failed. Build retained at: {app}")
         print("If the error mentions trust/signing, check iPhone Settings → General → VPN & Device Management → Developer App.")
-        print("Trust your own Apple Development profile if prompted, then open Pocket Pad on the phone. See the device error above for other causes.")
+        print("Trust your own Apple Development profile if prompted, then open Gamepad Air on the phone. See the device error above for other causes.")
         raise SystemExit(2)
-    print(f"Installed and launched Pocket Pad. Build: {app}")
+    print(f"Installed and launched Gamepad Air. Build: {app}")
     print(f"Profile expires: {profile['ExpirationDate']} UTC. Refresh free signing in Xcode before then.")
 
 

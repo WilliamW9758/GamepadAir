@@ -1,4 +1,4 @@
-# PocketPad release plan
+# Gamepad Air release plan
 
 Updated November 23, 2026. Live Community Layouts and AI services are not implemented; local preview interfaces exist. The current release evidence and blockers are in SUBMISSION.md. The older milestone-1 items below are historical planning, not an implementation status report.
 

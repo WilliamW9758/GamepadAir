@@ -15,7 +15,7 @@ final class AccessibilityHelper {
             let window = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 460, height: 110),
                                  styleMask: [.borderless, .nonactivatingPanel],
                                  backing: .buffered, defer: false)
-            window.title = "Allow Pocket Pad"
+            window.title = "Allow Gamepad Air"
             window.isOpaque = false
             window.backgroundColor = .clear
             window.hasShadow = true
@@ -103,7 +103,7 @@ private struct AccessibilityHelperView: View {
             HStack(spacing: 10) {
                 Image(nsImage: NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath))
                     .resizable().frame(width: 20, height: 20)
-                Text("Pocket Pad").font(.system(size: 13))
+                Text("Gamepad Air").font(.system(size: 13))
                 Spacer()
             }
             .padding(.horizontal, 10).frame(height: 40)
@@ -111,7 +111,7 @@ private struct AccessibilityHelperView: View {
             .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(.primary.opacity(0.12), lineWidth: 0.5))
             .contentShape(Rectangle())
             .overlay { PermissionAppDragSource(onDrop: close) }
-            .accessibilityLabel("Pocket Pad application. Drag into the Accessibility permissions list.")
+            .accessibilityLabel("Gamepad Air application. Drag into the Accessibility permissions list.")
         }
         .padding(14).frame(width: 460, height: 110)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
@@ -142,7 +142,7 @@ private final class PermissionAppDragView: NSView, NSDraggingSource {
             NSBezierPath(roundedRect: rect, xRadius: 7, yRadius: 7).fill()
             NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)
                 .draw(in: NSRect(x: 10, y: (rect.height - 20) / 2, width: 20, height: 20))
-            ("Pocket Pad" as NSString).draw(at: NSPoint(x: 40, y: (rect.height - 16) / 2),
+            ("Gamepad Air" as NSString).draw(at: NSPoint(x: 40, y: (rect.height - 16) / 2),
                 withAttributes: [.font: NSFont.systemFont(ofSize: 13), .foregroundColor: NSColor.labelColor])
             return true
         }

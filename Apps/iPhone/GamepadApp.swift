@@ -82,7 +82,7 @@ struct PhoneGamepadApp: App {
     @State private var importing = false
     @State private var document = ProfileDocument()
     @State private var transferMessage: String?
-    @State private var exportName = "Pocket Pad"
+    @State private var exportName = "Gamepad Air"
     @State private var selectedReference: ControlPlacement?
     @State private var selectedID: String?
     @State private var selectedLabel = ""
@@ -478,7 +478,7 @@ struct PhoneGamepadApp: App {
                     Slider(value: $settingsInactiveOpacity, in: 0.15...1) { Text("Inactive opacity") }
                     Text("Inactive opacity: \(Int(settingsInactiveOpacity * 100))%")
                 }
-                DisclosureGroup("About Pocket Pad") {
+                DisclosureGroup("About Gamepad Air") {
                     Button("Replay getting started") { settings = false; tour = true; release() }
                     Link("Mac companion and setup", destination: AppInformation.projectURL)
                     Link("Support", destination: AppInformation.supportURL)
@@ -512,7 +512,7 @@ struct PhoneGamepadApp: App {
                     transferMessage = "Imported as a new layout. Your existing layouts are unchanged."
                 } catch { transferMessage = "Could not import: \(error.localizedDescription)" }
             }
-            .confirmationDialog(dataAction == "delete" ? "Delete \(layout.name)?" : dataAction == "clear" ? "Clear all saved layouts?" : "Erase all Pocket Pad data on this iPhone?", isPresented: $confirmDataAction, titleVisibility: .visible) {
+            .confirmationDialog(dataAction == "delete" ? "Delete \(layout.name)?" : dataAction == "clear" ? "Clear all saved layouts?" : "Erase all Gamepad Air data on this iPhone?", isPresented: $confirmDataAction, titleVisibility: .visible) {
                 Button(dataAction == "delete" ? "Delete layout" : dataAction == "clear" ? "Clear saved layouts" : "Erase local data", role: .destructive) {
                     release(); editing = false; selectedID = nil
                     if dataAction == "delete" {

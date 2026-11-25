@@ -6,7 +6,7 @@
 2. Copy `Config/Local.xcconfig.example` to `Config/Local.xcconfig` and replace its placeholders with your team ID and a unique bundle prefix.
 3. Open `iPhoneGamepad.xcodeproj`. Select **PhoneGamepad**, use automatic signing, and choose your connected iPhone.
 4. Enable Developer Mode, unlock the phone, and trust the Mac/developer profile if prompted. Run the app.
-5. Keep PocketPad in the foreground in landscape orientation.
+5. Keep Gamepad Air in the foreground in landscape orientation.
 
 A free Personal Team supports local development with short-lived provisioning. Use Xcode to renew expired profiles. Your Xcode version must support the installed iOS version.
 

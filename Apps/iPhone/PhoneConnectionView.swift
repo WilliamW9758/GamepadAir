@@ -19,7 +19,7 @@ struct PhoneConnectionView: View {
                 server.update(.paused)
             }))
             if server.transport == .usb {
-                Label("Plug into your Mac, then open Pocket Pad.", systemImage: "cable.connector")
+                Label("Plug into your Mac, then open Gamepad Air.", systemImage: "cable.connector")
                     .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
             } else {
                 HStack(spacing: 24) {

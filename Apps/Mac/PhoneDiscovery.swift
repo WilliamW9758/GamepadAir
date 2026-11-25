@@ -47,7 +47,7 @@ final class PhoneDiscovery: NSObject, ObservableObject, CBCentralManagerDelegate
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         guard central === bluetooth, transport == .bluetooth else { return }
         if central.state == .poweredOn { central.scanForPeripherals(withServices: [CBUUID(string: WirelessSettings.service)], options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]) }
-        else if central.state == .unauthorized { status = "Allow Pocket Pad Bluetooth access in System Settings." }
+        else if central.state == .unauthorized { status = "Allow Gamepad Air Bluetooth access in System Settings." }
         else if central.state == .poweredOff { status = "Turn Bluetooth on." }
     }
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {

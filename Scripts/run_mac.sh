@@ -5,4 +5,4 @@ cd "$(dirname "$0")/.."
 derived="${TMPDIR:-/tmp}/PocketPadDerived"
 xcodebuild -project iPhoneGamepad.xcodeproj -scheme MacGamepad \
     -configuration Debug -derivedDataPath "$derived" build
-open "$derived/Build/Products/Debug/MacGamepad.app"
+open "$derived/Build/Products/Debug/Gamepad Air.app"

@@ -20,12 +20,12 @@ struct CompanionAppPrompt: View {
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
                     Image(systemName: symbol).font(.title)
-                    Text("Pocket Pad for \(device)").font(.headline)
+                    Text("Gamepad Air for \(device)").font(.headline)
                     Spacer()
                     Button { showing = false } label: { Image(systemName: "xmark.circle.fill") }
                         .buttonStyle(.plain).accessibilityLabel("Close")
                 }
-                Text("Pocket Pad needs an app on both your iPhone and Mac.")
+                Text("Gamepad Air needs an app on both your iPhone and Mac.")
                 Text("Public downloads are coming soon. For this preview, install the companion from the project’s setup guide.")
                     .foregroundStyle(.secondary)
                 Link("Open setup guide", destination: AppInformation.projectURL)
@@ -52,7 +52,7 @@ struct CompanionSetupCard: View {
     var body: some View {
         HStack(spacing: 24) {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Get Pocket Pad on your \(device).")
+                Text("Get Gamepad Air on your \(device).")
                     .font(.system(size: 28, weight: .medium))
                 Text("One app on each device. Then you’re ready to connect.")
                     .foregroundStyle(.secondary)

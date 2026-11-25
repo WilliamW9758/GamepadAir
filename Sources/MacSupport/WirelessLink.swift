@@ -70,11 +70,11 @@ final class WiFiLink: InputLink {
         connection.start(queue: queue)
     }
     static func failureMessage(_ error: NWError, localNetworkDenied: Bool) -> String {
-        if localNetworkDenied { return "Local Network access is blocked. Enable Pocket Pad in System Settings → Privacy & Security → Local Network; allow it on the iPhone too." }
+        if localNetworkDenied { return "Local Network access is blocked. Enable Gamepad Air in System Settings → Privacy & Security → Local Network; allow it on the iPhone too." }
         switch error {
         case .posix(.EHOSTDOWN), .posix(.EHOSTUNREACH), .posix(.ENETDOWN), .posix(.ENETUNREACH), .posix(.ETIMEDOUT):
             return "iPhone is unreachable (\(error)). Find it again, check the same Wi-Fi network and Local Network permissions on both devices. Guest networks or VPNs may block access."
-        case .posix(.ECONNREFUSED): return "iPhone refused the connection. Select Wi-Fi in Pocket Pad on the phone and keep it open."
+        case .posix(.ECONNREFUSED): return "iPhone refused the connection. Select Wi-Fi in Gamepad Air on the phone and keep it open."
         case .tls: return "Pairing failed. Enter the current six-digit code and update both apps."
         default: return "Wi-Fi: \(error.localizedDescription)"
         }
@@ -130,7 +130,7 @@ final class BluetoothLink: NSObject, InputLink, CBCentralManagerDelegate, CBPeri
         switch central.state {
         case .poweredOn: central.scanForPeripherals(withServices: [CBUUID(string: WirelessSettings.service)])
         case .poweredOff: inbox.fail("Turn Bluetooth on on this Mac")
-        case .unauthorized: inbox.fail("Allow Pocket Pad Bluetooth access in System Settings")
+        case .unauthorized: inbox.fail("Allow Gamepad Air Bluetooth access in System Settings")
         case .unsupported: inbox.fail("Bluetooth Low Energy is unavailable")
         default: break
         }

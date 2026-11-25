@@ -11,7 +11,7 @@ struct PhoneOnboarding: View {
     @State private var offset = CGSize.zero
     private let titles = ["Your phone. Your controller.", "Choose your connection.", "Bring your Mac along.", "Get a feel for it.", "Make room for your thumbs."]
     private let details = [
-        "Play on your Mac with controls that fit your hands. Open Pocket Pad on both devices to start.",
+        "Play on your Mac with controls that fit your hands. Open Gamepad Air on both devices to start.",
         "", "",
         "Drag the stick, then press A. Watch the matching controls on your Mac.",
         "Hold the gear to move and resize controls. Double-tap a button while editing to rename it."
@@ -21,7 +21,7 @@ struct PhoneOnboarding: View {
             let compact = geometry.size.height < 400
             VStack(spacing: compact ? 8 : 16) {
                 HStack {
-                    Label("Pocket Pad", systemImage: "gamecontroller").font(.headline)
+                    Label("Gamepad Air", systemImage: "gamecontroller").font(.headline)
                     Spacer()
                     Button("Skip tour", action: finish).frame(minHeight: 44)
                 }
@@ -77,7 +77,7 @@ struct PhoneOnboarding: View {
 
     private var connectionInstructions: String {
         switch server.transport {
-        case .usb: return "Plug into your Mac, unlock your iPhone, and trust the Mac if asked. Choose USB cable in Pocket Pad on your Mac."
+        case .usb: return "Plug into your Mac, unlock your iPhone, and trust the Mac if asked. Choose USB cable in Gamepad Air on your Mac."
         case .wifi: return "Join the same Wi-Fi network. Choose Wi-Fi on your Mac, select this phone, and enter the code."
         case .bluetooth: return "Choose Bluetooth on your Mac, select this phone, and enter the code. Allow Bluetooth when asked."
         }

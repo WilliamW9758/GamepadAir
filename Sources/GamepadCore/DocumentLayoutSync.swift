@@ -11,7 +11,7 @@ public struct DocumentLayoutSnapshot: Codable, Equatable {
         self.layout = layout; self.activeModeID = activeModeID; self.catalog = catalog
     }
     public func validate() throws {
-        guard protocolVersion == 5 else { throw LayoutDocumentError("Update Pocket Pad on both devices: layout sync versions differ") }
+        guard protocolVersion == 5 else { throw LayoutDocumentError("Update Gamepad Air on both devices: layout sync versions differ") }
         guard UUID(uuidString: layout.id) != nil, catalog.count <= 500, Set(catalog.map(\.id)).count == catalog.count,
               catalog.allSatisfy({ UUID(uuidString: $0.id) != nil }) else { throw LayoutDocumentError("Invalid layout identity") }
         try layout.document.validate()
