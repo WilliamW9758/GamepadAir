@@ -1,5 +1,5 @@
 Gamepad Air privacy policy
-Effective November 25, 2026
+Effective November 26, 2026
 
 Gamepad Air is an iPhone controller with a Mac companion. Core controller use does not require an account. The Mac marketplace supports browsing, downloading, and optional signed-in layout submissions. AI generation is not enabled.
 
@@ -13,6 +13,11 @@ Marketplace and updates
 Marketplace requests go to the Gamepad Air service. Signing in on the Mac uses Sign in with Apple through Amazon Cognito. The Mac stores authentication credentials in Keychain; they are not sent to the paired iPhone. Submitting a layout sends the selected layout and its listing information to the service for review. Approved submissions can be downloaded publicly. Controller input and local diagnostic logs are not automatically uploaded to the marketplace.
 
 The Mac checks an update feed hosted on GitHub and downloads signed updates from GitHub Releases. These network requests expose normal connection information, such as your IP address, to the hosting service. You can disable automatic update checks and installation in General settings. iPhone beta updates are provided through Apple's TestFlight.
+
+Optional usage and diagnostics
+In versions with optional diagnostics, each device asks whether you want to share basic usage and diagnostics. Sharing is off until you agree. If enabled, the app sends aggregated connection outcomes, connection setup/recovery and Mac input-processing timing buckets, setup progress, and Mac update results to the Gamepad Air service on AWS. Reports include hardware model (for example iPhone18,4), OS version, app build, platform and connection type. We do not include your personal device name, serial number, persistent device or installation identifier, account identifier, game names, layouts, controller input, or local input logs. Phone and Mac consent are separate; Mac permission does not authorize uploading phone information.
+
+Counts are batched in memory and normally sent every five minutes, or when leaving the app or installing an update. Failed uploads are discarded, not retried. The service stores combined daily counters rather than individual activity records, retained for 30 days; database backups may retain expired aggregates for up to seven additional days. Normal network routing exposes the source IP to our hosting provider, but our diagnostics database does not store it, and diagnostics are not joined with account records or used for advertising. Turning sharing off clears unsent counts and cancels pending requests. Previously received daily aggregates cannot be separated back into individual users for deletion. You can change your choice in Settings → Diagnostics on iPhone or General → Diagnostics on Mac. Declining does not affect app functionality.
 
 Sharing and support
 Layout export creates a file only when you request it. You choose where to save or share it. Files and support reports you publish on GitHub are handled by GitHub and may be public. Review them before sharing; do not include pairing codes or private information. Opening external support links is subject to that service's privacy policy.

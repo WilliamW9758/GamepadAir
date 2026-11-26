@@ -1,0 +1,24 @@
+# Optional usage diagnostics v1
+
+Per-device consent is off until accepted. A first-launch alert explains fields and offers Don’t Share / Share Diagnostics; the same choice is editable in Settings. Existing installations see it on their first launch of the new version. No account, persistent install ID, phone name, serial, input content, layout content, game/process name, or free-form error is sent. Mac consent never authorizes phone telemetry. This does not upload the local input log.
+
+Context: platform, app build, numeric OS version, hardware model identifier (e.g. iPhone18,4 or Mac14,2), transport. Counts are aggregated in RAM, capped at 128 distinct keys and 10,000 per key. Send every five minutes and best-effort on foreground exit / app quit / update install. No disk queue, cookies, credentials, authorization or retries. Revoking consent discards buffered counts and cancels the current request; an already received aggregate cannot be retracted per person.
+
+Mac connection attempts are measured per transport retry, success requires a valid state frame, unexpected failures/disconnects exclude explicit stop, connection and recovery durations are bucketed. Host input-processing duration is sampled at most once per second from decoding through output/rumble work. It is **not network RTT, end-to-end input latency, or game latency**. No additional wire protocol or input traffic was introduced. Phone reports connection starts/ends, with ends explicitly including intentional disconnects (not an error rate). Setup progress currently measures start/completion, not every onboarding step. Update events are offered/downloaded/install requested/completed/failed; completion is detected by comparing a locally stored expected build after relaunch, only for consenting devices. These are best-effort samples, not crash-proof counts or unique user metrics.
+
+`POST /v1/telemetry` is anonymous and strictly validates an allowlisted schema, including hardware-model syntax. 32 KB body cap, 128 counters, 60 requests/minute global per API process. Invalid, failed or capacity-limited reports are dropped by the app. There is no retry deduplication because clients do not retry; public ingress is not proof of authenticity. Do not use these counts for billing. For multiple API workers/hosts, replace the local limiter with a shared limiter before scaling.
+
+Postgres `telemetry_daily` is keyed by UTC day/context/metric/bucket; raw request events are never stored. Atomic upserts avoid lost counts; deterministic order avoids cross-batch deadlocks. Rollups expire after 30 UTC days (pruned on ingestion and by the existing scheduled deletion worker); RDS backups may retain expired aggregates for seven more days. No account joins. API access logging is disabled and Caddy has no access-log directive. Ordinary network infrastructure still receives IP addresses; do not claim IP addresses never reach the server.
+
+`GET /admin-api/telemetry` requires existing moderator authentication. Dashboard shows top 300 aggregate groups over seven UTC days, explicitly an opt-in sample and separate platform cohorts. Timing buckets: ≤5, 5–16, 16–50, 50–100, 100–250, 250–1,000, 1,000–3,000, 3,000–10,000, >10,000 ms. Small cohorts should not be interpreted as population rates.
+
+## Deployment/release gates
+
+1. Run migration 0008; explicit API read/insert/update/delete, moderator read, retention-worker read/delete grants on telemetry_daily.
+2. Deploy API, admin and worker from the tested immutable image; check health, anonymous valid/invalid ingestion and protected summary access. Keep the existing Caddy no-access-log configuration.
+3. Update the App Store Connect privacy answers before releasing clients: Product Interaction, Performance Data and Other Diagnostic Data for Analytics, not used for tracking and no persistent account/device linkage. The bundled manifest and in-app/public policy are updated. Do not treat the manifest as a substitute for App Store Connect answers.
+4. No release has been requested for these client changes yet. Do not replace build 15 artifacts. Network RTT, crash reporting, and per-step onboarding are deliberately not claimed as measured.
+
+## Deployment status — November 26, 2026
+
+Migration 0008, API, admin dashboard, and retention worker are live. Runtime role grants verified. Valid synthetic ingestion returned 204 and its database rollup was verified, then removed; an unexpected device-name field returned 422. The authenticated admin Overview displays App diagnostics. The iPhone development build was installed and launched for the owner to choose consent; public build 15 remains unchanged. Image and checks are recorded in `server/deploy/release-telemetry-20261126.json`.

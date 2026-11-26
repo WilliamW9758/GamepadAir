@@ -26,7 +26,16 @@ def check(app):
     for key in ("NSLocalNetworkUsageDescription", "NSBluetoothAlwaysUsageDescription"):
         assert info.get(key), f"Missing {key}"
     assert privacy.get("NSPrivacyTracking") is False, "Unexpected tracking declaration"
-    assert privacy.get("NSPrivacyCollectedDataTypes") == [], "Review changed collection practices"
+    collected = privacy.get("NSPrivacyCollectedDataTypes", [])
+    assert {entry["NSPrivacyCollectedDataType"] for entry in collected} == {
+        "NSPrivacyCollectedDataTypeProductInteraction",
+        "NSPrivacyCollectedDataTypePerformanceData",
+        "NSPrivacyCollectedDataTypeOtherDiagnosticData",
+    }, "Review changed collection practices"
+    for entry in collected:
+        assert entry["NSPrivacyCollectedDataTypeLinked"] is False
+        assert entry["NSPrivacyCollectedDataTypeTracking"] is False
+        assert entry["NSPrivacyCollectedDataTypePurposes"] == ["NSPrivacyCollectedDataTypePurposeAnalytics"]
     reasons = {entry["NSPrivacyAccessedAPIType"]: entry["NSPrivacyAccessedAPITypeReasons"]
                for entry in privacy["NSPrivacyAccessedAPITypes"]}
     assert "CA92.1" in reasons.get("NSPrivacyAccessedAPICategoryUserDefaults", [])

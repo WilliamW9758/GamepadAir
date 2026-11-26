@@ -210,7 +210,7 @@ struct PhoneGamepadApp: App {
             .background { PadBackdrop() }
             .tint(PadAppearance.accent)
             .statusBarHidden().persistentSystemOverlays(.hidden).defersSystemGestures(on: .all)
-            .fullScreenCover(isPresented: $tour, onDismiss: release) { PhoneOnboarding(server: server) { tourComplete = true; tour = false; release() } }
+            .fullScreenCover(isPresented: $tour, onDismiss: release) { PhoneOnboarding(server: server) { tourComplete = true; tour = false; release(); UsageDiagnostics.shared.record(.setupCompleted) } }
             .sheet(isPresented: $settings, onDismiss: release) { settingsView }
             .sheet(isPresented: $buttonOptions, onDismiss: release) { buttonOptionsView }
             .sheet(isPresented: $naming) {
@@ -233,12 +233,21 @@ struct PhoneGamepadApp: App {
                 if stage == .practice || stage == .controls { connectionScreen = false; tour = true; release() }
             }
             .onChange(of: server.connected) { wasConnected, connected in
+                if phase == .active {
+                    let transport = server.transport == .usb ? "usb" : server.transport == .wifi ? "wifi" : "bluetooth"
+                    if connected { UsageDiagnostics.shared.record(.connectionConnected, transport: transport) }
+                    else if wasConnected { UsageDiagnostics.shared.record(.phoneConnectionEnded, transport: transport) }
+                }
                 if connected && server.setupStage == .play { connectionScreen = false; release() }
                 else if wasConnected && phase == .active && !tour && !settings && !editing && !naming {
                     connectionScreen = true; release()
                 }
             }
-            .onAppear { tour = !tourComplete; connectionScreen = tourComplete && !server.connected; activate() }
+            .modifier(DiagnosticsConsentModifier {
+                tour = !tourComplete; connectionScreen = tourComplete && !server.connected
+                if !tourComplete { UsageDiagnostics.shared.record(.setupStarted) }
+                activate()
+            })
             .onChange(of: phase) { _, phase in
                 layouts.save(); release()
                 if phase == .active {
@@ -247,7 +256,7 @@ struct PhoneGamepadApp: App {
                     }
                     activate()
                 }
-                else { server.stop(); UIApplication.shared.isIdleTimerDisabled = false }
+                else { UsageDiagnostics.shared.flush(); server.stop(); UIApplication.shared.isIdleTimerDisabled = false }
             }
         }
     }
@@ -542,6 +551,7 @@ struct PhoneGamepadApp: App {
                     Button("Import layout…") { importing = true }
                     Text("Layout files include controls, mappings and settings. Import creates a new local copy.").font(.callout).foregroundStyle(.secondary)
                 }
+                Section("Diagnostics") { DiagnosticsSharingSetting() }
                 Section("Local data") {
                     Button("Clear saved layouts…", role: .destructive) { dataAction = "clear"; confirmDataAction = true }
                     Button("Erase all local data…", role: .destructive) { dataAction = "erase"; confirmDataAction = true }
@@ -570,7 +580,8 @@ struct PhoneGamepadApp: App {
                     } else if dataAction == "clear" { layouts.clearLayouts() }
                     else {
                         server.stop()
-                        if let id = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: id) }
+                        UsageDiagnostics.shared.choose(false)
+                    if let id = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: id) }
                         layouts.clearLayouts()
                         lastLayoutCommand = nil; layoutCommandError = nil; document = ProfileDocument()
                         transferMessage = nil; selectedReference = nil; nameDraft = ""
@@ -737,6 +748,8 @@ private struct PhoneNameEditor: View {
 }
 
 private struct LayoutNameSheet: View {
+    @AppStorage("phone-layout-mac-tip-shown-v1") private var macTipShown = false
+    @State private var showMacTip = false
     @Binding var name: String
     let action: String
     @Binding var type: LayoutInputType
@@ -804,6 +817,17 @@ private struct LayoutNameSheet: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .onAppear {
+            if action == "new" && !macTipShown {
+                macTipShown = true
+                showMacTip = true
+            }
+        }
+        .alert("Try creating layouts on your Mac", isPresented: $showMacTip) {
+            Button("Continue on iPhone", role: .cancel) { }
+        } message: {
+            Text("Gamepad Air on your Mac gives you more room to arrange controls and edit mappings. Your layout can then sync to your iPhone. You can also keep creating here.")
+        }
     }
 }
 

@@ -53,6 +53,7 @@ public final class CableSession {
     private var globalInput: Bool
     private var targetPID: Int32?
     private let update: (HostUpdate) -> Void
+    public var diagnostics: ((UsageMetric, Double?) -> Void)?
     private var connectOverride: (() throws -> StreamSocket)?
     private var outputOverride: (() throws -> GamepadOutput)?
 
@@ -94,8 +95,13 @@ public final class CableSession {
         var appliedLayout: LocalLayout?
         var outputFailure: String?
         var endMessage = "Stopped; controls released"
-        defer { output.close(); announce(endMessage, finished: true) }
+        defer { output.close(); diagnostics?(.connectionStopped, nil); announce(endMessage, finished: true) }
+        var lastDisconnect: TimeInterval?
         while !isStopped {
+            let attemptStart = ProcessInfo.processInfo.systemUptime
+            var didConnect = false
+            var lastTimingSample: TimeInterval = 0
+            diagnostics?(.connectionAttempt, nil)
             do {
                 let stream: InputLink
                 if let connectOverride { stream = try connectOverride() }
@@ -172,6 +178,7 @@ public final class CableSession {
                         if paused { try output.reset() } else { try output.pointer(pointer) }
                         continue
                     }
+                    let processingStart = ProcessInfo.processInfo.systemUptime
                     let frame = try StateFrame(data: data)
                     try sequence.accept(frame.sequence)
                     stateDeadline = ProcessInfo.processInfo.systemUptime + 0.25
@@ -181,6 +188,17 @@ public final class CableSession {
                     let now = ProcessInfo.processInfo.systemUptime
                     if rumble != lastRumble || (rumble != RumbleFrame() && now - lastRumbleSent > 0.2) {
                         try stream.write(rumble.data); lastRumble = rumble; lastRumbleSent = now
+                    }
+                    if !didConnect {
+                        didConnect = true
+                        diagnostics?(.connectionConnected, nil)
+                        diagnostics?(.connectTime, (now - attemptStart) * 1000)
+                        if let disconnected = lastDisconnect { diagnostics?(.reconnectTime, (now - disconnected) * 1000) }
+                        lastDisconnect = nil
+                    }
+                    if now - lastTimingSample >= 1 {
+                        lastTimingSample = now
+                        diagnostics?(.inputProcessingTime, (now - processingStart) * 1000)
                     }
                     count += 1
                     // Enter play only after authenticated controller traffic has arrived.
@@ -197,6 +215,10 @@ public final class CableSession {
                     update(event)
                 }
             } catch {
+                if !isStopped {
+                    diagnostics?(didConnect ? .connectionDisconnected : .connectionFailed, nil)
+                    if didConnect { lastDisconnect = ProcessInfo.processInfo.systemUptime }
+                }
                 lock.lock(); commandBytes.removeAll(); lock.unlock()
                 do { try output.reset() }
                 catch { endMessage = "Output failed; restart required: \(error.localizedDescription)"; return }

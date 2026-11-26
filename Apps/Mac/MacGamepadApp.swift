@@ -148,6 +148,10 @@ final class HostModel: ObservableObject {
                 if event.finished { self.running = false; self.session = nil }
             }
         }
+        let metricTransport = transport == .usb ? "usb" : transport == .wifi ? "wifi" : "bluetooth"
+        session.diagnostics = { metric, milliseconds in
+            Task { @MainActor in UsageDiagnostics.shared.record(metric, transport: metricTransport, milliseconds: milliseconds) }
+        }
         if let setupStage { session.setSetupStage(setupStage) }
         session.setOutputPaused(outputPaused)
         self.session = session; session.start()
@@ -179,6 +183,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var stop: (() -> Void)?
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         stop?()
+        UsageDiagnostics.shared.flush()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { sender.reply(toApplicationShouldTerminate: true) }
         return .terminateLater
     }
@@ -400,7 +405,14 @@ struct HostView: View {
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("PocketPadOpenLayoutStudio"))) { _ in
             if isSettingUp { panel = .layout } else { section = .layouts; showingSettings = true }
         }
-        .onAppear { model.refreshApps() }
+        .modifier(DiagnosticsConsentModifier {
+            model.refreshApps()
+            if isSettingUp { UsageDiagnostics.shared.record(.setupStarted) }
+            UsageDiagnostics.shared.checkInstalledUpdate()
+        })
+        .onChange(of: isSettingUp) { _, settingUp in
+            UsageDiagnostics.shared.record(settingUp ? .setupStarted : .setupCompleted)
+        }
         .sheet(isPresented: $newLayoutPrompt) {
             LayoutCreationView(name: $newLayoutName, type: $newLayoutType, source: $duplicateSource, style: model.update.layout?.layout.style ?? .xbox, startWithAI: startNewLayoutWithAI) { layout, prompt in
                 model.createLibrary(layout, aiPrompt: prompt)
@@ -417,6 +429,7 @@ struct HostView: View {
                 } else if dataAction == "erase" {
                     model.stop()
                     try? model.eraseLocalLayouts()
+                    UsageDiagnostics.shared.choose(false)
                     if let id = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: id) }
                     InputDiagnostics.erase { NSApplication.shared.terminate(nil) }
                 }
@@ -644,6 +657,7 @@ struct HostView: View {
                     Button("Accessibility settings") { AccessibilityHelper.shared.show() }
                 }
                 Section("Diagnostics") {
+                    DiagnosticsSharingSetting()
                     LabeledContent("Status", value: model.update.message)
                     LabeledContent("Transport", value: model.transport.rawValue)
                     Button("Open input log") { NSWorkspace.shared.open(InputDiagnostics.url) }

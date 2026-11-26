@@ -4,7 +4,7 @@ import Sparkle
 /// Sparkle owns the schedule, installation and persisted update preferences.
 /// One controller survives for the entire application lifetime.
 @MainActor
-final class MacAppUpdater: NSObject, ObservableObject, @preconcurrency SPUStandardUserDriverDelegate, @preconcurrency SPUUpdaterDelegate {
+final class MacAppUpdater: NSObject, ObservableObject, @preconcurrency SPUStandardUserDriverDelegate, SPUUpdaterDelegate {
     private var controller: SPUStandardUpdaterController!
     @Published private(set) var availableVersion: String?
     @Published private(set) var canCheckForUpdates = false
@@ -37,7 +37,17 @@ final class MacAppUpdater: NSObject, ObservableObject, @preconcurrency SPUStanda
         if automaticallyChecks { controller.updater.checkForUpdatesInBackground() }
     }
 
+    func updater(_ updater: SPUUpdater, didDownloadUpdate item: SUAppcastItem) {
+        UsageDiagnostics.shared.record(.updateDownloaded)
+    }
+    func updater(_ updater: SPUUpdater, willInstallUpdate item: SUAppcastItem) {
+        UsageDiagnostics.shared.installingUpdate(item.versionString)
+    }
+    func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
+        UsageDiagnostics.shared.record(.updateFailed)
+    }
     func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+        UsageDiagnostics.shared.record(.updateOffered)
         availableVersion = "\(item.displayVersionString) (\(item.versionString))"
     }
 
