@@ -7,6 +7,57 @@ import AuthenticationServices
     @Published var busy = false
     @Published var notice: String?
     @Published var listings: [OwnedListing] = []
+    @Published var reviews: [String: MarketplaceReview] = [:]
+    @Published var blockedCreators: Set<String> = []
+    @Published var catalogVersion = UUID()
+    @Published var deletionReceipt = UserDefaults.standard.string(forKey: "marketplace-deletion-receipt")
+    private var localBlocksKey: String { "marketplace-local-blocks:" + activeEndpoint }
+    func refreshBlocks() async throws {
+        if identity != nil { blockedCreators = Set(try await api.blocks()) }
+        else { blockedCreators = Set(UserDefaults.standard.stringArray(forKey: localBlocksKey) ?? []) }
+    }
+    func setBlocked(_ creator: String, blocked: Bool) async throws {
+        if identity != nil { try await api.block(creator, blocked: blocked) }
+        if blocked { blockedCreators.insert(creator) } else { blockedCreators.remove(creator) }
+        if identity == nil { UserDefaults.standard.set(Array(blockedCreators), forKey: localBlocksKey) }
+        catalogVersion = UUID()
+    }
+    private func clearAccountState() {
+        identity = nil; accountID = nil; listings = []; reviews = [:]
+        blockedCreators = Set(UserDefaults.standard.stringArray(forKey: localBlocksKey) ?? [])
+        catalogVersion = UUID()
+    }
+    private func acceptDeletion(_ result: MarketplaceDeletion) async throws {
+        guard ["pending", "complete"].contains(result.status) else { throw MarketplaceAuthError("The server did not confirm a deletion request.") }
+        deletionReceipt = result.status
+        UserDefaults.standard.set(result.status, forKey: "marketplace-deletion-receipt")
+        clearAccountState()
+        // Clear credentials immediately; neither polling nor provider revocation may delay cleanup.
+        try await MarketplaceAuth.shared.clearLocalCredentials()
+        notice = nil
+    }
+    func deleteAccount() { perform {
+        guard let original = self.identity else { throw MarketplaceAuthError("Sign in to the account you want to delete.") }
+        let state = try MarketplaceOAuth.random(), nonce = try MarketplaceOAuth.random(), verifier = try MarketplaceOAuth.random()
+        let callback = try await self.authenticateBrowser(MarketplaceOAuth.authorizationURL(state: state, nonce: nonce, verifier: verifier, reauthenticate: true))
+        try await MarketplaceAuth.shared.signIn(code: MarketplaceOAuth.authorizationCode(callback, state: state), verifier: verifier, nonce: nonce)
+        self.identity = try await MarketplaceAuth.shared.identity()
+        guard self.identity == original else {
+            try await MarketplaceAuth.shared.clearLocalCredentials()
+            self.clearAccountState()
+            throw MarketplaceAuthError("A different account was selected. No deletion was requested. Sign in to the account you want to delete.")
+        }
+        try await self.acceptDeletion(self.api.deleteAccount())
+    } }
+    func checkDeletion() { perform {
+        let result = try await self.api.deletionStatus()
+        if result.status == "none" { self.notice = "No deletion request is pending." }
+        else { try await self.acceptDeletion(result) }
+    } }
+    func clearCredentials() { perform {
+        try await MarketplaceAuth.shared.clearLocalCredentials()
+        self.clearAccountState()
+    } }
     @Published var endpoint = UserDefaults.standard.string(forKey: "marketplace-api-url") ?? "http://127.0.0.1:8001"
     private var activeEndpoint = UserDefaults.standard.string(forKey: "marketplace-api-url") ?? "http://127.0.0.1:8001"
     private var browser: ASWebAuthenticationSession?
@@ -35,7 +86,7 @@ import AuthenticationServices
                 notice = error.localizedDescription
                 let storedIdentity = try? await MarketplaceAuth.shared.identity()
                 if (error as? MarketplaceAuthError)?.requiresSignIn == true || storedIdentity == nil {
-                    identity = nil; accountID = nil; listings = []
+                    clearAccountState()
                 }
             }
         }
@@ -51,23 +102,38 @@ import AuthenticationServices
             let loadedListings = try await client.owned()
             guard !busy, identity == startingIdentity else { return }
             accountID = loadedAccount.id; listings = loadedListings
+            let blocks = Set(try await client.blocks())
+            guard !busy, identity == startingIdentity else { return }
+            if blocks != blockedCreators { blockedCreators = blocks; catalogVersion = UUID() }
+            for listing in loadedListings {
+                let review = try await client.review(listing)
+                guard !busy, identity == startingIdentity else { return }
+                reviews[listing.id] = review
+            }
         } catch {
             guard !busy, identity == startingIdentity else { return }
             notice = error.localizedDescription
             let storedIdentity = try? await MarketplaceAuth.shared.identity()
             if (error as? MarketplaceAuthError)?.requiresSignIn == true || storedIdentity == nil {
-                identity = nil; accountID = nil; listings = []
+                clearAccountState()
             }
         }
     }
     func restore() { perform {
         self.identity = try await MarketplaceAuth.shared.identity()
         if self.identity != nil { try await self.loadAccount() }
+        else { try await self.refreshBlocks() }
+        self.catalogVersion = UUID()
     } }
     func loadAccount() async throws {
+        catalogVersion = UUID()
         let client = try api
         accountID = try await client.me().id
         listings = try await client.owned()
+        reviews = [:]
+        for listing in listings { reviews[listing.id] = try await client.review(listing) }
+        try await refreshBlocks()
+        catalogVersion = UUID()
     }
     func signIn() { perform {
         let state = try MarketplaceOAuth.random(), nonce = try MarketplaceOAuth.random(), verifier = try MarketplaceOAuth.random()
@@ -79,7 +145,8 @@ import AuthenticationServices
         self.notice = "Signed in. Layout submissions are reviewed before appearing publicly."
     } }
     func signOut() { perform {
-        self.identity = nil; self.accountID = nil; self.listings = []
+        defer { self.catalogVersion = UUID() }
+        self.clearAccountState()
         var revocationError: Error?
         do { try await MarketplaceAuth.shared.signOut() } catch { revocationError = error }
         var url = URLComponents(string: MarketplaceOAuth.domain + "/logout")!
@@ -93,9 +160,12 @@ import AuthenticationServices
     func setEndpoint() { perform {
         _ = try MarketplaceAPI(baseURL: self.endpoint)
         self.activeEndpoint = self.endpoint
+        self.reviews = [:]; self.blockedCreators = []; self.catalogVersion = UUID()
         UserDefaults.standard.set(self.endpoint, forKey: "marketplace-api-url")
         self.accountID = nil; self.listings = []
         if self.identity != nil { try await self.loadAccount() }
+        else { try await self.refreshBlocks() }
+        self.catalogVersion = UUID()
     } }
 }
 
@@ -115,6 +185,7 @@ struct MarketplaceAccountView: View {
     @State private var submitting = false
     @State private var revising: OwnedListing?
     @State private var removing: OwnedListing?
+    @State private var deleting = false
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
@@ -128,6 +199,35 @@ struct MarketplaceAccountView: View {
             }
             if account.busy { ProgressView().controlSize(.small) }
             if let notice = account.notice { Text(notice).textSelection(.enabled).foregroundStyle(.secondary) }
+            if let receipt = account.deletionReceipt {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(receipt == "complete" ? "Account deletion completed" : "Account deletion requested").font(.headline)
+                    Text(receipt == "complete" ? "The server confirmed completion." : "Your uploads are hidden. Account erasure is queued; completion has not been confirmed.")
+                    Text("Local layouts and copies downloaded by others remain. To remove Apple authorization, open Sign-In and Security → Sign in with Apple in your Apple Account, select this app, and stop using Sign in with Apple.")
+                    Button("Dismiss notice") {
+                        account.deletionReceipt = nil
+                        UserDefaults.standard.removeObject(forKey: "marketplace-deletion-receipt")
+                    }
+                    Link("Open Apple Account", destination: URL(string: "https://account.apple.com/")!)
+                    Button("Clear local account credentials") { account.clearCredentials() }
+                }.font(.callout).padding().background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+            }
+            DisclosureGroup("Blocked creators (\(account.blockedCreators.count))") {
+                Text(account.identity == nil ? "Blocks apply on this Mac while signed out." : "Blocks apply to your signed-in account.").foregroundStyle(.secondary)
+                ForEach(account.blockedCreators.sorted(), id: \.self) { creator in
+                    HStack {
+                        Text(creator).font(.caption).textSelection(.enabled)
+                        Spacer()
+                        Button("Unblock") { account.perform { try await account.setBlocked(creator, blocked: false) } }
+                    }
+                }
+            }
+            if account.identity != nil {
+                HStack {
+                    Button("Delete account…", role: .destructive) { deleting = true }
+                    Button("Check deletion status") { account.checkDeletion() }
+                }
+            }
             if account.accountID != nil {
                 Button("Submit layout…") {
                     selectedLayoutID = ""; submissionLayout = nil; revising = nil
@@ -137,6 +237,10 @@ struct MarketplaceAccountView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(item.title).font(.headline)
                         Text("Revision \(item.latest_revision) · \(item.status)" + (item.published_revision.map { " · Published revision \($0)" } ?? " · Not yet public")).foregroundStyle(.secondary)
+                        if let review = account.reviews[item.id] {
+                            Text("Review: " + review.review_status).font(.callout)
+                            if let reason = review.review_reason, !reason.isEmpty { Text(reason).font(.callout).foregroundStyle(.secondary).textSelection(.enabled) }
+                        }
                         HStack {
                             Button("Download a copy") { account.perform { importLayout(try await account.api.revision(item)); account.notice = "Downloaded revision \(item.latest_revision) to your layout library." } }.help("Download the newest submitted revision, including one awaiting review, as a new local copy.")
                             Button("Submit revision…") { selectedLayoutID = ""; submissionLayout = nil; revising = item; submitting = true }.disabled(layouts.isEmpty || item.status == "removed")
@@ -195,6 +299,19 @@ struct MarketplaceAccountView: View {
                 }
             }.padding(24).frame(width: 600)
                 .onChange(of: selectedLayoutID) { _, _ in submissionLayout = selectedLayout; title = selectedLayout?.name ?? "" }
+        }
+        .sheet(isPresented: $deleting) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Delete your account?").font(.title2.bold())
+                Text("Your uploads will be hidden immediately. Your account, uploads, reports, and account blocks will then be queued for permanent deletion. This cannot be undone.")
+                Text("Local layouts and copies downloaded by other people remain. Your local sign-in credentials will be cleared when the server accepts the request.")
+                Text("You’ll sign in again to confirm the account. After requesting deletion, remove this app from Sign in with Apple at account.apple.com; deleting this account does not automatically revoke Apple authorization.")
+                HStack {
+                    Button("Cancel") { deleting = false }
+                    Spacer()
+                    Button("Sign in and delete account", role: .destructive) { deleting = false; account.deleteAccount() }
+                }
+            }.padding(24).frame(width: 480)
         }
         .confirmationDialog("Remove this listing from the marketplace?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } })) {
             if let listing = removing { Button("Remove listing", role: .destructive) { removing = nil; account.perform { try await account.api.remove(listing); try await account.loadAccount() } } }

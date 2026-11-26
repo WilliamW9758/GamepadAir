@@ -18,6 +18,9 @@ public struct MarketplaceSubmission: Decodable {
 }
 public struct MarketplaceAPI {
     public let baseURL: URL
+    var send: (URLRequest) async throws -> (Data, Int) = MarketplaceHTTP.send
+    var token: () async throws -> String = { try await MarketplaceAuth.shared.accessToken() }
+    var signedIn: () async throws -> Bool = { try await MarketplaceAuth.shared.identity() != nil }
     public init(baseURL: String) throws {
         guard let url = URL(string: baseURL), let host = url.host, url.user == nil, url.password == nil, url.query == nil, url.fragment == nil,
               url.scheme == "https" || (url.scheme == "http" && ["127.0.0.1", "localhost", "::1"].contains(host)) else { throw MarketplaceAuthError("Use an HTTPS server address, or HTTP on localhost for development.") }
@@ -28,11 +31,11 @@ public struct MarketplaceAPI {
         request.httpMethod = method; request.httpBody = body
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if body != nil { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
-        if authenticated { request.setValue("Bearer " + (try await MarketplaceAuth.shared.accessToken()), forHTTPHeaderField: "Authorization") }
+        if authenticated { request.setValue("Bearer " + (try await token()), forHTTPHeaderField: "Authorization") }
         let data: Data; let status: Int
-        do { (data, status) = try await MarketplaceHTTP.send(request) }
+        do { (data, status) = try await send(request) }
         catch {
-            if method != "GET" { throw MarketplaceAuthError("The server response was interrupted. Check Your layouts before submitting again; the change may have been saved.") }
+            if method != "GET" { throw MarketplaceAuthError("The server response was interrupted. The request may have been accepted. Refresh its status before trying again.") }
             throw error
         }
         guard (200..<300).contains(status) else {
@@ -40,7 +43,10 @@ public struct MarketplaceAPI {
             case 401: throw MarketplaceAuthError("Your session has expired. Please sign in to continue.", requiresSignIn: true)
             case 403: throw MarketplaceAuthError("This account is not allowed to perform this action.")
             case 409: throw MarketplaceAuthError("This listing changed. Refresh Your layouts before submitting a revision.")
-            case 422: throw MarketplaceAuthError("The server rejected this layout or its metadata.")
+            case 404: throw MarketplaceAuthError("This item or feature is unavailable on this server. Refresh and try again.")
+            case 422: throw MarketplaceAuthError("The server rejected this request. Check the supplied information.")
+            case 429: throw MarketplaceAuthError("Too many requests. Please wait before trying again.")
+            case 503: throw MarketplaceAuthError("This service is temporarily unavailable. Please try again later.")
             default: throw MarketplaceAuthError("The server returned HTTP \(status).")
             }
         }
@@ -77,15 +83,64 @@ public struct PublicListing: Decodable, Identifiable {
     public let title: String
     public let description: String
     public let input_type: String
+    public let creator_id: String?
     public let current_revision: Revision
 }
 extension MarketplaceAPI {
     public func browse() async throws -> [PublicListing] {
         struct Page: Decodable { let items: [PublicListing] }
-        return try JSONDecoder().decode(Page.self, from: await request("v1/layouts", authenticated: false)).items
+        return try JSONDecoder().decode(Page.self, from: await request("v1/layouts", authenticated: try await signedIn())).items
     }
     public func download(_ listing: PublicListing) async throws -> LocalLayout {
-        let data = try await request("v1/layouts/\(listing.id)/revisions/\(listing.current_revision.number)/download", authenticated: false)
+        let data = try await request("v1/layouts/\(listing.id)/revisions/\(listing.current_revision.number)/download", authenticated: try await signedIn())
         return try LocalLayout(document: LayoutDocument.decode(data), provenance: LayoutProvenance(publicationID: listing.id, revisionID: String(listing.current_revision.number), digest: listing.current_revision.digest))
+    }
+}
+
+public enum MarketplaceReportReason: String, CaseIterable, Codable {
+    case abuse, hate, sexual, violence, personalInformation = "personal_information", spam, other
+    public var title: String {
+        switch self {
+        case .abuse: return "Abuse or harassment"
+        case .hate: return "Hateful content"
+        case .sexual: return "Sexual content"
+        case .violence: return "Violence"
+        case .personalInformation: return "Personal information"
+        case .spam: return "Spam"
+        case .other: return "Other"
+        }
+    }
+}
+public struct MarketplaceReview: Decodable {
+    public let review_status: String
+    public let review_reason: String?
+}
+public struct MarketplaceDeletion: Decodable {
+    public let status: String
+    public let apple_revocation: String?
+    public let apple_revocation_url: String?
+}
+extension MarketplaceAPI {
+    public func report(_ listing: PublicListing, reason: MarketplaceReportReason, explanation: String) async throws {
+        guard explanation.count <= 2000 else { throw MarketplaceAuthError("Keep the explanation within 2,000 characters.") }
+        struct Body: Encodable { let revision: Int; let reason: MarketplaceReportReason; let explanation: String }
+        let body = try JSONEncoder().encode(Body(revision: listing.current_revision.number, reason: reason, explanation: explanation))
+        _ = try await request("v1/layouts/\(listing.id)/reports", method: "POST", body: body, authenticated: signedIn())
+    }
+    public func blocks() async throws -> [String] {
+        struct Response: Decodable { let creator_ids: [String] }
+        return try JSONDecoder().decode(Response.self, from: await request("v1/me/blocks")).creator_ids
+    }
+    public func block(_ creator: String, blocked: Bool) async throws {
+        _ = try await request("v1/me/blocks/\(creator)", method: blocked ? "PUT" : "DELETE")
+    }
+    public func review(_ listing: OwnedListing) async throws -> MarketplaceReview {
+        try JSONDecoder().decode(MarketplaceReview.self, from: await request("v1/me/layouts/\(listing.id)/revisions/\(listing.latest_revision)"))
+    }
+    public func deletionStatus() async throws -> MarketplaceDeletion {
+        try JSONDecoder().decode(MarketplaceDeletion.self, from: await request("v1/me/deletion"))
+    }
+    public func deleteAccount() async throws -> MarketplaceDeletion {
+        try JSONDecoder().decode(MarketplaceDeletion.self, from: await request("v1/me/deletion", method: "POST", body: Data(#"{"confirmation":"delete_my_account"}"#.utf8)))
     }
 }

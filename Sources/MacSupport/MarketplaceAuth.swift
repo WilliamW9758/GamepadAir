@@ -28,9 +28,10 @@ public enum MarketplaceOAuth {
         let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._~"))
         return Data(fields.sorted { $0.key < $1.key }.map { $0.key.addingPercentEncoding(withAllowedCharacters: allowed)! + "=" + $0.value.addingPercentEncoding(withAllowedCharacters: allowed)! }.joined(separator: "&").utf8)
     }
-    public static func authorizationURL(state: String, nonce: String, verifier: String) -> URL {
+    public static func authorizationURL(state: String, nonce: String, verifier: String, reauthenticate: Bool = false) -> URL {
         var url = URLComponents(string: domain + "/oauth2/authorize")!
         url.queryItems = ["response_type": "code", "client_id": clientID, "redirect_uri": callback, "scope": scopes, "state": state, "nonce": nonce, "code_challenge": challenge(verifier), "code_challenge_method": "S256", "identity_provider": "SignInWithApple"].map { URLQueryItem(name: $0.key, value: $0.value) }
+        if reauthenticate { url.queryItems?.append(URLQueryItem(name: "prompt", value: "login")) }
         return url.url!
     }
     public static func authorizationCode(_ url: URL, state: String) throws -> String {
@@ -187,6 +188,10 @@ public actor MarketplaceAuth {
         refresh = task
         defer { if operation == generation { refresh = nil } }
         return try await task.value
+    }
+    public func clearLocalCredentials() throws {
+        generation = UUID(); signingIn = nil; refresh?.cancel(); refresh = nil
+        try clearCredentials()
     }
     public func signOut() async throws {
         generation = UUID(); signingIn = nil; refresh?.cancel(); refresh = nil

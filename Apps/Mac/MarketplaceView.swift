@@ -13,6 +13,12 @@ struct MarketplaceView: View {
     @State private var notice: String?
     @State private var selectedExample: Example?
     @State private var selectedListing: PublicListing?
+    @State private var reporting: PublicListing?
+    @State private var blocking: PublicListing?
+    @State private var reportReason = MarketplaceReportReason.abuse
+    @State private var reportExplanation = ""
+    @State private var reportError: String?
+    @State private var reportingBusy = false
     private struct Example: Identifiable {
         let id: String, subtitle: String, category: String, symbol: String
     }
@@ -34,7 +40,7 @@ struct MarketplaceView: View {
     private func isSaved(_ listing: PublicListing) -> Bool {
         model.localLayouts.contains { $0.provenance?.publicationID == listing.id && $0.provenance?.revisionID == String(listing.current_revision.number) && $0.provenance?.digest == listing.current_revision.digest }
     }
-    private var results: [PublicListing] { listings.filter { matches($0.title, $0.description, inputCategory($0)) } }
+    private var results: [PublicListing] { listings.filter { !account.blockedCreators.contains($0.creator_id ?? "") && matches($0.title, $0.description, inputCategory($0)) } }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -47,6 +53,12 @@ struct MarketplaceView: View {
                     }
                     Text(item.description).foregroundStyle(.secondary)
                     Text(inputCategory(item)).font(.headline)
+                    HStack {
+                        Button("Report layout…") { reportReason = .abuse; reportExplanation = ""; reportError = nil; reporting = item }
+                        if let creator = item.creator_id, creator != account.accountID {
+                            Button("Block creator…") { blocking = item }.disabled(account.busy)
+                        }
+                    }
                     if let preview = previews[previewKey(item)] {
                         SubmissionLayoutPreview(layout: preview, screen: model.update.connected ? model.libraryScreen : nil)
                         if model.update.connected, let screen = model.libraryScreen {
@@ -132,6 +144,48 @@ struct MarketplaceView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             Task { if showingSubmissions { await account.updateInBackground() } else { await browse() } }
         }
+        .onChange(of: account.catalogVersion) { _, _ in
+            selectedListing = nil; previews = [:]; listings = []
+            Task { await browse() }
+        }
+        .sheet(item: $reporting) { item in
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Report “\(item.title)”").font(.title2.bold())
+                Picker("Reason", selection: $reportReason) {
+                    ForEach(MarketplaceReportReason.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                TextField("Explanation (optional)", text: $reportExplanation, axis: .vertical).lineLimit(3...6)
+                Text("\(reportExplanation.count) / 2,000 characters").font(.caption).foregroundStyle(.secondary)
+                Text("Your report will be reviewed. Reporting does not automatically remove a layout.").font(.callout).foregroundStyle(.secondary)
+                if let reportError { Text(reportError).foregroundStyle(.red) }
+                if reportingBusy { ProgressView().controlSize(.small) }
+                HStack {
+                    Button("Cancel") { reporting = nil }.disabled(reportingBusy)
+                    Spacer()
+                    Button("Send report") {
+                        reportingBusy = true; reportError = nil
+                        Task {
+                            defer { reportingBusy = false }
+                            do {
+                                try await account.api.report(item, reason: reportReason, explanation: reportExplanation)
+                                reporting = nil; notice = "Report received. Thank you."
+                            } catch { reportError = error.localizedDescription }
+                        }
+                    }.disabled(reportingBusy || reportExplanation.count > 2000)
+                }
+            }.padding(24).frame(width: 480).interactiveDismissDisabled(reportingBusy)
+        }
+        .confirmationDialog("Block this creator?", isPresented: Binding(get: { blocking != nil }, set: { if !$0 { blocking = nil } })) {
+            if let creator = blocking?.creator_id {
+                Button("Block creator") {
+                    blocking = nil
+                    account.perform {
+                        do { try await account.setBlocked(creator, blocked: true); notice = "Creator blocked." }
+                        catch { notice = error.localizedDescription; throw error }
+                    }
+                }
+            }
+        } message: { Text("Their layouts will be hidden. Downloaded copies remain. Manage blocks in My submissions." + (account.identity == nil ? " This block stays on this Mac while signed out." : "")) }
         .sheet(item: $selectedExample) { item in
             VStack(alignment: .leading, spacing: 20) {
                 artwork(item.symbol)
@@ -143,9 +197,15 @@ struct MarketplaceView: View {
         }
     }
     private func save(_ item: PublicListing) {
-        guard let layout = previews[previewKey(item)] else { return }
-        if model.importMarketplaceDocument(layout.document, provenance: layout.provenance) { notice = nil }
-        else { notice = model.profileNotice }
+        let version = account.catalogVersion
+        Task {
+            do {
+                let layout = try await account.api.download(item)
+                guard account.catalogVersion == version, !account.blockedCreators.contains(item.creator_id ?? "") else { return }
+                if model.importMarketplaceDocument(layout.document, provenance: layout.provenance) { notice = nil }
+                else { notice = model.profileNotice }
+            } catch { notice = error.localizedDescription }
+        }
     }
     private func artwork(_ symbol: String) -> some View {
         Image(systemName: symbol).font(.system(size: 44)).foregroundStyle(Color.accentColor)
@@ -154,15 +214,25 @@ struct MarketplaceView: View {
     }
     private func browse() async {
         guard !loading else { return }; loading = true
-        defer { loading = false; hasLoaded = true }
+        let version = account.catalogVersion
+        defer {
+            loading = false; hasLoaded = true
+            if version != account.catalogVersion { Task { await browse() } }
+        }
         do {
             let client = try account.api
-            listings = try await client.browse(); notice = nil
+            let loaded = try await client.browse()
+            guard version == account.catalogVersion else { return }
+            listings = loaded.filter { !account.blockedCreators.contains($0.creator_id ?? "") }
+            if let selectedListing, !listings.contains(where: { $0.id == selectedListing.id }) { self.selectedListing = nil }
             let validKeys = Set(listings.map(previewKey))
             previews = previews.filter { validKeys.contains($0.key) }
             for listing in listings where previews[previewKey(listing)] == nil {
                 guard !Task.isCancelled else { return }
-                if let layout = try? await client.download(listing) { previews[previewKey(listing)] = layout }
+                if let layout = try? await client.download(listing) {
+                    guard version == account.catalogVersion else { return }
+                    previews[previewKey(listing)] = layout
+                }
             }
         }
         catch { notice = "Could not load community layouts: " + error.localizedDescription }
