@@ -147,6 +147,7 @@ final class MarketplaceModerationTests: XCTestCase {
             XCTAssertEqual(body["description"] as? String, "For farming and fishing")
             if calls == 1 {
                 XCTAssertEqual(body["game_id"] as? String, "game-id")
+                XCTAssertNil(body["game_name"])
                 XCTAssertEqual(body["tags"] as? [String], ["farming", "fishing"])
             } else {
                 XCTAssertNil(body["game_id"])
@@ -161,6 +162,28 @@ final class MarketplaceModerationTests: XCTestCase {
         do { _ = try await api.submit(document: document, title: "Title", description: "", tags: (0..<11).map { "tag-\($0)" }); XCTFail() } catch {}
         do { _ = try await api.submit(document: document, title: "Title", description: "", tags: ["farming", "farming"]); XCTFail() } catch {}
         XCTAssertEqual(calls, 2)
+    }
+    func testTypedGameIsCreatedOnlyWithLayoutSubmission() async throws {
+        var api = try MarketplaceAPI(baseURL: "http://localhost:8001")
+        api.token = { "test-token" }
+        var calls = 0
+        api.send = { request in
+            calls += 1
+            XCTAssertEqual(request.url?.path, "/v1/layouts")
+            XCTAssertEqual(request.httpMethod, "POST")
+            let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
+            XCTAssertEqual(body["game_name"] as? String, "New Game")
+            XCTAssertNil(body["game_id"])
+            XCTAssertEqual(body["tags"] as? [String], ["exploration"])
+            return (Data(#"{"id":"listing","revision":1,"review_status":"pending"}"#.utf8), 201)
+        }
+        let document = LocalLayout(name: "Game", style: .xbox).document
+        _ = try await api.submit(document: document, title: "Controls", description: "", gameName: "  New   Game ", tags: ["exploration"])
+        for name in ["", "   ", String(repeating: "x", count: 201)] {
+            do { _ = try await api.submit(document: document, title: "Controls", description: "", gameName: name); XCTFail() } catch {}
+        }
+        do { _ = try await api.submit(document: document, title: "Controls", description: "", gameID: "existing", gameName: "New Game"); XCTFail() } catch {}
+        XCTAssertEqual(calls, 1)
     }
     func testMetadataCatalogRequestsArePublicAndSearchIsEncoded() async throws {
         var api = try MarketplaceAPI(baseURL: "http://localhost:8001")

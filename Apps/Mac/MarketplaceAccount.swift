@@ -354,6 +354,8 @@ private struct MarketplaceSubmissionView: View {
     @State private var title = ""
     @State private var description = ""
     @State private var selectedGame: MarketplaceGame?
+    @State private var newGameName: String?
+    @State private var gamesResultQuery: String?
     @State private var selectedTags: Set<String> = []
     @State private var tags: [MarketplaceTag] = []
     @State private var loadingTags = false
@@ -432,6 +434,11 @@ private struct MarketplaceSubmissionView: View {
             }
             .task { if revising == nil { await loadTags() } }
     }
+    private var proposedGameName: String { gameQuery.split(whereSeparator: \.isWhitespace).joined(separator: " ") }
+    private var canChooseNewGame: Bool {
+        !loadingGames && gamesError == nil && gamesResultQuery == gameQuery && !proposedGameName.isEmpty && proposedGameName.count <= 200 &&
+        !games.contains { $0.name.split(whereSeparator: \.isWhitespace).joined(separator: " ").caseInsensitiveCompare(proposedGameName) == .orderedSame }
+    }
     private var gameChoice: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -441,27 +448,40 @@ private struct MarketplaceSubmissionView: View {
                 Button(choosingGame ? "Done" : "Choose game…") { choosingGame.toggle() }
             }
             HStack {
-                Text(selectedGame?.name ?? "General-purpose / no specific game")
-                if selectedGame != nil { Button("Clear") { selectedGame = nil }.buttonStyle(.link) }
+                Text(selectedGame?.name ?? newGameName ?? "General-purpose / no specific game")
+                if selectedGame != nil || newGameName != nil { Button("Clear") { selectedGame = nil; newGameName = nil }.buttonStyle(.link) }
             }.foregroundStyle(.secondary)
+            if newGameName != nil {
+                Text("This game will be added when you submit the layout.").font(.caption).foregroundStyle(.secondary)
+            }
             if choosingGame {
-                TextField("Search games", text: $gameQuery)
+                TextField("Search games or type a new game name", text: $gameQuery)
                 VStack(alignment: .leading, spacing: 8) {
                     if loadingGames { ProgressView().controlSize(.small) }
                     if let gamesError {
                         Text(gamesError).font(.callout).foregroundStyle(.secondary)
                         Button("Retry game search") { gamesRetry += 1 }
                     } else if !loadingGames && games.isEmpty {
-                        Text(gameQuery.isEmpty ? "No games are available yet. You can submit a general-purpose layout." : "No matching games. Try another search, or leave the game unset.").font(.callout).foregroundStyle(.secondary)
+                        Text(gameQuery.isEmpty ? "No games are available yet. Type a game name, or leave it unset." : "No matching games.").font(.callout).foregroundStyle(.secondary)
                     }
                     ForEach(games) { game in
-                        Button { selectedGame = game; choosingGame = false } label: {
+                        Button { selectedGame = game; newGameName = nil; choosingGame = false } label: {
                             HStack {
                                 Text(game.name)
                                 Spacer()
                                 if selectedGame?.id == game.id { Image(systemName: "checkmark") }
                             }.padding(.vertical, 4).contentShape(Rectangle())
                         }.buttonStyle(.plain)
+                    }
+                    if canChooseNewGame {
+                        Button {
+                            newGameName = proposedGameName; selectedGame = nil; choosingGame = false
+                        } label: { Label("Use/create “\(proposedGameName)”", systemImage: "plus.circle") }
+                            .buttonStyle(.link)
+                        Text("Created only when you submit. If it already exists, we’ll use that game.").font(.caption).foregroundStyle(.secondary)
+                    }
+                    if proposedGameName.count > 200 {
+                        Text("Keep the game name within 200 characters.").font(.caption).foregroundStyle(.red)
                     }
                 }.task(id: gameQuery + ":" + String(gamesRetry)) { await searchGames() }
             }
@@ -492,12 +512,13 @@ private struct MarketplaceSubmissionView: View {
         }
     }
     private func searchGames() async {
-        loadingGames = true; gamesError = nil; games = []
+        let query = gameQuery
+        loadingGames = true; gamesError = nil; games = []; gamesResultQuery = nil
         do {
             try await Task.sleep(for: .milliseconds(250))
-            let result = try await account.api.games(query: gameQuery)
+            let result = try await account.api.games(query: String(query.prefix(200)))
             guard !Task.isCancelled else { return }
-            games = result; loadingGames = false
+            games = result; gamesResultQuery = query; loadingGames = false
         } catch {
             guard !Task.isCancelled else { return }
             gamesError = "Could not load games. Your current choice is unchanged. " + error.localizedDescription
@@ -514,13 +535,13 @@ private struct MarketplaceSubmissionView: View {
     private func submit() {
         guard let layout = submissionLayout else { return }
         let submittedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines), submittedDescription = description
-        let gameID = selectedGame?.id, tagSlugs = selectedTags.sorted()
+        let gameID = selectedGame?.id, gameName = newGameName, tagSlugs = selectedTags.sorted()
         submissionError = nil
         account.perform {
             let result: MarketplaceSubmission
             do {
                 if let revising { result = try await account.api.revise(revising, document: layout.document) }
-                else { result = try await account.api.submit(document: layout.document, title: submittedTitle, description: submittedDescription, gameID: gameID, tags: tagSlugs) }
+                else { result = try await account.api.submit(document: layout.document, title: submittedTitle, description: submittedDescription, gameID: gameID, gameName: gameName, tags: tagSlugs) }
             } catch { submissionError = error.localizedDescription; throw error }
             dismiss()
             let confirmation = "Revision \(result.revision) submitted for review."

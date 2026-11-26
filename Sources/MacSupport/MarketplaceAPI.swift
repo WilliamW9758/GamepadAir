@@ -77,11 +77,14 @@ public struct MarketplaceAPI {
         struct Page: Decodable { let items: [MarketplaceTag] }
         return try JSONDecoder().decode(Page.self, from: await request("v1/tags", authenticated: false)).items
     }
-    public func submit(document: LayoutDocument, title: String, description: String, gameID: String? = nil, tags: [String] = []) async throws -> MarketplaceSubmission {
+    public func submit(document: LayoutDocument, title: String, description: String, gameID: String? = nil, gameName: String? = nil, tags: [String] = []) async throws -> MarketplaceSubmission {
         guard tags.count <= 10, Set(tags).count == tags.count else { throw MarketplaceAuthError("Choose up to 10 distinct use-case tags.") }
-        struct Body: Encodable { let title: String; let description: String; let game_id: String?; let tags: [String]; let document: LayoutDocument }
+        guard gameID == nil || gameName == nil else { throw MarketplaceAuthError("Choose an existing game or enter a new name, not both.") }
+        let newName = gameName?.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        if let newName, newName.isEmpty || newName.count > 200 { throw MarketplaceAuthError("Use a game name between 1 and 200 characters.") }
+        struct Body: Encodable { let title: String; let description: String; let game_id: String?; let game_name: String?; let tags: [String]; let document: LayoutDocument }
         try document.validate()
-        let body = try JSONEncoder().encode(Body(title: title, description: description, game_id: gameID, tags: tags, document: document))
+        let body = try JSONEncoder().encode(Body(title: title, description: description, game_id: gameID, game_name: newName, tags: tags, document: document))
         return try JSONDecoder().decode(MarketplaceSubmission.self, from: await request("v1/layouts", method: "POST", body: body))
     }
     public func revise(_ listing: OwnedListing, document: LayoutDocument) async throws -> MarketplaceSubmission {
