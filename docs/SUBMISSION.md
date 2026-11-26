@@ -7,6 +7,7 @@
 - [Public iPhone beta](https://testflight.apple.com/join/ZaVJEpX3) · [Mac beta 14 download](https://github.com/WilliamW9758/GamepadAir/releases/tag/v1.0-beta.14).
 - Universal Mac archive, Developer ID signing, Apple notarization/stapling, nested signature validation, Gatekeeper and DMG validation passed. Public DMG downloaded with HTTP 200 and SHA-256 `e3d5eb88cf037e6a01a29cde559b25d118be559866797ea95f202cbc9841b955` matching the local artifact and GitHub digest.
 - Signed updater entry published to `updates/macos.xml`; CryptoKit verified the downloaded DMG against the app's public key and appcast signature. Build 13 and older still need one manual installation. The first actual version-to-version automatic install/relaunch test remains for a subsequent release.
+- Website deployment verified on gamepadair.com, www.gamepadair.com and gamepad-air.pages.dev: build 14 Mac links and PublicTesters links live. README links match.
 - All 122 Swift tests passed; both app release-resource checks passed. Development build 14 was installed/launched on iPhone Air and Mac for user testing before archiving.
 - Archives, exported app, DMG, checksum, signed feed and logs: `~/PocketPad Backups/Beta 1.0-build14-2026-11-26/`. Separate clean-Mac installation remains for beta testers to verify.
 
