@@ -452,7 +452,7 @@ private struct MarketplaceSubmissionView: View {
                 if selectedGame != nil || newGameName != nil { Button("Clear") { selectedGame = nil; newGameName = nil }.buttonStyle(.link) }
             }.foregroundStyle(.secondary)
             if newGameName != nil {
-                Text("This game will be added when you submit the layout.").font(.caption).foregroundStyle(.secondary)
+                Text("Saved with submission; searchable after review.").font(.caption).foregroundStyle(.secondary)
             }
             if choosingGame {
                 TextField("Search games or type a new game name", text: $gameQuery)
@@ -478,7 +478,7 @@ private struct MarketplaceSubmissionView: View {
                             newGameName = proposedGameName; selectedGame = nil; choosingGame = false
                         } label: { Label("Use/create “\(proposedGameName)”", systemImage: "plus.circle") }
                             .buttonStyle(.link)
-                        Text("Created only when you submit. If it already exists, we’ll use that game.").font(.caption).foregroundStyle(.secondary)
+                        Text("Saved with submission; searchable after review. If it already exists, we’ll use that game.").font(.caption).foregroundStyle(.secondary)
                     }
                     if proposedGameName.count > 200 {
                         Text("Keep the game name within 200 characters.").font(.caption).foregroundStyle(.red)
