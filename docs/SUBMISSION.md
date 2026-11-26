@@ -7,6 +7,7 @@
 - [Public iPhone beta](https://testflight.apple.com/join/ZaVJEpX3) · [Mac beta 15 download](https://github.com/WilliamW9758/GamepadAir/releases/tag/v1.0-beta.15).
 - Universal Mac archive, Developer ID signing, notarization/stapling, deep signatures, Gatekeeper and DMG checks passed. Downloaded public artifact matches SHA-256 `a59153adf731aa379291622b9f36b17c570499fec10e6f5f944b9636dcdd4bf8`; Ed25519 verification passed before publishing the signed feed.
 - **Public build 14 → 15 automatic-update test passed:** downloaded through Sparkle, installed and relaunched at the same path. Installed executable matches the notarized release. Layout file is byte-identical; saved pairing and transport preferences match. No phone connected during this run, so live reconnection/gameplay were not tested. Details in [updater verification](audits/MAC_UPDATER.md).
+- Website build 15 deployed and verified on gamepadair.com, www.gamepadair.com and gamepad-air.pages.dev; both Mac links, release notes and PublicTesters links match. Root README updated and pushed.
 - All 122 Swift tests and both bundle-resource checks passed. The Mac is left running public build 15 installed by Sparkle.
 - Archives, notarized app, DMG/checksum/feed, notes and logs: `~/PocketPad Backups/Beta 1.0-build15-2026-11-26/`. Pre-update data and machine-readable preservation checks: `~/PocketPad Backups/Public14-to15-20261126/`.
 
