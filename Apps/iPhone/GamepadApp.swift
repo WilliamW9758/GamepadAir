@@ -783,22 +783,29 @@ private struct MovableSettingsButton: View {
             let center = CGPoint(
                 x: min(insetX + travelX, max(insetX, resting.x + dragTranslation.width)),
                 y: min(insetY + travelY, max(insetY, resting.y + dragTranslation.height)))
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 17, weight: .medium))
-                .foregroundStyle(connected ? PadAppearance.accent : Color.secondary)
-                .frame(width: buttonSize, height: max(44, buttonSize * 0.92))
-                .background(.ultraThinMaterial, in: Capsule())
-                .contentShape(Capsule())
-                .overlay(SettingsHandleGestures(onTap: { wake(); openSettings() }, onHold: { wake(); editLayout() },
+            ZStack {
+                // Fade only the artwork. Keep the UIKit touch surface fully opaque
+                // so SwiftUI never excludes the faded handle from hit testing.
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(connected ? PadAppearance.accent : Color.secondary)
+                    .frame(width: buttonSize, height: max(44, buttonSize * 0.92))
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .opacity(active || fadeDelay == 0 ? 1 : inactiveOpacity)
+                    .animation(.easeInOut(duration: 0.25), value: active)
+                    .allowsHitTesting(false)
+                SettingsHandleGestures(onTap: { wake(); openSettings() }, onHold: { wake(); editLayout() },
                     onDrag: { wake(); dragTranslation = $0 }, onEnd: { translation in
                         if let translation {
                             if travelX > 0 { savedX = min(1, max(0, (resting.x + translation.width - insetX) / travelX)) }
                             if travelY > 0 { savedY = min(1, max(0, (resting.y + translation.height - insetY) / travelY)) }
                         }
                         dragTranslation = .zero; wake()
-                    }))
-                .opacity(active || fadeDelay == 0 ? 1 : inactiveOpacity)
-                .animation(.easeInOut(duration: 0.25), value: active)
+                    })
+                    .frame(width: buttonSize, height: max(44, buttonSize * 0.92))
+                    .allowsHitTesting(true)
+            }
+            .frame(width: buttonSize, height: max(44, buttonSize * 0.92))
                 .position(center)
                 .accessibilityLabel("Settings")
                 .accessibilityHint("Tap to open settings, drag to reposition, or hold to edit the layout.")
