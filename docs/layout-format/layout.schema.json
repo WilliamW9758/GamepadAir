@@ -690,6 +690,11 @@
           "minimum": 0,
           "maximum": 0.3,
           "default": 0.03
+        },
+        "activationControl": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,47}$",
+          "description": "ID of a button or trigger held to activate motion. Omitted uses the right trigger."
         }
       },
       "required": []

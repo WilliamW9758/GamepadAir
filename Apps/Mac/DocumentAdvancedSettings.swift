@@ -62,17 +62,26 @@ struct DocumentMotionSettingsView: View {
     var body: some View {
         Form {
             Section("Motion") {
-                Picker("While holding RT / R2", selection: Binding(get: { document.motion?.mode ?? "off" }, set: { value in
+                Picker("Motion behavior", selection: Binding(get: { document.motion?.mode ?? "off" }, set: { value in
                     if document.motion == nil { document.motion = DocumentMotionSettings() }
                     document.motion?.mode = value
-                    if value != "off" { try? document.setControlVisible(role: "rightTrigger", visible: true, modeID: document.initialMode) }
+                    if value != "off" { try? document.revealMotionActivation(modeID: document.initialMode) }
                 })) {
                     Text("Off").tag("off"); Text("Gyro aim").tag("aim")
                     if document.inputType == "gamepad" { Text("Analog steering").tag("steering") }
                 }
+                Picker("Activation button", selection: Binding(get: { document.motionActivationControl?.id ?? "" }, set: { value in
+                    if document.motion == nil { document.motion = DocumentMotionSettings() }
+                    document.motion?.activationControl = value
+                    try? document.revealMotionActivation(modeID: document.initialMode)
+                })) {
+                    ForEach(document.motionActivationControls, id: \.id) { control in
+                        Text(LocalLayout(document: document).displayLabels(modeID: document.initialMode)[control.runtimeID] ?? control.id).tag(control.id)
+                    }
+                }
                 Slider(value: Binding(get: { document.motion?.sensitivity ?? 1 }, set: { if document.motion == nil { document.motion = DocumentMotionSettings() }; document.motion?.sensitivity = $0 }), in: 0.1...4) { Text("Sensitivity") }
                 Slider(value: Binding(get: { document.motion?.deadZone ?? 0.03 }, set: { if document.motion == nil { document.motion = DocumentMotionSettings() }; document.motion?.deadZone = $0 }), in: 0...0.3) { Text("Dead zone") }
-                Text("Hold RT / R2 to calibrate at your current angle and activate motion. Release to stop; hold again to recalibrate. RT keeps its normal mapping. Aim controls the right stick; steering controls left X. Requires a physical iPhone.").foregroundStyle(.secondary)
+                Text("Hold the selected button to calibrate and activate motion. Release to stop; hold again to recalibrate. The button keeps its normal mapping. Aim controls the right stick; steering controls left X. Requires a physical iPhone.").foregroundStyle(.secondary)
             }
         }.formStyle(.grouped)
     }

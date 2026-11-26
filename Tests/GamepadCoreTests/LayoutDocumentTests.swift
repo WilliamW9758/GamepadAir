@@ -6,6 +6,30 @@ final class LayoutDocumentTests: XCTestCase {
     private func fixture(_ name: String = "keyboard-simple") throws -> LayoutDocument {
         try LayoutDocument.decode(Data(contentsOf: root.appendingPathComponent("docs/layout-format/fixtures/\(name).layout.json")))
     }
+    func testMotionActivationReferencesAndRemoval() throws {
+        var document = try fixture("gamepad-remapped")
+        let target = try XCTUnwrap(document.controls.first { $0.role == "south" })
+        document.motion = DocumentMotionSettings(mode: "aim", activationControl: target.id)
+        XCTAssertEqual(try LayoutDocument.decode(document.validatedData()).motionActivationControl?.id, target.id)
+        document.motion?.activationControl = "missing"
+        XCTAssertThrowsError(try document.validate())
+        document.motion?.activationControl = document.controls.first { $0.role == "leftStick" }?.id
+        XCTAssertThrowsError(try document.validate())
+        document.motion?.activationControl = target.id
+        try document.removeControl(target.id)
+        XCTAssertEqual(document.motion?.mode, "off")
+        XCTAssertNil(document.motion?.activationControl)
+    }
+    func testPresentationEditsDoNotReplaceOutput() throws {
+        let original = LocalLayout(document: try fixture("gamepad-remapped"))
+        var edited = original
+        edited.document.name = "Renamed"
+        edited.document.controls[0].label = "Caption"
+        edited.editRevision += 1
+        XCTAssertTrue(edited.hasSameOutputConfiguration(as: original))
+        edited.document.controllerStyle = original.document.controllerStyle == "xbox" ? "playstation" : "xbox"
+        XCTAssertFalse(edited.hasSameOutputConfiguration(as: original))
+    }
     func testSharedFixturesAndSchemaStayAligned() throws {
         let schema = try Data(contentsOf: root.appendingPathComponent("docs/layout-format/layout.schema.json"))
         XCTAssertEqual(try JSONSerialization.jsonObject(with: schema) as? NSDictionary,

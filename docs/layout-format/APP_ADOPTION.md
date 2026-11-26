@@ -142,3 +142,12 @@ This refactor removes the need for a permanent layout importer/converter and met
 It does not itself enable arbitrary mode counts or mixing mappings across modes. Named mode IDs
 and a local wrapper provide a path to future collections of independently downloaded layouts;
 that feature still needs explicit switching semantics, UI and capability-profile changes.
+
+### Motion activation (November 25, 2026)
+
+`motion.activationControl` optionally references a document-local button/trigger ID
+(including custom buttons). Omission retains right-trigger activation. The selected
+control keeps its ordinary mapping. Removing that control turns motion off. Both
+editors expose this setting and the phone tests the held control before mappings.
+The shared schema and local Python validator/tests accept and validate the reference;
+deploy the matching backend validator before publishing layouts using the field.

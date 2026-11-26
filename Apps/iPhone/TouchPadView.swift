@@ -43,7 +43,8 @@ final class TouchPadView: UIView {
     }
     private func updateMotion() {
         let mode = document?.motion?.mode ?? "off"
-        let held = touches.values.contains { $0.control == .rightTrigger }
+        let activationID = document?.motionActivationControl?.runtimeID
+        let held = touches.values.contains { $0.control.id == activationID }
         guard inputEnabled, !editing, window != nil, mode != "off", !(mode == "aim" && cursorMode), held, motionManager.isDeviceMotionAvailable else { resetMotion(); return }
         guard !motionManager.isDeviceMotionActive else { return }
         motionManager.deviceMotionUpdateInterval = 1.0 / 60

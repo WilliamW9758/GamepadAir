@@ -26,7 +26,11 @@ final class MonitorOutput: GamepadOutput {
 }
 
 final class VirtualGamepadOutput: GamepadOutput {
-    private let profile: GamepadProfile
+    private var profile: GamepadProfile
+    // Called only by CableSession's serial input worker.
+    func updateProfile(_ value: GamepadProfile) throws {
+        try reset(); profile = value
+    }
     private var device: IOHIDUserDevice?
     private let reportLock = NSLock()
     private var report = Data()

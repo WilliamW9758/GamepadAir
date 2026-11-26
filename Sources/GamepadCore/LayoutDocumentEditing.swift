@@ -73,6 +73,7 @@ extension LayoutDocument {
     }
     public mutating func removeControl(_ id: String) throws {
         var next = self
+        if next.motionActivationControl?.id == id { next.motion?.activationControl = nil; next.motion?.mode = "off" }
         next.controls.removeAll { $0.id == id }
         next.linkedControls?.removeAll { $0 == id }
         for i in next.modes.indices { next.modes[i].overrides?[id] = nil }

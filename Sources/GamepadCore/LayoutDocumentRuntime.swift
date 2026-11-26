@@ -235,3 +235,35 @@ extension LayoutGeometry {
         return result
     }
 }
+
+extension LayoutDocument {
+    public var motionActivationControls: [DocumentControl] {
+        controls.filter { !["leftStick", "rightStick", "dpad", "radial", "modeSwitch", "trackpad"].contains($0.role) }
+    }
+    public var motionActivationControl: DocumentControl? {
+        if let id = motion?.activationControl { return motionActivationControls.first { $0.id == id } }
+        return motionActivationControls.first { $0.role == "rightTrigger" }
+    }
+    public mutating func revealMotionActivation(modeID: String) throws {
+        if motion?.activationControl == nil && motionActivationControl == nil {
+            _ = try addControl(role: "rightTrigger")
+        }
+        guard let control = motionActivationControl,
+              let index = modes.firstIndex(where: { $0.id == modeID }) else { return }
+        if modes[index].overrides == nil { modes[index].overrides = [:] }
+        var value = modes[index].overrides?[control.id] ?? DocumentOverride()
+        value.hidden = false; modes[index].overrides?[control.id] = value
+        try validate()
+    }
+}
+
+extension LocalLayout {
+    /// Presentation, provenance and edit revisions must not churn the OS controller.
+    public func hasSameOutputConfiguration(as other: LocalLayout) -> Bool {
+        guard effectiveInputType == other.effectiveInputType else { return false }
+        if effectiveInputType == .gamepad {
+            return effectiveControllerStyle == other.effectiveControllerStyle && gamepadProfile == other.gamepadProfile
+        }
+        return keyboardProfile == other.keyboardProfile
+    }
+}

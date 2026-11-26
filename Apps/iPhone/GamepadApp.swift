@@ -450,19 +450,30 @@ struct PhoneGamepadApp: App {
                     Text("Tap actions use your Mac mappings.").font(.callout)
                 }.disabled(layout.isPreset)
                 DisclosureGroup("Motion") {
-                    Picker("Hold RT / R2 to activate", selection: Binding(get: { layout.document.motion?.mode ?? "off" }, set: { value in
+                    Picker("Motion behavior", selection: Binding(get: { layout.document.motion?.mode ?? "off" }, set: { value in
                         layouts.change { doc in
                             if doc.motion == nil { doc.motion = DocumentMotionSettings() }
                             doc.motion?.mode = value
-                            if value != "off" { try doc.setControlVisible(role: "rightTrigger", visible: true, modeID: modeID) }
+                            if value != "off" { try doc.revealMotionActivation(modeID: modeID) }
                         }; release()
                     })) {
                         Text("Off").tag("off"); Text("Gyro aim").tag("aim")
                         if layout.effectiveInputType == .gamepad { Text("Analog steering").tag("steering") }
                     }
+                    Picker("Activation button", selection: Binding(get: { layout.document.motionActivationControl?.id ?? "" }, set: { value in
+                        layouts.change { doc in
+                            if doc.motion == nil { doc.motion = DocumentMotionSettings() }
+                            doc.motion?.activationControl = value
+                            try doc.revealMotionActivation(modeID: modeID)
+                        }; release()
+                    })) {
+                        ForEach(layout.document.motionActivationControls, id: \.id) { control in
+                            Text(layout.displayLabels(modeID: modeID)[control.runtimeID] ?? control.id).tag(control.id)
+                        }
+                    }
                     Slider(value: Binding(get: { layout.document.motion?.sensitivity ?? 1 }, set: { value in layouts.change { if $0.motion == nil { $0.motion = DocumentMotionSettings() }; $0.motion?.sensitivity = value } }), in: 0.1...4) { Text("Sensitivity") }
                     Slider(value: Binding(get: { layout.document.motion?.deadZone ?? 0.03 }, set: { value in layouts.change { if $0.motion == nil { $0.motion = DocumentMotionSettings() }; $0.motion?.deadZone = value } }), in: 0...0.3) { Text("Dead zone") }
-                    Text("Each RT / R2 hold calibrates your current angle. Release to stop, then hold again to recalibrate. RT keeps its mapping. Aim controls right axes; steering controls left X.").font(.callout)
+                    Text("Hold the selected button to calibrate your current angle. Release to stop, then hold again to recalibrate. The button keeps its mapping. Aim controls right axes; steering controls left X.").font(.callout)
                 }.disabled(layout.isPreset)
                 DisclosureGroup("Hold gestures") {
                     Toggle("RT hold-to-aim", isOn: optionBinding(\.holdAimEnabled, default: true))

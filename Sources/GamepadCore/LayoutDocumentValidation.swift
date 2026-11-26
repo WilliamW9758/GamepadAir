@@ -62,6 +62,9 @@ extension LayoutDocument {
             try require(control.role == "modeSwitch" ? control.command == "cycleModes" : control.command == nil, "Invalid mode switch command")
         }
         try require(motion?.mode != "steering" || isGamepad, "Analog steering requires gamepad input")
+        if let id = motion?.activationControl {
+            try require(motionActivationControls.contains { $0.id == id }, "Motion activation must reference a button or trigger")
+        }
         let byID = Dictionary(uniqueKeysWithValues: controls.map { ($0.id, $0) })
         for control in controls {
             try require((control.radialSlots ?? [:]).values.allSatisfy { byID[$0]?.role == "customButton" }, "Radial target must be a custom button")

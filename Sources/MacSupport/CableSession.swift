@@ -92,7 +92,6 @@ public final class CableSession {
         var activeGamepad = GamepadProfile()
         var activeStyle: PadStyle = .xbox
         var appliedLayout: LocalLayout?
-        var appliedModeID: String?
         var outputFailure: String?
         var endMessage = "Stopped; controls released"
         defer { output.close(); announce(endMessage, finished: true) }
@@ -143,23 +142,26 @@ public final class CableSession {
                         if let snapshot = try layoutReceiver.accept(data) {
                             phoneLayout = snapshot
                             let resolved = snapshot.layout
-                            if appliedLayout != resolved || appliedModeID != snapshot.activeModeID {
+                            if appliedLayout.map({ !resolved.hasSameOutputConfiguration(as: $0) }) ?? true {
                                 try output.reset()
                                 if mode != .monitor {
-                                    output.close()
+                                    let existingGamepad = output as? VirtualGamepadOutput
+                                    let keepDevice = existingGamepad != nil && resolved.effectiveInputType == .gamepad && activeStyle == resolved.effectiveControllerStyle
+                                    if !keepDevice { output.close() }
                                     activeMode = resolved.effectiveInputType == .gamepad ? .gamepad : .keyboardMouse
                                     activeGamepad = resolved.gamepadProfile
                                     activeStyle = resolved.effectiveControllerStyle
                                     do {
-                                        if activeMode == .gamepad { output = try VirtualGamepadOutput(profile: activeGamepad, style: activeStyle) }
+                                        if keepDevice, let existingGamepad { try existingGamepad.updateProfile(activeGamepad) }
+                                        else if activeMode == .gamepad { output = try VirtualGamepadOutput(profile: activeGamepad, style: activeStyle) }
                                         else { output = try KeyboardMouseOutput(profile: resolved.keyboardProfile, targetPID: targetPID, global: globalInput) }
                                         outputFailure = nil
                                     } catch {
                                         output = MonitorOutput(); outputFailure = "Input unavailable: " + error.localizedDescription
                                     }
                                 }
-                                appliedLayout = resolved; appliedModeID = snapshot.activeModeID
                             }
+                            appliedLayout = resolved
                         }
                         continue
                     }

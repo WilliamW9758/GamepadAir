@@ -132,10 +132,12 @@ public struct DocumentMotionSettings: Codable, Equatable {
     public var mode: String?
     public var sensitivity: Double?
     public var deadZone: Double?
-    public init(mode: String? = nil, sensitivity: Double? = nil, deadZone: Double? = nil) {
+    public var activationControl: String?
+    public init(mode: String? = nil, sensitivity: Double? = nil, deadZone: Double? = nil, activationControl: String? = nil) {
         self.mode = mode
         self.sensitivity = sensitivity
         self.deadZone = deadZone
+        self.activationControl = activationControl
     }
 }
 
