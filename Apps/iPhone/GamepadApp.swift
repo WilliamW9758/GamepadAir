@@ -162,12 +162,12 @@ struct PhoneGamepadApp: App {
                                 Text("Drag controls").font(.callout).fixedSize(horizontal: true, vertical: false)
                             } else {
                                 Text(selectedLabel).font(.callout).lineLimit(1).frame(width: 90)
+                                Slider(value: selectedScale, in: 0.65...1.8, step: 0.05, onEditingChanged: { active in if active { layouts.beginEdit() } else { layouts.endEdit() } }).frame(width: 110)
+                                Button { buttonOptions = true } label: {
+                                    Label("Button options", systemImage: "slider.horizontal.3")
+                                        .frame(minWidth: 110, minHeight: 44)
+                                }
                             }
-                            Slider(value: selectedScale, in: 0.65...1.8, step: 0.05, onEditingChanged: { active in if active { layouts.beginEdit() } else { layouts.endEdit() } }).frame(width: 110).disabled(selectedID == nil)
-                            Button { buttonOptions = true } label: {
-                                Label("Button options", systemImage: "slider.horizontal.3")
-                                    .frame(minWidth: 110, minHeight: 44)
-                            }.disabled(selectedID == nil)
                         }.padding(10).background(.ultraThinMaterial, in: Capsule()).padding(.bottom, 4)
                     }.allowsHitTesting(true)
                     HStack(spacing: 12) {
