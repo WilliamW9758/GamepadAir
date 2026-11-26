@@ -6,9 +6,15 @@ struct CompanionAppPrompt: View {
     #if os(macOS)
     private let device = "iPhone"
     private let symbol = "iphone"
+    private let downloadURL = AppInformation.iPhoneBetaURL
+    private let downloadTitle = "Join the iPhone beta"
+    private let instructions = "Open this link on your iPhone, install TestFlight, then install Gamepad Air. Requires iOS 17 or later."
     #else
     private let device = "Mac"
     private let symbol = "laptopcomputer"
+    private let downloadURL = AppInformation.macDownloadURL
+    private let downloadTitle = "Get the Mac download"
+    private let instructions = "Open the download page on your Mac, download the DMG, and drag Gamepad Air to Applications. Requires macOS 15 or later."
     #endif
 
     var body: some View {
@@ -26,9 +32,9 @@ struct CompanionAppPrompt: View {
                         .buttonStyle(.plain).accessibilityLabel("Close")
                 }
                 Text("Gamepad Air needs an app on both your iPhone and Mac.")
-                Text("Public downloads are coming soon. For this preview, install the companion from the project’s setup guide.")
+                Text(instructions)
                     .foregroundStyle(.secondary)
-                Link("Open setup guide", destination: AppInformation.projectURL)
+                Link(downloadTitle, destination: downloadURL)
                     .buttonStyle(PadActionStyle(prominent: true))
             }
             .padding(24).frame(width: 330)

@@ -4,6 +4,8 @@ import Foundation
 public enum AppInformation {
     public static let supportURL = URL(string: "https://github.com/WilliamW9758/GamepadAir/issues")!
     public static let projectURL = URL(string: "https://github.com/WilliamW9758/GamepadAir")!
+    public static let iPhoneBetaURL = URL(string: "https://testflight.apple.com/join/ZaVJEpX3")!
+    public static let macDownloadURL = URL(string: "https://github.com/WilliamW9758/GamepadAir/releases/tag/v1.0-beta.12")!
     public static let privacy = """
     Gamepad Air privacy policy
     Effective November 23, 2026

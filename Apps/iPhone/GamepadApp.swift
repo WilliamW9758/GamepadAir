@@ -504,7 +504,7 @@ struct PhoneGamepadApp: App {
                 }
                 DisclosureGroup("About Gamepad Air") {
                     Button("Replay getting started") { settings = false; tour = true; release() }
-                    Link("Mac companion and setup", destination: AppInformation.projectURL)
+                    Link("Get the Mac app", destination: AppInformation.macDownloadURL)
                     Link("Support", destination: AppInformation.supportURL)
                     NavigationLink("Privacy policy") {
                         ScrollView { Text(AppInformation.privacy).frame(maxWidth: .infinity, alignment: .leading).padding().textSelection(.enabled) }
