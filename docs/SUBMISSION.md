@@ -1,3 +1,12 @@
+## iPhone beta 16 — November 26, 2026
+
+- Source `55f477b`; archive 1.0 (16), release-resource verification and 124 Swift tests passed. Simulator build passed; installed iOS 17 simulator runtime could not boot on the updated Mac, so no simulator visual test is claimed.
+- Upload succeeded; App Store Connect processed build `3d813eb3-9372-4a59-bc2f-dd1ad763f69e`. Encryption compliance saved (Apple-provided APIs only).
+- Adds opt-in diagnostics with first-launch consent and Settings toggle, blue Share Diagnostics action, and a one-time Mac editor tip on first new-layout creation on iPhone. Owner verified the initial consent prompt on physical iPhone before the final styling change.
+- Updated policy is published in GitHub. App Store Connect privacy categories and purposes prepared; final publishing attestation awaits owner approval. Tester groups have not yet been enabled.
+- Compatible with existing Mac build 15; no new Mac artifact or update-feed change for this iPhone release.
+- Archives and upload logs: `~/PocketPad Backups/Beta 1.0-build16-2026-11-26/`.
+
 # Gamepad Air release preparation
 
 ## Beta 15 — November 26, 2026
