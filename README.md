@@ -7,7 +7,9 @@
 Xbox · PlayStation · Keyboard & mouse<br>
 USB · Wi-Fi · Bluetooth
 
-[Get started](docs/SETUP.md) · [Report a bug](https://github.com/WilliamW9758/GamepadAir/issues) · [Roadmap](docs/RELEASE_PLAN.md)
+**[Download for Mac](https://github.com/WilliamW9758/GamepadAir/releases/download/v1.0-beta.12/GamepadAir-1.0-build12.dmg)** · **[Join the iPhone beta](https://testflight.apple.com/join/BXcJ2RJU)**
+
+[Report a bug](https://github.com/WilliamW9758/GamepadAir/issues) · [Roadmap](docs/RELEASE_PLAN.md)
 
 </div>
 
@@ -23,27 +25,27 @@ USB · Wi-Fi · Bluetooth
 
 ![Gamepad Air layout editor with the iPhone Air canvas and control settings](docs/screenshots/mac-layout-editor.png)
 
-### Try it
+### Start testing
 
-**In development — no public download or TestFlight link yet.** The Mac companion has passed Developer ID signing and notarization; broader compatibility testing is ongoing.
+Free public beta · **macOS 15+** · **iOS 17+**
 
-To build from source, use **Xcode**, **macOS 15+**, and **iOS 17+**:
+1. **[Download the Mac app](https://github.com/WilliamW9758/GamepadAir/releases/download/v1.0-beta.12/GamepadAir-1.0-build12.dmg)**, open the DMG, and drag **Gamepad Air** to Applications. Signed and notarized by Apple.
+2. **[Join the iPhone beta in TestFlight](https://testflight.apple.com/join/BXcJ2RJU)** and install Gamepad Air.
+3. Open both apps, connect your iPhone with a USB data cable, and follow setup. Keep the iPhone app open while playing.
 
-1. Open `iPhoneGamepad.xcodeproj` and configure your signing team using `Config/Local.xcconfig.example`.
-2. Run **PhoneGamepad** on your iPhone and **MacGamepad** on your Mac.
-3. Connect the phone and follow the setup flow. Start with USB.
+Use **build 12 on both devices**. No Xcode, Developer Mode, or account is needed for local play. Keyboard/mouse output needs Accessibility permission on Mac. Game compatibility and Steam Input settings vary.
 
-[Full setup guide](docs/SETUP.md) · [Controls & connections](docs/KEYBOARD_MOUSE.md)
+[Release notes](https://github.com/WilliamW9758/GamepadAir/releases/tag/v1.0-beta.12) · [Report a bug](https://github.com/WilliamW9758/GamepadAir/issues)
 
-> Building virtual controller output requires Apple’s restricted virtual-HID entitlement. Keyboard/mouse output uses Accessibility permission. See [signing requirements](docs/AUTHORIZATION.md). Game compatibility and Steam Input settings vary.
+### Community layouts
 
-### Coming next
-
-Community layouts and game-based layout generation are planned. Their in-app screens are previews; online services are not live yet.
+Browse and download layouts from the Mac Marketplace, or sign in with Apple to submit your own. AI-assisted creation is coming later and is currently disabled.
 
 ### For developers
 
 Native Swift, SwiftUI, and UIKit. No third-party package dependencies.
+
+[Build from source](docs/SETUP.md) · [Signing requirements](docs/AUTHORIZATION.md). Building virtual controller output requires Apple’s restricted virtual-HID entitlement.
 
 ```sh
 swift test
