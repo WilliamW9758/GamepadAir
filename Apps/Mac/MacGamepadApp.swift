@@ -786,7 +786,8 @@ struct HostView: View {
         VStack(alignment: .leading, spacing: 24) {
             if controlsPage == -1 {
                 heading("How would you like to get started?", "Find a layout for your game, or make it your own.")
-                setupChoice("AI assist", detail: "Describe your game and how you want to play.", icon: "sparkles", preview: true) { finishSetup(in: .layouts); duplicateSource = nil; newLayoutName = ""; startNewLayoutWithAI = true; newLayoutPrompt = true }
+                setupChoice("AI assist", detail: "Coming soon", icon: "sparkles", preview: false) {}
+                    .disabled(true).saturation(0).opacity(0.4)
                 setupChoice("Marketplace", detail: "Find and download community layouts for your games.", icon: "square.grid.2x2", preview: false) { finishSetup(in: .marketplace) }
                 setupChoice("Build manually", detail: "Choose your input type and customize your controls.", icon: "slider.horizontal.3", preview: false) { controlsPage = 0 }
             } else if controlsPage == 0 {

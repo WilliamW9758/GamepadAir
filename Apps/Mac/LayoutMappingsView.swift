@@ -22,7 +22,7 @@ struct LayoutCreationView: View {
                 Text("Compatible inputs carry over. Red controls need a mapping before they can send input.").foregroundStyle(.secondary)
             }
             if source == nil {
-                Toggle(isOn: $useAI) { Label("Start with AI help", systemImage: "sparkles") }.toggleStyle(.button)
+                Toggle(isOn: $useAI) { Label("Start with AI help", systemImage: "sparkles") }.toggleStyle(.button).disabled(true)
                 if useAI {
                     TextField("What game and scenario? For example, Valheim building with quick access to tools…", text: $prompt, axis: .vertical)
                         .lineLimit(3...5).textFieldStyle(.roundedBorder)
@@ -41,6 +41,6 @@ struct LayoutCreationView: View {
                     } catch { self.error = error.localizedDescription }
                 }.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (useAI && prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
             }
-        }.padding(24).frame(width: 420).buttonStyle(PadActionStyle()).onAppear { useAI = startWithAI }
+        }.padding(24).frame(width: 420).buttonStyle(PadActionStyle()).onAppear { useAI = false }
     }
 }
