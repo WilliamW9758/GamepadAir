@@ -124,7 +124,8 @@ public enum LayoutGeometry {
               let mode = document.modes.first(where: { $0.id == modeID }) else { return [] }
         // UIKit canvas dimensions are points, not pixels. Screen size must not scale touch controls.
         let unit = mode.sizeFactor ?? 1
-        let positionUnit = min(height / 320, width / 800) * unit
+        let referenceWidth = 912.0, referenceHeight = 420.0
+        let positionUnit = min(referenceHeight / 320, referenceWidth / 800) * unit
         let ps = document.templateStyle == "playstation"
         let identity = document.inputType == "gamepad" ? document.outputStyle : document.padStyle
         return document.controls.compactMap { base in
@@ -135,7 +136,7 @@ public enum LayoutGeometry {
             case "south", "east", "west", "north":
                 let offsets: [String: (Double, Double)] = ["south": (0,1), "east": (1,0), "west": (-1,0), "north": (0,-1)]
                 let offset = offsets[control.role]!
-                x = 0.85 + offset.0 * 48 * positionUnit / width; y = 0.44 + offset.1 * 48 * positionUnit / height
+                x = 0.85 + offset.0 * 48 * positionUnit / referenceWidth; y = 0.44 + offset.1 * 48 * positionUnit / referenceHeight
             case "leftShoulder": x = 0.26; y = 0.12; radius = 27
             case "rightShoulder": x = 0.74; y = 0.12; radius = 27
             case "leftTrigger": x = 0.12; y = 0.12; radius = 27; label = identity == .playStation ? "L2" : "LT"
@@ -156,7 +157,11 @@ public enum LayoutGeometry {
                 x = 0.10 + Double(slot % 8) * 0.11; y = slot < 8 ? 0.91 : 0.51; radius = 19; label = "C\(slot + 1)"
             default: break
             }
-            let p = control.placement.map { ControlPlacement(x: $0.x, y: $0.y, scale: $0.scale ?? 1) } ?? ControlPlacement(x: x, y: y)
+            let source = control.placement ?? DocumentPlacement(x: x, y: y)
+            let rw = source.referenceWidth ?? referenceWidth, rh = source.referenceHeight ?? referenceHeight
+            let anchoredX = source.x <= 0.5 ? source.x * rw : width - (1 - source.x) * rw
+            let anchoredY = height - (1 - source.y) * rh
+            let p = ControlPlacement(x: anchoredX / width, y: anchoredY / height, scale: source.scale ?? 1)
             let rectangular = control.role == "trackpad" || control.placement?.width != nil
             let cross = control.role == "dpad" && mode.dpadStyle == "fourWay"
             let minimumRadius = cross ? 22 / 0.92 : 22

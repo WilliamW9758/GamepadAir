@@ -117,7 +117,7 @@ struct PhoneGamepadApp: App {
     }
     private func place(_ p: ControlPlacement, runtimeID: String) {
         guard let id = layout.controlID(runtimeID: runtimeID) else { return }
-        layouts.change { try $0.placeControl(id, at: DocumentPlacement(x: p.x, y: p.y, scale: p.scale), modeID: modeID) }
+        layouts.change { try $0.placeControl(id, at: DocumentPlacement(x: p.x, y: p.y, scale: p.scale, referenceWidth: canvasSize.width, referenceHeight: canvasSize.height), modeID: modeID) }
     }
     private var selectedItem: ResolvedLayoutControl? {
         LayoutGeometry.resolve(layout.document, modeID: modeID, width: max(1, canvasSize.width), height: max(1, canvasSize.height)).first { $0.runtimeID == selectedID }
@@ -125,7 +125,7 @@ struct PhoneGamepadApp: App {
     private var selectedDiameter: Binding<Double> {
         Binding(get: { selectedItem?.width ?? 44 }, set: { value in
             guard let item = selectedItem else { return }
-            layouts.change { try $0.placeControl(item.id, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale, diameter: value), modeID: modeID) }
+            layouts.change { try $0.placeControl(item.id, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale, diameter: value, referenceWidth: canvasSize.width, referenceHeight: canvasSize.height), modeID: modeID) }
         })
     }
     var body: some Scene {
@@ -279,7 +279,7 @@ struct PhoneGamepadApp: App {
                                 return axis == "Width" ? p?.width ?? 0.28 : p?.height ?? 0.4
                             }, set: { value in
                                 let p = layout.document.resolvedControl(controlID, modeID: modeID)?.placement ?? DocumentPlacement(x: 0.5, y: 0.5)
-                                layouts.change { try $0.placeControl(controlID, at: DocumentPlacement(x: p.x, y: p.y, scale: p.scale, width: axis == "Width" ? value : p.width ?? 0.28, height: axis == "Height" ? value : p.height ?? 0.4), modeID: modeID) }
+                                layouts.change { try $0.placeControl(controlID, at: DocumentPlacement(x: p.x, y: p.y, scale: p.scale, width: axis == "Width" ? value : p.width ?? 0.28, height: axis == "Height" ? value : p.height ?? 0.4, referenceWidth: p.referenceWidth, referenceHeight: p.referenceHeight), modeID: modeID) }
                             }), in: 0.03...1) { Text(axis) }
                         }
 
@@ -287,9 +287,9 @@ struct PhoneGamepadApp: App {
                 }
                 if layout.hasCursorSwitching { Section("Position across modes") {
                     Toggle("Link position and size", isOn: Binding(get: { selectedID.map { layout.document.linkedControls?.contains(layout.controlID(runtimeID: $0) ?? "") == true } ?? false }, set: { linked in
-                        guard let id = selectedID, let p = placements[id] else { return }
+                        guard let id = selectedID, let p = selectedItem?.placement else { return }
                         guard let controlID = layout.controlID(runtimeID: id) else { return }
-                        layouts.change { try $0.linkControl(controlID, linked: linked, modeID: modeID, placement: DocumentPlacement(x: p.x, y: p.y, scale: p.scale)) }
+                        layouts.change { try $0.linkControl(controlID, linked: linked, modeID: modeID, placement: DocumentPlacement(x: p.x, y: p.y, scale: p.scale, referenceWidth: canvasSize.width, referenceHeight: canvasSize.height)) }
                     }))
                     Button("Copy position from \(layout.resolvedMode(otherModeID).name)") {
                         guard let id = selectedID, let p = selectedReference else { return }

@@ -45,7 +45,7 @@
     },
     "geometry": {
       "const": "runtimePresetV1",
-      "description": "Development v2 point-based runtime presets: fixed point control sizes, minimum 44-point extent, normalized positions. Requires layout sync protocol 5."
+      "description": "Development v2 point-based runtime presets: fixed point control sizes, minimum 44-point extent, normalized positions. Requires layout sync protocol 6."
     },
     "actions": {
       "type": "object",
@@ -233,7 +233,7 @@
     "initialMode"
   ],
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "PocketPad portable layout v2 draft \u2014 current fixed-slot runtime",
+  "title": "PocketPad portable layout v2 draft — current fixed-slot runtime",
   "$defs": {
     "placement": {
       "type": "object",
@@ -272,6 +272,18 @@
           "minimum": 44,
           "maximum": 240,
           "description": "Explicit round-control diameter in points, independent of role, legacy scale and mode sizeFactor. Omitted preserves legacy/default sizing."
+        },
+        "referenceWidth": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Authoring canvas dimension in points for bottom-corner anchoring. Supply both dimensions; omitted uses 912 × 420 points."
+        },
+        "referenceHeight": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Authoring canvas dimension in points for bottom-corner anchoring. Supply both dimensions; omitted uses 912 × 420 points."
         }
       },
       "required": [

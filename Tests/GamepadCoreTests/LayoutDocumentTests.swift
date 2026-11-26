@@ -6,6 +6,32 @@ final class LayoutDocumentTests: XCTestCase {
     private func fixture(_ name: String = "keyboard-simple") throws -> LayoutDocument {
         try LayoutDocument.decode(Data(contentsOf: root.appendingPathComponent("docs/layout-format/fixtures/\(name).layout.json")))
     }
+    func testBottomCornerAnchorsPreservePointDistancesAndEditingRoundTrip() throws {
+        var doc = LayoutDocument.starter(name: "Anchors", style: .xbox, input: .gamepad)
+        let left = try XCTUnwrap(doc.controls.first { $0.role == "leftStick" })
+        let right = try XCTUnwrap(doc.controls.first { $0.role == "south" })
+        for (id, x) in [(left.id, 0.2), (right.id, 0.8)] {
+            try doc.placeControl(id, at: DocumentPlacement(x: x, y: 0.7, referenceWidth: 912, referenceHeight: 420), modeID: doc.initialMode)
+        }
+        let data = try doc.validatedData()
+        doc = try LayoutDocument.decode(data)
+        for (w, h) in [(912.0, 420.0), (1200, 800), (800, 400)] {
+            let items = LayoutGeometry.resolve(doc, modeID: doc.initialMode, width: w, height: h)
+            let l = try XCTUnwrap(items.first { $0.id == left.id })
+            let r = try XCTUnwrap(items.first { $0.id == right.id })
+            XCTAssertEqual(l.placement.x * w, 182.4, accuracy: 0.001)
+            XCTAssertEqual((1 - r.placement.x) * w, 182.4, accuracy: 0.001)
+            XCTAssertEqual((1 - l.placement.y) * h, 126, accuracy: 0.001)
+            XCTAssertEqual((1 - r.placement.y) * h, 126, accuracy: 0.001)
+        }
+        // Author on a large canvas; keep its side and corner distances after reload.
+        try doc.placeControl(right.id, at: DocumentPlacement(x: 0.75, y: 0.8, referenceWidth: 1200, referenceHeight: 800), modeID: doc.initialMode)
+        let item = try XCTUnwrap(LayoutGeometry.resolve(doc, modeID: doc.initialMode, width: 912, height: 420).first { $0.id == right.id })
+        XCTAssertEqual((1 - item.placement.x) * 912, 300, accuracy: 0.001)
+        XCTAssertEqual((1 - item.placement.y) * 420, 160, accuracy: 0.001)
+        XCTAssertThrowsError(try doc.placeControl(right.id, at: DocumentPlacement(x: 0.7, y: 0.8, referenceWidth: 1200), modeID: doc.initialMode))
+    }
+
     func testMotionActivationReferencesAndRemoval() throws {
         var document = try fixture("gamepad-remapped")
         let target = try XCTUnwrap(document.controls.first { $0.role == "south" })

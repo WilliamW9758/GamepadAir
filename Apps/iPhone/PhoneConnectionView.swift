@@ -38,6 +38,11 @@ struct PhoneConnectionView: View {
                     }
                 }.frame(minHeight: 72)
             }
+            if let issue = server.connectionIssue {
+                Label(issue, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Try again") { server.selectTransport(server.transport) }
+            }
             HStack {
                 Spacer()
                 Button("Use disconnected", action: dismiss).buttonStyle(PadActionStyle())

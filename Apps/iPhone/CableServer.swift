@@ -7,6 +7,7 @@ import Darwin
 final class CableServer: ObservableObject {
     @Published private(set) var status = "Connect your iPhone to your Mac"
     @Published private(set) var connected = false
+    @Published private(set) var connectionIssue: String?
     @Published private(set) var setupStage: SetupStage?
     @Published private(set) var transport = LinkTransport.usb
     @Published private(set) var pairingCode: String = {
@@ -20,14 +21,19 @@ final class CableServer: ObservableObject {
         guard getifaddrs(&list) == 0 else { return "Unavailable" }
         defer { freeifaddrs(list) }
         var current = list
+        var addresses: [String] = []
         while let item = current {
             defer { current = item.pointee.ifa_next }
-            guard String(cString: item.pointee.ifa_name) == "en0", let address = item.pointee.ifa_addr,
+            let name = String(cString: item.pointee.ifa_name)
+            guard name.hasPrefix("en") || name.hasPrefix("bridge") || name.hasPrefix("ap"), let address = item.pointee.ifa_addr,
                   address.pointee.sa_family == UInt8(AF_INET) else { continue }
             var buffer = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-            if getnameinfo(address, socklen_t(address.pointee.sa_len), &buffer, socklen_t(buffer.count), nil, 0, NI_NUMERICHOST) == 0 { return String(cString: buffer) }
+            if getnameinfo(address, socklen_t(address.pointee.sa_len), &buffer, socklen_t(buffer.count), nil, 0, NI_NUMERICHOST) == 0 {
+                let value = String(cString: buffer)
+                if !value.hasPrefix("169.254."), !addresses.contains(value) { addresses.append(value) }
+            }
         }
-        return "Join a Wi-Fi network"
+        return addresses.isEmpty ? "Join Wi-Fi or enable Personal Hotspot" : addresses.joined(separator: " · ")
     }
     func selectTransport(_ value: LinkTransport) { stop(); transport = value; start() }
     func renameDevice(_ name: String) {
@@ -64,6 +70,7 @@ final class CableServer: ObservableObject {
 
     func start() {
         guard listener == nil, bluetooth == nil else { return }
+        connectionIssue = nil
         if transport == .bluetooth {
             let bluetooth = BluetoothServer(code: pairingCode); self.bluetooth = bluetooth
             bluetooth.onConnected = { [weak self] in
@@ -80,11 +87,10 @@ final class CableServer: ObservableObject {
             let parameters = transport == .wifi ? WirelessSettings.parameters(code: pairingCode) : NWParameters(tls: nil, tcp: tcp)
             if transport == .usb {
                 parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: StateFrame.port)!)
-            } else {
-                parameters.requiredLocalEndpoint = .hostPort(host: "0.0.0.0", port: NWEndpoint.Port(rawValue: WirelessSettings.port)!)
-                parameters.requiredInterfaceType = .wifi
             }
-            let listener = try NWListener(using: parameters)
+            // Let Network.framework accept IPv4/IPv6 and the Personal Hotspot interface.
+            // A required .wifi interface excludes the phone's hotspot-serving path.
+            let listener = try NWListener(using: parameters, on: transport == .wifi ? NWEndpoint.Port(rawValue: WirelessSettings.port)! : .any)
             if transport == .wifi {
                 listener.service = NWListener.Service(name: WirelessSettings.deviceName(), type: WirelessSettings.bonjourService)
             }
@@ -92,16 +98,16 @@ final class CableServer: ObservableObject {
             listener.stateUpdateHandler = { [weak self, weak listener] value in
                 guard let self, self.listener === listener else { return }
                 switch value {
-                case .ready: self.status = self.transport == .wifi ? "Wi-Fi ready · \(self.wifiAddress)" : "Ready for USB · open the Mac companion"
-                case .waiting(let error): self.status = "Wi-Fi waiting: \(error.localizedDescription). Allow Local Network in Settings."
-                case .failed(let error): self.stop(); self.status = "Listener: \(error.localizedDescription)"
+                case .ready: self.connectionIssue = nil; self.status = self.transport == .wifi ? "Wi-Fi ready · \(self.wifiAddress)" : "Ready for USB · open the Mac companion"
+                case .waiting(let error): self.connectionIssue = "Wi-Fi is not ready: \(error.localizedDescription). Check Local Network access in Settings."; self.status = self.connectionIssue!
+                case .failed(let error): self.stop(); self.connectionIssue = "Could not listen: \(error.localizedDescription)"; self.status = self.connectionIssue!
                 default: break
                 }
             }
             listener.newConnectionHandler = { [weak self] in self?.accept($0) }
             listener.start(queue: .main)
             startHeartbeat()
-        } catch { status = "Could not start connection: \(error.localizedDescription)" }
+        } catch { connectionIssue = "Could not start connection: \(error.localizedDescription)"; status = connectionIssue! }
     }
 
     private func startHeartbeat() {

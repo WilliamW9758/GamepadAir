@@ -46,6 +46,7 @@ extension LayoutDocument {
             try require(control.role != "trackpad" || !isGamepad, "Trackpad requires keyboard/mouse input")
             func dimensions(_ p: DocumentPlacement?) throws {
                 guard let p else { return }
+                try require((p.referenceWidth == nil) == (p.referenceHeight == nil), "Anchor reference requires both dimensions")
                 try require((p.width == nil) == (p.height == nil), "Rectangle requires both width and height")
                 try require(p.width == nil || ["trackpad", "customButton"].contains(control.role), "Only trackpad and custom buttons support rectangular dimensions")
             }

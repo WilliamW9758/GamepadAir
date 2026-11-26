@@ -241,7 +241,7 @@ struct LayoutEditor: View {
                                 }
                                 let p = draggedPlacement(item, translation: value.translation, others: baseItems)
                                 // Only the final placement enters validation, history and dirty-state notifications.
-                                change { try $0.placeControl(item.id, at: DocumentPlacement(x: p.x, y: p.y, scale: p.scale), modeID: mode.id) }
+                                change { try $0.placeControl(item.id, at: DocumentPlacement(x: p.x, y: p.y, scale: p.scale, referenceWidth: width, referenceHeight: height), modeID: mode.id) }
                             })
                 }
             }.frame(width: width, height: height).coordinateSpace(name: "canvas")
@@ -292,7 +292,7 @@ struct LayoutEditor: View {
                 if !item.rectangular {
                     HStack(spacing: 12) {
                         let size = Binding<Double>(get: { item.width }, set: { value in change {
-                            try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale, diameter: value.rounded()), modeID: mode.id)
+                            try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale, diameter: value.rounded(), referenceWidth: width, referenceHeight: height), modeID: mode.id)
                         } })
                         Text("Size · 999 pt").hidden()
                             .overlay(alignment: .leading) { Text("Size · \(Int(item.width.rounded())) pt") }
@@ -305,7 +305,7 @@ struct LayoutEditor: View {
                     }
                 }
                 if layout.document.modes.count > 1 {
-                    Toggle("Keep position in both modes", isOn: Binding(get: { layout.document.linkedControls?.contains(selected) == true }, set: { linked in change { try $0.linkControl(selected, linked: linked, modeID: mode.id, placement: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale)) } }))
+                    Toggle("Keep position in both modes", isOn: Binding(get: { layout.document.linkedControls?.contains(selected) == true }, set: { linked in change { try $0.linkControl(selected, linked: linked, modeID: mode.id, placement: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale, referenceWidth: width, referenceHeight: height)) } }))
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -315,7 +315,7 @@ struct LayoutEditor: View {
                     ForEach(["Width", "Height"], id: \.self) { axis in
                         Slider(value: Binding(get: { axis == "Width" ? item.width / (control.role == "trackpad" ? width : 800) : item.height / (control.role == "trackpad" ? height : 320) }, set: { value in
                             change { try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale,
-                                width: axis == "Width" ? value : item.width / (control.role == "trackpad" ? width : 800), height: axis == "Height" ? value : item.height / (control.role == "trackpad" ? height : 320)), modeID: mode.id) }
+                                width: axis == "Width" ? value : item.width / (control.role == "trackpad" ? width : 800), height: axis == "Height" ? value : item.height / (control.role == "trackpad" ? height : 320), referenceWidth: width, referenceHeight: height), modeID: mode.id) }
                         }), in: 0.03...1, onEditingChanged: resizeEditing) { Text(axis) }
                     }
                     Button("Reset shape and position") { change { try $0.resetPlacement(selected, modeID: mode.id) } }

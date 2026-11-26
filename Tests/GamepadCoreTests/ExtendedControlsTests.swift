@@ -25,7 +25,7 @@ final class ExtendedControlsTests: XCTestCase {
         let data = try JSONEncoder().encode(snapshot)
         let decoded = try DocumentLayoutTransport.decodeSnapshot(data)
         XCTAssertEqual(decoded.layout.document, doc)
-        XCTAssertEqual(decoded.protocolVersion, 5)
+        XCTAssertEqual(decoded.protocolVersion, 6)
         var changed = doc
         try changed.placeControl("trackpad", at: DocumentPlacement(x: 0.2, y: 0.65), modeID: doc.initialMode)
         let items = LayoutGeometry.resolve(changed, modeID: doc.initialMode, width: 800, height: 360)

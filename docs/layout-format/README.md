@@ -121,7 +121,7 @@ uses normalized `x`, `y`, and `scale` (0.65–1.8, default 1). Each mode has `si
 Omitted placement uses that role's existing preset placement, including template-specific offsets.
 Controls use consistent UIKit point sizes, independent of screen dimensions and pixel density.
 This is the development v2 point-sizing update; older proportional sizing is no longer used.
-Both devices must use layout sync protocol 5.
+Both devices must use layout sync protocol 6.
 
 For a canvas W × H, the requested radius is:
 
@@ -219,3 +219,7 @@ requires physical-device acceptance.
 Editor snapping and device preview selection are editor preferences, not layout
 content. The floating phone settings button's size, fade delay (zero means always
 visible), and inactive opacity are phone preferences, like its existing position.
+
+### Bottom-corner geometry
+
+Control centers use bottom-left anchoring when placement.x <= 0.5 and bottom-right otherwise. Preserve horizontal distance to that edge and vertical distance from the bottom in points. `referenceWidth` and `referenceHeight` store the authoring canvas together; missing values and preset positions use 912 × 420 pt. Editing positions saves current canvas dimensions. Rendering clamps to visible bounds without changing stored positions. Control dimensions remain independent. This optional extension requires updated clients; older strict validators reject documents containing reference dimensions.
