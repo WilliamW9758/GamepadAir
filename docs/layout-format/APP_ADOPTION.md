@@ -158,7 +158,7 @@ database migration. Local format tests (47), live acceptance/rejection checks an
 public readiness passed. A subsequent signed-in Mac app test submitted
 “Gyro activation test 2026-11-25” with `motion: {mode: "aim", activationControl: "lefttrigger"}`.
 AWS accepted revision 1 as pending; Download a copy returned an exactly equal full
-document to the local library. Test listing `4f95a09a-3608-49fa-b458-ec71775a96e7`
+document to the local library. Test listing `7f1ce47b-2ad2-4c68-8743-1a4bab1d7d33`
 was then removed through the app and its public detail returns 404. It was not
 approved or publicly published. Two local test copies remain for inspection.
 The submissions page also displays an unrelated unavailable-feature notice because
