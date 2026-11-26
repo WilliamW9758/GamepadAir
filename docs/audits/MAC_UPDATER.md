@@ -21,3 +21,13 @@ The updater checks immediately after startup if the user has enabled automatic c
 The downloaded-update reminder interval is twelve hours. The banner is set on discovery, so users need not wait for that interval to see that a new version exists. Attention to the update or finishing the update session clears the banner. No custom timer competes with Sparkle's scheduler.
 
 The new notice code is a development change for the next release; the immutable public build 14 remains unchanged.
+
+## Public build 14 → 15 — release verification
+
+Passed using the unmodified public build 14 DMG downloaded from GitHub (SHA-256 `e3d5eb88cf037e6a01a29cde559b25d118be559866797ea95f202cbc9841b955`). Installed it at the normal `~/Applications/Gamepad Air.app` path, confirmed Developer ID notarization, then used **Check for Updates** against the published feed.
+
+Sparkle explicitly reported installed build 14 and available build 15, downloaded the 7.1 MB release, reached Ready to Install, and completed **Install and Relaunch**. The new process ran from the original path. Its bundle version is 15, its executable matches the notarized release export, and deep signature verification plus Gatekeeper passed.
+
+The canonical layout file remained byte-identical and all saved pairing/transport values compared equal. Backup and machine-readable results: `~/PocketPad Backups/Public14-to15-20261126/`. No phone was connected; live controller reconnection and output remain untested in this update run. The Mac is left running the public build 15 installed by Sparkle.
+
+The public build 15 DMG is 7,063,762 bytes, SHA-256 `a59153adf731aa379291622b9f36b17c570499fec10e6f5f944b9636dcdd4bf8`. Its Ed25519 signature was independently verified with the embedded public key before publishing the feed.

@@ -1,5 +1,15 @@
 # Gamepad Air release preparation
 
+## Beta 15 — November 26, 2026
+
+- Version 1.0 (15), app source and release tag `v1.0-beta.15` at `d3e5c39`. Adds gentle Mac update notices, immediate launch checks, and six-hour scheduled checks; iPhone code is unchanged from build 14.
+- iPhone archive/upload/compliance passed. Friends and PublicTesters added with automatic notification, submitted for review; PublicTesters → Builds shows **1.0 (15) Testing**. App Store Connect build ID `52a12f75-9c35-49a0-a6ff-3d536c7a46a8`.
+- [Public iPhone beta](https://testflight.apple.com/join/ZaVJEpX3) · [Mac beta 15 download](https://github.com/WilliamW9758/GamepadAir/releases/tag/v1.0-beta.15).
+- Universal Mac archive, Developer ID signing, notarization/stapling, deep signatures, Gatekeeper and DMG checks passed. Downloaded public artifact matches SHA-256 `a59153adf731aa379291622b9f36b17c570499fec10e6f5f944b9636dcdd4bf8`; Ed25519 verification passed before publishing the signed feed.
+- **Public build 14 → 15 automatic-update test passed:** downloaded through Sparkle, installed and relaunched at the same path. Installed executable matches the notarized release. Layout file is byte-identical; saved pairing and transport preferences match. No phone connected during this run, so live reconnection/gameplay were not tested. Details in [updater verification](audits/MAC_UPDATER.md).
+- All 122 Swift tests and both bundle-resource checks passed. The Mac is left running public build 15 installed by Sparkle.
+- Archives, notarized app, DMG/checksum/feed, notes and logs: `~/PocketPad Backups/Beta 1.0-build15-2026-11-26/`. Pre-update data and machine-readable preservation checks: `~/PocketPad Backups/Public14-to15-20261126/`.
+
 ## Beta 14 — November 26, 2026
 
 - Version 1.0 (14), app source `49e1d92`; release tag `v1.0-beta.14` at `ab23d01` (published privacy copy aligned). Includes settings cleanup, setup replay in Help, website Mac-download link and the Mac Sparkle updater.
