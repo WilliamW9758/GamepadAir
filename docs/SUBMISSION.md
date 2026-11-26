@@ -8,6 +8,7 @@
 - Fixes hotspot/Wi-Fi listener compatibility, Mac pairing-code editing, and bottom-corner control anchoring. Hotspot connection confirmed by the user on Duo. Original isolated Wi-Fi network not verified.
 - **Update both devices to build 17.** Layout sync protocol 6 prevents mismatched clients exchanging the new anchor geometry. Existing layouts without authoring dimensions use the 912×420 point baseline.
 - 125 Swift tests and 99 backend tests passed. Backend validator/admin preview changes are prepared; live deployment awaits refreshed AWS credentials.
+- Website17 deployed and verified on gamepadair.com, www.gamepadair.com and gamepad-air.pages.dev; matching Mac17/TestFlight links and update-both-apps requirement. Root README and signed updater feed pushed to main.
 - Source commit `d7aa5b7`; archives/logs/package at `~/PocketPad Backups/Beta 1.0-build17-2026-11-26/`.
 
 
