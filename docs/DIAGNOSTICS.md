@@ -17,7 +17,7 @@ Postgres `telemetry_daily` is keyed by UTC day/context/metric/bucket; raw reques
 1. Run migration 0008; explicit API read/insert/update/delete, moderator read, retention-worker read/delete grants on telemetry_daily.
 2. Deploy API, admin and worker from the tested immutable image; check health, anonymous valid/invalid ingestion and protected summary access. Keep the existing Caddy no-access-log configuration.
 3. Update the App Store Connect privacy answers before releasing clients: Product Interaction, Performance Data and Other Diagnostic Data for Analytics, not used for tracking and no persistent account/device linkage. The bundled manifest and in-app/public policy are updated. Do not treat the manifest as a substitute for App Store Connect answers.
-4. No release has been requested for these client changes yet. Do not replace build 15 artifacts. Network RTT, crash reporting, and per-step onboarding are deliberately not claimed as measured.
+4. iPhone build 16 is now Testing for PublicTesters and Friends; App Store Connect privacy responses are published. Mac build 15 remains the public companion and does not yet include these client diagnostics. Network RTT, crash reporting, and per-step onboarding are deliberately not claimed as measured.
 
 ## Deployment status — November 26, 2026
 
