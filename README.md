@@ -43,7 +43,7 @@ Browse and download layouts from the Mac Marketplace, or sign in with Apple to s
 
 ### For developers
 
-Native Swift, SwiftUI, and UIKit. No third-party package dependencies.
+Native Swift, SwiftUI, and UIKit. The Mac app uses [Sparkle](https://sparkle-project.org) for signed automatic updates; the core and iPhone app have no third-party package dependencies.
 
 [Build from source](docs/SETUP.md) · [Signing requirements](docs/AUTHORIZATION.md). Building virtual controller output requires Apple’s restricted virtual-HID entitlement.
 

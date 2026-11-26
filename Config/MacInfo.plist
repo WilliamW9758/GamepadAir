@@ -26,5 +26,15 @@
 	<array>
 		<string>_pocketpad._tcp</string>
 	</array>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/WilliamW9758/GamepadAir/main/updates/macos.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>HUYbukl/dxq8NJKDVp9l+0oDICbYfAyLBjXxP4/G0G4=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUAutomaticallyUpdate</key>
+	<true/>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 </dict>
 </plist>

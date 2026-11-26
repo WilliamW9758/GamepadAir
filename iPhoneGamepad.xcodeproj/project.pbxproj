@@ -9,6 +9,12 @@
 "isa" = "PBXBuildFile";
 "fileRef" = "F6940105C4AEBE421482526B";
 };
+"ACDB4E9D5CD994A2587DBB1F" = {
+"isa" = "PBXFrameworksBuildPhase";
+"buildActionMask" = 2147483647;
+"files" = ("C84EAA2392046756F8E36899");
+"runOnlyForDeploymentPostprocessing" = 0;
+};
 "42C72DB0112D62DA6326E7F8" = {
 "isa" = "PBXBuildFile";
 "fileRef" = "90BE72CD97D31BB1204D6EA4";
@@ -16,6 +22,12 @@
 "9B4BDAB983228916F4EA7280" = {
 "isa" = "PBXBuildFile";
 "fileRef" = "0A8BE43099074798B3CB2362";
+};
+"4D3C8410D56C3A60F7450DAC" = {
+"path" = "Sources/GamepadCore/MotionInput.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
 };
 "7894D3D23A651B1DC876886C" = {
 "path" = "Sources/GamepadCore/LayoutInput.swift";
@@ -56,10 +68,10 @@
 "CLANG_WARN_INT_CONVERSION" = "YES";
 "CLANG_WARN_STRICT_PROTOTYPES" = "YES";
 "CLANG_WARN_CONSTANT_CONVERSION" = "YES";
-"SWIFT_COMPILATION_MODE" = "wholemodule";
+"GCC_WARN_UNUSED_VARIABLE" = "YES";
 "DEAD_CODE_STRIPPING" = "YES";
 "CLANG_WARN_OBJC_LITERAL_CONVERSION" = "YES";
-"GCC_WARN_UNDECLARED_SELECTOR" = "YES";
+"SWIFT_COMPILATION_MODE" = "wholemodule";
 "CLANG_WARN__DUPLICATE_METHOD_MATCH" = "YES";
 "CLANG_WARN_EMPTY_BODY" = "YES";
 "GCC_WARN_64_TO_32_BIT_CONVERSION" = "YES";
@@ -72,7 +84,7 @@
 "CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS" = "YES";
 "CLANG_WARN_UNREACHABLE_CODE" = "YES";
 "ENABLE_STRICT_OBJC_MSGSEND" = "YES";
-"GCC_WARN_UNUSED_VARIABLE" = "YES";
+"GCC_WARN_UNDECLARED_SELECTOR" = "YES";
 };
 "name" = "Release";
 };
@@ -131,8 +143,13 @@
 "995621A1CB0F0B2F50FE1535",
 "DA21244C70FC6D07FDA166E6",
 "18E59EDBE7F0640132EA4122",
-"E594D50B14B4FBB9D98D38CC");
+"E594D50B14B4FBB9D98D38CC",
+"63A2825D0EB02AD3BE12CD91");
 "runOnlyForDeploymentPostprocessing" = "0";
+};
+"C84EAA2392046756F8E36899" = {
+"isa" = "PBXBuildFile";
+"productRef" = "EB8C770C198FBCE3D01EBCEF";
 };
 "0E1C89339712AB68BF99E120" = {
 "isa" = "PBXBuildFile";
@@ -156,20 +173,21 @@
 "buildSettings" = {
 "COMBINE_HIDPI_IMAGES" = "YES";
 "MARKETING_VERSION" = "1.0";
+"EXECUTABLE_NAME" = "MacGamepad";
 "CURRENT_PROJECT_VERSION" = "1";
 "PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).mac";
 "INFOPLIST_KEY_CFBundleDisplayName" = "Gamepad Air";
-"INFOPLIST_KEY_CFBundleName" = "Gamepad Air";
 "MACOSX_DEPLOYMENT_TARGET" = "15.0";
 "DEAD_CODE_STRIPPING" = "YES";
+"INFOPLIST_KEY_CFBundleName" = "Gamepad Air";
 "CODE_SIGN_STYLE" = "Automatic";
 "SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
 "ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
 "INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Gamepad Air on your iPhone and Mac over your local Wi-Fi network.";
 "SDKROOT" = "macosx";
+"LD_RUNPATH_SEARCH_PATHS" = "$(inherited) @executable_path/../Frameworks";
 "CODE_SIGNING_REQUIRED" = "NO";
 "PRODUCT_NAME" = "Gamepad Air";
-"EXECUTABLE_NAME" = "MacGamepad";
 "CODE_SIGN_IDENTITY" = "-";
 "INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Gamepad Air controls between your iPhone and Mac using Bluetooth.";
 "ENABLE_APP_SANDBOX" = "NO";
@@ -230,19 +248,20 @@
 "CODE_SIGN_ENTITLEMENTS" = "Config/Gamepad.entitlements";
 "MARKETING_VERSION" = "1.0";
 "COMBINE_HIDPI_IMAGES" = "YES";
+"EXECUTABLE_NAME" = "MacGamepad";
 "CURRENT_PROJECT_VERSION" = "1";
 "PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).mac";
 "INFOPLIST_KEY_CFBundleDisplayName" = "Gamepad Air";
-"INFOPLIST_KEY_CFBundleName" = "Gamepad Air";
 "MACOSX_DEPLOYMENT_TARGET" = "15.0";
 "DEAD_CODE_STRIPPING" = "YES";
+"INFOPLIST_KEY_CFBundleName" = "Gamepad Air";
 "CODE_SIGN_STYLE" = "Automatic";
 "SWIFT_OPTIMIZATION_LEVEL" = "-O";
 "ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
 "INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Gamepad Air on your iPhone and Mac over your local Wi-Fi network.";
 "SDKROOT" = "macosx";
+"LD_RUNPATH_SEARCH_PATHS" = "$(inherited) @executable_path/../Frameworks";
 "PRODUCT_NAME" = "Gamepad Air";
-"EXECUTABLE_NAME" = "MacGamepad";
 "CODE_SIGN_IDENTITY" = "Apple Development";
 "INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Gamepad Air controls between your iPhone and Mac using Bluetooth.";
 "ENABLE_APP_SANDBOX" = "NO";
@@ -266,6 +285,10 @@
 "EFE690086BD0AEE7C36F56CE" = {
 "isa" = "PBXBuildFile";
 "fileRef" = "197A3996A5CD02461A86C8E4";
+};
+"63A2825D0EB02AD3BE12CD91" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "7D5B3CC63EB90E98825EF205";
 };
 "18D8B2BDB451FF4B07F0DA7F" = {
 "isa" = "PBXBuildFile";
@@ -325,10 +348,12 @@
 "productType" = "com.apple.product-type.application";
 "productReference" = "5863F721E5D0EF676387EA7A";
 "buildConfigurationList" = "8102452A8B554A1CD1902B56";
+"packageProductDependencies" = ("EB8C770C198FBCE3D01EBCEF");
 "productName" = "MacGamepad";
 "isa" = "PBXNativeTarget";
 "buildPhases" = ("6EAF279EA19B90C3755789CC",
-"56A874FF451CB109A4795DCC");
+"56A874FF451CB109A4795DCC",
+"ACDB4E9D5CD994A2587DBB1F");
 "dependencies" = ();
 "name" = "MacGamepad";
 "buildRules" = ();
@@ -392,6 +417,10 @@
 "isa" = "PBXBuildFile";
 "fileRef" = "5B3A614FEC46DD837B8459EB";
 };
+"E594D50B14B4FBB9D98D38CC" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "4D3C8410D56C3A60F7450DAC";
+};
 "1FECBC8E9A29AEE1AC293B41" = {
 "isa" = "PBXBuildFile";
 "fileRef" = "1C5B04236BD09C2EA6689AED";
@@ -453,6 +482,14 @@
 "lastKnownFileType" = "sourcecode.swift";
 "sourceTree" = "SOURCE_ROOT";
 };
+"1A3E1C7A6A8348E99EBF7D35" = {
+"isa" = "XCRemoteSwiftPackageReference";
+"repositoryURL" = "https://github.com/sparkle-project/Sparkle";
+"requirement" = {
+"kind" = "exactVersion";
+"version" = "2.10.1";
+};
+};
 "34316FD487C56D2E36B540CC" = {
 "isa" = "PBXBuildFile";
 "fileRef" = "0CCD2A7BF7919099491D73F2";
@@ -503,23 +540,23 @@
 "buildSettings" = {
 "ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES" = "AppIconWhite AppIconGraphite";
 "MARKETING_VERSION" = "1.0";
+"EXECUTABLE_NAME" = "PhoneGamepad";
 "SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
 "INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.games";
 "PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).iphone";
 "CURRENT_PROJECT_VERSION" = "1";
 "INFOPLIST_KEY_CFBundleDisplayName" = "Gamepad Air";
-"INFOPLIST_KEY_CFBundleName" = "Gamepad Air";
 "SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD" = "YES";
 "INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
 "SUPPORTS_MACCATALYST" = "NO";
 "TARGETED_DEVICE_FAMILY" = "1";
+"INFOPLIST_KEY_CFBundleName" = "Gamepad Air";
 "CODE_SIGN_STYLE" = "Automatic";
 "SWIFT_OPTIMIZATION_LEVEL" = "-O";
 "ASSETCATALOG_COMPILER_APPICON_NAME" = "PocketPad";
 "INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Gamepad Air on your iPhone and Mac over your local Wi-Fi network.";
 "SDKROOT" = "iphoneos";
 "PRODUCT_NAME" = "Gamepad Air";
-"EXECUTABLE_NAME" = "PhoneGamepad";
 "IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
 "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents" = "YES";
 "INFOPLIST_KEY_UISupportedInterfaceOrientations" = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -681,6 +718,11 @@
 "isa" = "PBXBuildFile";
 "fileRef" = "A2F7D5834E35B71049F7105A";
 };
+"EB8C770C198FBCE3D01EBCEF" = {
+"isa" = "XCSwiftPackageProductDependency";
+"package" = "1A3E1C7A6A8348E99EBF7D35";
+"productName" = "Sparkle";
+};
 "135E186222DA682A7624CEFF" = {
 "isa" = "PBXBuildFile";
 "fileRef" = "2BEDF066B16A99D931966240";
@@ -715,23 +757,23 @@
 "buildSettings" = {
 "ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES" = "AppIconWhite AppIconGraphite";
 "MARKETING_VERSION" = "1.0";
+"EXECUTABLE_NAME" = "PhoneGamepad";
 "SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
 "INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.games";
 "PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).iphone";
 "CURRENT_PROJECT_VERSION" = "1";
 "INFOPLIST_KEY_CFBundleDisplayName" = "Gamepad Air";
-"INFOPLIST_KEY_CFBundleName" = "Gamepad Air";
 "SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD" = "YES";
 "INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
 "SUPPORTS_MACCATALYST" = "NO";
 "TARGETED_DEVICE_FAMILY" = "1";
+"INFOPLIST_KEY_CFBundleName" = "Gamepad Air";
 "CODE_SIGN_STYLE" = "Automatic";
 "SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
 "ASSETCATALOG_COMPILER_APPICON_NAME" = "PocketPad";
 "INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Gamepad Air on your iPhone and Mac over your local Wi-Fi network.";
 "SDKROOT" = "iphoneos";
 "PRODUCT_NAME" = "Gamepad Air";
-"EXECUTABLE_NAME" = "PhoneGamepad";
 "IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
 "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents" = "YES";
 "INFOPLIST_KEY_UISupportedInterfaceOrientations" = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -785,23 +827,23 @@
 "buildSettings" = {
 "ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES" = "AppIconWhite AppIconGraphite";
 "MARKETING_VERSION" = "1.0";
+"EXECUTABLE_NAME" = "PhoneGamepad";
 "SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
 "INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.games";
 "PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).iphone";
 "CURRENT_PROJECT_VERSION" = "1";
 "INFOPLIST_KEY_CFBundleDisplayName" = "Gamepad Air";
-"INFOPLIST_KEY_CFBundleName" = "Gamepad Air";
 "SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD" = "YES";
 "INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
 "SUPPORTS_MACCATALYST" = "NO";
 "TARGETED_DEVICE_FAMILY" = "1";
+"INFOPLIST_KEY_CFBundleName" = "Gamepad Air";
 "CODE_SIGN_STYLE" = "Automatic";
 "SWIFT_OPTIMIZATION_LEVEL" = "-O";
 "ASSETCATALOG_COMPILER_APPICON_NAME" = "PocketPad";
 "INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Gamepad Air on your iPhone and Mac over your local Wi-Fi network.";
 "SDKROOT" = "iphoneos";
 "PRODUCT_NAME" = "Gamepad Air";
-"EXECUTABLE_NAME" = "PhoneGamepad";
 "IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
 "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents" = "YES";
 "INFOPLIST_KEY_UISupportedInterfaceOrientations" = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -835,6 +877,12 @@
 "isa" = "PBXBuildFile";
 "fileRef" = "20C4C3E04422AFC876CEC081";
 };
+"A2F7D5834E35B71049F7105A" = {
+"path" = "Apps/Mac/LayoutLibraryView.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
 "020A3CACC83771C43CB63C8B" = {
 "path" = "Sources/GamepadCore/RumbleFrame.swift";
 "isa" = "PBXFileReference";
@@ -850,12 +898,6 @@
 "051022397F4B2A56962EA83A" = {
 "isa" = "PBXBuildFile";
 "fileRef" = "77B36D8B114A9BE92D48D4EE";
-};
-"A2F7D5834E35B71049F7105A" = {
-"path" = "Apps/Mac/LayoutLibraryView.swift";
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"sourceTree" = "SOURCE_ROOT";
 };
 "87008E92DC42864178C47163" = {
 "path" = "Sources/MacSupport/GamepadOutput.swift";
@@ -903,6 +945,7 @@
 };
 "244210E48437B6556980A702" = {
 "buildConfigurationList" = "B4E10CAA9C5E22150B71559C";
+"packageReferences" = ("1A3E1C7A6A8348E99EBF7D35");
 "targets" = ("E647A879F12E47AEC1A54042",
 "28AD6EC4AAA5108BB6C6BDCB");
 "developmentRegion" = "en";
@@ -948,6 +991,12 @@
 "lastKnownFileType" = "sourcecode.swift";
 "sourceTree" = "SOURCE_ROOT";
 };
+"7D5B3CC63EB90E98825EF205" = {
+"path" = "Apps/Mac/MacAppUpdater.swift";
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"sourceTree" = "SOURCE_ROOT";
+};
 "9F5EC83DC7F97AE04243DA8D" = {
 "isa" = "PBXFileReference";
 "lastKnownFileType" = "folder.icon";
@@ -977,6 +1026,10 @@
 "isa" = "PBXFileReference";
 "lastKnownFileType" = "sourcecode.swift";
 "sourceTree" = "SOURCE_ROOT";
+};
+"AAE43D71D800D83A02323B71" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "4D3C8410D56C3A60F7450DAC";
 };
 "B85099B81A16B23B638CE83A" = {
 "isa" = "PBXBuildFile";
@@ -1135,20 +1188,21 @@
 "buildSettings" = {
 "COMBINE_HIDPI_IMAGES" = "YES";
 "MARKETING_VERSION" = "1.0";
+"EXECUTABLE_NAME" = "MacGamepad";
 "CURRENT_PROJECT_VERSION" = "1";
 "PRODUCT_BUNDLE_IDENTIFIER" = "$(BUNDLE_PREFIX).mac";
 "INFOPLIST_KEY_CFBundleDisplayName" = "Gamepad Air";
-"INFOPLIST_KEY_CFBundleName" = "Gamepad Air";
 "MACOSX_DEPLOYMENT_TARGET" = "15.0";
 "DEAD_CODE_STRIPPING" = "YES";
+"INFOPLIST_KEY_CFBundleName" = "Gamepad Air";
 "CODE_SIGN_STYLE" = "Automatic";
 "SWIFT_OPTIMIZATION_LEVEL" = "-O";
 "ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
 "INFOPLIST_KEY_NSLocalNetworkUsageDescription" = "Connect Gamepad Air on your iPhone and Mac over your local Wi-Fi network.";
 "SDKROOT" = "macosx";
+"LD_RUNPATH_SEARCH_PATHS" = "$(inherited) @executable_path/../Frameworks";
 "CODE_SIGNING_REQUIRED" = "NO";
 "PRODUCT_NAME" = "Gamepad Air";
-"EXECUTABLE_NAME" = "MacGamepad";
 "CODE_SIGN_IDENTITY" = "-";
 "INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription" = "Connect Gamepad Air controls between your iPhone and Mac using Bluetooth.";
 "ENABLE_APP_SANDBOX" = "NO";
@@ -1331,7 +1385,8 @@
 "FB74A5AADB707C9E46385C8A",
 "756F45E9DC33E8F4298CB912",
 "A2F7D5834E35B71049F7105A",
-"4D3C8410D56C3A60F7450DAC");
+"4D3C8410D56C3A60F7450DAC",
+"7D5B3CC63EB90E98825EF205");
 };
 "5E20270B8D83FA3B205C2A6A" = {
 "isa" = "PBXBuildFile";
@@ -1394,20 +1449,6 @@
 "isa" = "PBXFileReference";
 "lastKnownFileType" = "sourcecode.swift";
 "sourceTree" = "SOURCE_ROOT";
-};
-"4D3C8410D56C3A60F7450DAC" = {
-"isa" = "PBXFileReference";
-"lastKnownFileType" = "sourcecode.swift";
-"path" = "Sources/GamepadCore/MotionInput.swift";
-"sourceTree" = "SOURCE_ROOT";
-};
-"E594D50B14B4FBB9D98D38CC" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "4D3C8410D56C3A60F7450DAC";
-};
-"AAE43D71D800D83A02323B71" = {
-"isa" = "PBXBuildFile";
-"fileRef" = "4D3C8410D56C3A60F7450DAC";
 };
 };
 "rootObject" = "244210E48437B6556980A702";

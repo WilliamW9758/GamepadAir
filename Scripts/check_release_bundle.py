@@ -13,6 +13,12 @@ def check(app):
         info = plistlib.load(stream)
     with (resources / "PrivacyInfo.xcprivacy").open("rb") as stream:
         privacy = plistlib.load(stream)
+    if mac:
+        assert (app / "Contents/Frameworks/Sparkle.framework").exists(), "Missing updater framework"
+        assert info.get("SUFeedURL", "").startswith("https://"), "Missing HTTPS update feed"
+        import base64
+        assert len(base64.b64decode(info["SUPublicEDKey"], validate=True)) == 32, "Invalid updater public key"
+        assert info.get("SUVerifyUpdateBeforeExtraction") is True
     assert info.get("CFBundleIdentifier"), "Missing bundle identifier"
     assert info.get("CFBundleShortVersionString"), "Missing version"
     assert info.get("CFBundleVersion"), "Missing build number"

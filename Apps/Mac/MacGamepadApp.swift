@@ -188,6 +188,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct MacGamepadApp: App {
     @StateObject private var model = HostModel()
+    @StateObject private var appUpdater = MacAppUpdater()
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     init() {
         // Process-only appearance overrides for visual QA; ordinary launches follow macOS.
@@ -215,10 +216,15 @@ struct MacGamepadApp: App {
     var body: some Scene {
         WindowGroup("Gamepad Air · Mac") {
             HostView(model: model)
+                .environmentObject(appUpdater)
                 .onAppear { delegate.stop = model.stop }
                 .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.willSleepNotification)) { _ in model.stop() }
         }.defaultSize(width: 760, height: 740)
         .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") { appUpdater.checkForUpdates() }
+                    .disabled(!appUpdater.canCheckForUpdates)
+            }
             CommandMenu("Layouts") {
                 Button("Import layout…") { model.importProfile() }
                 Button("Export layout…") { model.exportProfile() }.disabled(model.portable == nil || model.running)
@@ -232,6 +238,7 @@ struct MacGamepadApp: App {
 }
 
 struct HostView: View {
+    @EnvironmentObject private var appUpdater: MacAppUpdater
     @ObservedObject var model: HostModel
     @StateObject private var discovery = PhoneDiscovery()
     @State private var step: Int
@@ -612,6 +619,13 @@ struct HostView: View {
                             }
                         }.onAppear { model.refreshApps() }
                     }
+                }
+                Section("Updates") {
+                    Toggle("Automatically check for updates", isOn: $appUpdater.automaticallyChecks)
+                    Toggle("Download and install updates automatically", isOn: $appUpdater.automaticallyInstalls)
+                        .disabled(!appUpdater.automaticallyChecks)
+                    Button("Check for Updates…") { appUpdater.checkForUpdates() }
+                        .disabled(!appUpdater.canCheckForUpdates)
                 }
                 Section("Permissions") {
                     Button("Accessibility settings") { AccessibilityHelper.shared.show() }
