@@ -1,5 +1,14 @@
 # Gamepad Air release preparation
 
+## Beta 13 — November 25, 2026
+
+- Version 1.0 (13), source/release tag commit `98d4db5`. Setup links now open PublicTesters and the matching Mac download, including the iPhone settings link.
+- iPhone archive/upload/compliance succeeded. Submitted with automatic tester notification and approved immediately for **Friends** and **PublicTesters**.
+- [Public iPhone beta](https://testflight.apple.com/join/ZaVJEpX3) · [Mac beta 13 download](https://github.com/WilliamW9758/GamepadAir/releases/tag/v1.0-beta.13).
+- Universal Mac archive, Developer ID signing, notarization/stapling, Gatekeeper and DMG checks passed. Uploaded DMG SHA-256 matches local: `c78a1c05dca64759226144a4d898ebc710eb939a0d51e7dbadcc11f5fce79749`.
+- Both release resource checks passed. This release changes companion links and copy only; build 12's 122-test pass remains the latest full suite run.
+- Archives, exported Mac app, package and logs: `~/PocketPad Backups/Beta 1.0-build13-2026-11-25/`. Clean-Mac installation remains for beta testers to verify.
+
 ## Beta 12 — November 25, 2026
 
 - Version 1.0 (12), app source commit `4f8517b`, release tag `v1.0-beta.12` at `fa8c49e` (adds upload documentation).
