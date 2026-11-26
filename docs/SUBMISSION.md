@@ -1,5 +1,16 @@
 ## iPhone beta 16 — November 26, 2026
 
+## Build 17 — November 26, 2026
+
+- iPhone 1.0 (17) uploaded, processed, encryption information completed, and submitted with automatic tester notification. App Store Connect shows **Testing** for **Friends** and **PublicTesters**. Build ID `f83ba448-f30a-42ac-a5b2-a81a4163160b`.
+- Mac build 17 Developer ID signing, notarization, stapling, Gatekeeper and mounted DMG signature validation passed. Published DMG SHA-256: `bb35613f8718286e170100e3a63d364e3adb6f6c3c027a1db7f1ca02cebd6a95`; downloaded public asset matches.
+- Signed Sparkle feed prepared and independently verified with CryptoKit; targets the public beta17 DMG. This release has not repeated the prior version-to-version installation test.
+- Fixes hotspot/Wi-Fi listener compatibility, Mac pairing-code editing, and bottom-corner control anchoring. Hotspot connection confirmed by the user on Duo. Original isolated Wi-Fi network not verified.
+- **Update both devices to build 17.** Layout sync protocol 6 prevents mismatched clients exchanging the new anchor geometry. Existing layouts without authoring dimensions use the 912×420 point baseline.
+- 125 Swift tests and 99 backend tests passed. Backend validator/admin preview changes are prepared; live deployment awaits refreshed AWS credentials.
+- Source commit `d7aa5b7`; archives/logs/package at `~/PocketPad Backups/Beta 1.0-build17-2026-11-26/`.
+
+
 - Source `55f477b`; archive 1.0 (16), release-resource verification and 124 Swift tests passed. Simulator build passed; installed iOS 17 simulator runtime could not boot on the updated Mac, so no simulator visual test is claimed.
 - Upload succeeded; App Store Connect processed build `3d813eb3-9372-4a59-bc2f-dd1ad763f69e`. Encryption compliance saved (Apple-provided APIs only).
 - Adds opt-in diagnostics with first-launch consent and Settings toggle, blue Share Diagnostics action, and a one-time Mac editor tip on first new-layout creation on iPhone. Owner verified the initial consent prompt on physical iPhone before the final styling change.
