@@ -155,4 +155,11 @@ the matching backend validator is deployed at https://api.gamepadair.com (image
 `sha256:80274e88a2346be96f2516cacd6f5dd2187c77a39eacb22bd25cbbd599bf2de4`).
 The release changes only the validator and schema over `beta-20261125-01`, with no
 database migration. Local format tests (47), live acceptance/rejection checks and
-public readiness passed. A fresh authenticated HTTP submission was not performed.
+public readiness passed. A subsequent signed-in Mac app test submitted
+“Gyro activation test 2026-11-25” with `motion: {mode: "aim", activationControl: "lefttrigger"}`.
+AWS accepted revision 1 as pending; Download a copy returned an exactly equal full
+document to the local library. Test listing `4f95a09a-3608-49fa-b458-ec71775a96e7`
+was then removed through the app and its public detail returns 404. It was not
+approved or publicly published. Two local test copies remain for inspection.
+The submissions page also displays an unrelated unavailable-feature notice because
+its newer moderation/account UI calls endpoints absent from this schema-only deployment.
