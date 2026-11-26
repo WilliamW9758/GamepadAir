@@ -266,6 +266,12 @@
           "minimum": 0.03,
           "maximum": 1,
           "description": "Trackpad: fraction of actual canvas height. Custom button: fraction of fixed 320-point design height. Resolved extent is at least 44 points and fits the canvas."
+        },
+        "diameter": {
+          "type": "number",
+          "minimum": 44,
+          "maximum": 240,
+          "description": "Explicit round-control diameter in points, independent of role, legacy scale and mode sizeFactor. Omitted preserves legacy/default sizing."
         }
       },
       "required": [

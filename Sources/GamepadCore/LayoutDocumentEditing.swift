@@ -60,8 +60,9 @@ extension LayoutDocument {
         for i in next.modes.indices where next.modes[i].id == modeID || (linkedControls ?? []).contains(id) {
             var p = placement
             let previous = resolvedControl(id, modeID: modeID)?.placement
+            if p.diameter == nil { p.diameter = previous?.diameter }
             if p.width == nil { p.width = previous?.width; p.height = previous?.height }
-            if next.modes[i].id != modeID && p.width == nil && controls.first(where: { $0.id == id })?.role != "trackpad" {
+            if next.modes[i].id != modeID && p.diameter == nil && p.width == nil && controls.first(where: { $0.id == id })?.role != "trackpad" {
                 p.scale = (placement.scale ?? 1) * (selected.sizeFactor ?? 1) / (next.modes[i].sizeFactor ?? 1)
                 // Linked edits must remain representable; never silently clamp stored geometry.
             }

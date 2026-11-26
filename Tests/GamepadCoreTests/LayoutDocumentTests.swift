@@ -30,6 +30,21 @@ final class LayoutDocumentTests: XCTestCase {
         edited.document.controllerStyle = original.document.controllerStyle == "xbox" ? "playstation" : "xbox"
         XCTAssertFalse(edited.hasSameOutputConfiguration(as: original))
     }
+    func testExplicitButtonSizesShareRangeAndSurviveDragging() throws {
+        var doc = LayoutDocument.starter(name: "Sizing", style: .xbox, input: .gamepad)
+        let roles = ["south", "east", "west", "north", "leftTrigger", "rightTrigger", "back", "start", "guide"]
+        for diameter in [44.0, 73.0, 240.0] {
+            for control in doc.controls where roles.contains(control.role) {
+                try doc.placeControl(control.id, at: DocumentPlacement(x: 0.5, y: 0.5, diameter: diameter), modeID: doc.initialMode)
+            }
+            doc = try LayoutDocument.decode(doc.validatedData())
+            let resolved = LayoutGeometry.resolve(doc, modeID: doc.initialMode, width: 912, height: 420)
+            for item in resolved where roles.contains(item.role) { XCTAssertEqual(item.width, diameter) }
+        }
+        let id = try XCTUnwrap(doc.controls.first { $0.role == "south" }?.id)
+        try doc.placeControl(id, at: DocumentPlacement(x: 0.3, y: 0.4, scale: 1), modeID: doc.initialMode)
+        XCTAssertEqual(doc.resolvedControl(id, modeID: doc.initialMode)?.placement?.diameter, 240)
+    }
     func testSharedFixturesAndSchemaStayAligned() throws {
         let schema = try Data(contentsOf: root.appendingPathComponent("docs/layout-format/layout.schema.json"))
         XCTAssertEqual(try JSONSerialization.jsonObject(with: schema) as? NSDictionary,

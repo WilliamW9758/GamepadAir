@@ -8,12 +8,14 @@ public struct DocumentPlacement: Codable, Equatable {
     public var scale: Double?
     public var width: Double?
     public var height: Double?
-    public init(x: Double, y: Double, scale: Double? = nil, width: Double? = nil, height: Double? = nil) {
+    public var diameter: Double?
+    public init(x: Double, y: Double, scale: Double? = nil, width: Double? = nil, height: Double? = nil, diameter: Double? = nil) {
         self.x = x
         self.y = y
         self.scale = scale
         self.width = width
         self.height = height
+        self.diameter = diameter
     }
 }
 

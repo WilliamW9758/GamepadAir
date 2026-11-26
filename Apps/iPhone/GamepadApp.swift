@@ -119,10 +119,13 @@ struct PhoneGamepadApp: App {
         guard let id = layout.controlID(runtimeID: runtimeID) else { return }
         layouts.change { try $0.placeControl(id, at: DocumentPlacement(x: p.x, y: p.y, scale: p.scale), modeID: modeID) }
     }
-    private var selectedScale: Binding<Double> {
-        Binding(get: { selectedID.flatMap { placements[$0]?.scale } ?? 1 }, set: { value in
-            guard let id = selectedID, var p = placements[id] else { return }
-            p.scale = value; place(p, runtimeID: id)
+    private var selectedItem: ResolvedLayoutControl? {
+        LayoutGeometry.resolve(layout.document, modeID: modeID, width: max(1, canvasSize.width), height: max(1, canvasSize.height)).first { $0.runtimeID == selectedID }
+    }
+    private var selectedDiameter: Binding<Double> {
+        Binding(get: { selectedItem?.width ?? 44 }, set: { value in
+            guard let item = selectedItem else { return }
+            layouts.change { try $0.placeControl(item.id, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale, diameter: value), modeID: modeID) }
         })
     }
     var body: some Scene {
@@ -161,7 +164,14 @@ struct PhoneGamepadApp: App {
                                 Text("Drag controls").font(.callout).fixedSize(horizontal: true, vertical: false)
                             } else {
                                 Text(selectedLabel).font(.callout).lineLimit(1).frame(width: 90)
-                                Slider(value: selectedScale, in: 0.65...1.8, step: 0.05, onEditingChanged: { active in if active { layouts.beginEdit() } else { layouts.endEdit() } }).frame(width: 110)
+                                if selectedItem?.rectangular == false {
+                                    Text("\(Int(selectedDiameter.wrappedValue.rounded())) pt").font(.callout.monospacedDigit()).fixedSize()
+                                    Button { selectedDiameter.wrappedValue = max(44, selectedDiameter.wrappedValue.rounded() - 1) } label: { Image(systemName: "minus").frame(width: 44, height: 44) }
+                                        .disabled(selectedDiameter.wrappedValue <= 44).accessibilityLabel("Decrease size by one point")
+                                    Slider(value: selectedDiameter, in: 44...240, step: 1, onEditingChanged: { active in if active { layouts.beginEdit() } else { layouts.endEdit() } }).frame(width: 90)
+                                    Button { selectedDiameter.wrappedValue = min(240, selectedDiameter.wrappedValue.rounded() + 1) } label: { Image(systemName: "plus").frame(width: 44, height: 44) }
+                                        .disabled(selectedDiameter.wrappedValue >= 240).accessibilityLabel("Increase size by one point")
+                                }
                                 Button { buttonOptions = true } label: {
                                     Label("Button options", systemImage: "slider.horizontal.3")
                                         .frame(minWidth: 110, minHeight: 44)

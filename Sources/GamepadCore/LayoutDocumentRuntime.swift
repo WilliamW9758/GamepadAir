@@ -160,7 +160,7 @@ public enum LayoutGeometry {
             let rectangular = control.role == "trackpad" || control.placement?.width != nil
             let cross = control.role == "dpad" && mode.dpadStyle == "fourWay"
             let minimumRadius = cross ? 22 / 0.92 : 22
-            let effectiveRadius = min(max(minimumRadius, (min(width, height) - 8) / 2), max(minimumRadius, radius * unit * p.scale))
+            let effectiveRadius = min(max(minimumRadius, (min(width, height) - 8) / 2), max(minimumRadius, (control.placement?.diameter.map { $0 / 2 } ?? (radius * unit * p.scale))))
             let basisWidth = control.role == "trackpad" ? width : 800
             let basisHeight = control.role == "trackpad" ? height : 320
             let w = rectangular ? min(max(44, width - 8), max(44, (control.placement?.width ?? 0.28) * basisWidth)) : effectiveRadius * 2

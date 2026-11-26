@@ -277,9 +277,15 @@ struct LayoutEditor: View {
                 }
                 if !item.rectangular {
                     HStack(spacing: 12) {
-                        Text("Size · \(Int(item.width)) pt").fixedSize()
-                        Slider(value: Binding(get: { item.placement.scale }, set: { value in change { try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: value), modeID: mode.id) } }), in: 0.65...1.8)
-                            .frame(minWidth: 100, maxWidth: 260)
+                        let size = Binding<Double>(get: { item.width }, set: { value in change {
+                            try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale, diameter: value), modeID: mode.id)
+                        } })
+                        Text("Size · \(Int(item.width.rounded())) pt").monospacedDigit().fixedSize()
+                        Button { size.wrappedValue = max(44, item.width.rounded() - 1) } label: { Image(systemName: "minus") }
+                            .disabled(item.width <= 44).accessibilityLabel("Decrease size by one point")
+                        Slider(value: size, in: 44...240, step: 1).frame(minWidth: 80, maxWidth: 260)
+                        Button { size.wrappedValue = min(240, item.width.rounded() + 1) } label: { Image(systemName: "plus") }
+                            .disabled(item.width >= 240).accessibilityLabel("Increase size by one point")
                     }
                 }
                 if layout.document.modes.count > 1 {

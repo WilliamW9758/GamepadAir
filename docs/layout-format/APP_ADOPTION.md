@@ -163,3 +163,12 @@ was then removed through the app and its public detail returns 404. It was not
 approved or publicly published. Two local test copies remain for inspection.
 The submissions page also displays an unrelated unavailable-feature notice because
 its newer moderation/account UI calls endpoints absent from this schema-only deployment.
+
+### Explicit control size
+
+`placement.diameter` sets a round control's diameter in points (44–240), independent
+of its role, legacy scale, and mode sizeFactor. Omission preserves existing sizes.
+Both editors show numeric point sizes and use 1-point adjustments. Moving a control
+preserves its diameter; linked modes share the explicit point size. Rectangular
+controls continue using width/height. Canvas fitting and the four-way D-pad's
+minimum touch extent still apply.
