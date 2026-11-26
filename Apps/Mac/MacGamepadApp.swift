@@ -331,6 +331,16 @@ struct HostView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if let version = appUpdater.availableVersion {
+                HStack(spacing: 12) {
+                    Image(systemName: "arrow.down.circle")
+                    Text("Gamepad Air \(version) is available.")
+                    Spacer()
+                    Button("View update…") { appUpdater.checkForUpdates() }
+                }
+                .padding(16)
+                .background(Color.accentColor.opacity(0.12))
+            }
             if !isSettingUp {
                 if showingSettings { workspaceView } else { liveControllerView }
             } else {
