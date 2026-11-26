@@ -7,7 +7,7 @@
 - Signed Sparkle feed prepared and independently verified with CryptoKit; targets the public beta17 DMG. This release has not repeated the prior version-to-version installation test.
 - Fixes hotspot/Wi-Fi listener compatibility, Mac pairing-code editing, and bottom-corner control anchoring. Hotspot connection confirmed by the user on Duo. Original isolated Wi-Fi network not verified.
 - **Update both devices to build 17.** Layout sync protocol 6 prevents mismatched clients exchanging the new anchor geometry. Existing layouts without authoring dimensions use the 912×420 point baseline.
-- 125 Swift tests and 99 backend tests passed. Backend validator/admin preview changes are prepared; live deployment awaits refreshed AWS credentials.
+- 125 Swift tests and 99 backend tests passed. Backend validator and admin preview deployed November 26 using image `sha256:6e7eaa61e39e0d0d427c6ecace12ee01171371f2a079ce36f574feaaf0657f1c`. Live validator accepted complete anchor fields and rejected incomplete dimensions; API readiness passed. No database migration required.
 - Website17 deployed and verified on gamepadair.com, www.gamepadair.com and gamepad-air.pages.dev; matching Mac17/TestFlight links and update-both-apps requirement. Root README and signed updater feed pushed to main.
 - Source commit `d7aa5b7`; archives/logs/package at `~/PocketPad Backups/Beta 1.0-build17-2026-11-26/`.
 
