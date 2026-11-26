@@ -1,5 +1,14 @@
 # Gamepad Air release preparation
 
+## Beta 12 — November 25, 2026
+
+- Version 1.0 (12), source commit `4f8517b`, uploaded successfully to App Store Connect; upload status is Processing.
+- AI assist is disabled and grayed out in Mac setup and New layout. Updated Mac build installed locally; no new distributable Mac download published in this pass.
+- iPhone Release archive and Mac Gamepad build passed; all 122 Swift tests passed, plus iPhone release resource checks.
+- Archive and upload logs: `~/PocketPad Backups/Beta 1.0-build12-2026-11-25/`.
+- Build 11 is now Approved, but Notify Testers remains pending. Friends public link is enabled with no criteria or limit, and zero testers. Build 12 is not yet assigned to external testers or submitted for beta review.
+- External testing of build 12 needs the matching current Mac companion; the beta 11 download predates the canonical layout format.
+
 ## Beta 11 — November 24, 2026
 
 This status supersedes the build 6 rehearsal notes below.
