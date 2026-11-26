@@ -23,3 +23,10 @@ The app checks automatically and defaults to downloading/installing updates auto
 6. Check for Updates from the previous updater-enabled release and verify install/relaunch, version, layouts, pairing, permissions and controller output. An initial empty feed means no update is offered; it is not an install test.
 
 `Scripts/sync_project_sources.py` preserves and registers the Mac-only Swift package dependency. Do not regenerate the signing-configured Xcode project with the old bootstrap generator. `Package.resolved` pins the framework version; no dependency is added to the iPhone or shared-core package.
+
+## Initial verification
+
+- Universal Mac build 14 and iPhone build passed; Mac nested signatures and release-resource checks passed.
+- In the running Mac app, Check for Updates successfully fetched the live empty feed and reported up to date. Both General update switches defaulted on.
+- Generated a signed appcast from a local test DMG; signature verification accepted the original and rejected an altered payload.
+- The test DMG/feed were not published. Public release 13 still requires manual downloads. A notarized updater-enabled release and a subsequent install/relaunch test remain release gates; the empty production feed intentionally offers no update yet.
