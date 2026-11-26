@@ -9,6 +9,7 @@ struct LayoutEditor: View {
     @State private var selected: String?
     @State private var past: [LayoutDocument] = []
     @State private var future: [LayoutDocument] = []
+    @State private var resizeStart: LayoutDocument?
     @GestureState private var dragPreview: ControlDragPreview?
     @State private var dragBaseDocument: LayoutDocument?
     @State private var error: String?
@@ -54,11 +55,22 @@ struct LayoutEditor: View {
         if snap { p = LayoutGeometry.snapped(p, others: others.filter { $0.id != item.id }.map(\.placement)) }
         return LayoutGeometry.fitted(p, canvasWidth: width, canvasHeight: height, controlWidth: item.width, controlHeight: item.height)
     }
+    private func resizeEditing(_ active: Bool) {
+        if active {
+            if resizeStart == nil { resizeStart = layout.document }
+        } else if let start = resizeStart {
+            resizeStart = nil
+            guard start != layout.document else { return }
+            past.append(start)
+            if past.count > 50 { past.removeFirst() }
+            future.removeAll()
+        }
+    }
     private func change(record: Bool = true, _ edit: (inout LayoutDocument) throws -> Void) {
         do {
             var next = layout.document; try edit(&next); try next.validate()
             guard next != layout.document else { return }
-            if record { past.append(layout.document); if past.count > 50 { past.removeFirst() }; future.removeAll() }
+            if record && resizeStart == nil { past.append(layout.document); if past.count > 50 { past.removeFirst() }; future.removeAll() }
             layout.document = next; saved = false; error = nil; dirtyChanged?(next != baseLayout.document)
             if !next.modes.contains(where: { $0.id == modeID }) { modeID = next.initialMode }
         } catch { self.error = error.localizedDescription }
@@ -100,6 +112,8 @@ struct LayoutEditor: View {
             }
         }.background { PadBackdrop() }.buttonStyle(PadActionStyle())
             .onAppear { if liveState == nil { noticeChanged?(editorNotice) } }
+            .onChange(of: selected) { _, _ in resizeEditing(false) }
+            .onDisappear { resizeEditing(false) }
             .onChange(of: dragPreview == nil) { _, ended in if ended { dragBaseDocument = nil } }
             .onChange(of: editorNotice) { _, value in if liveState == nil { noticeChanged?(value) } }
             .onChange(of: sourceLayout) { _, value in
@@ -278,12 +292,14 @@ struct LayoutEditor: View {
                 if !item.rectangular {
                     HStack(spacing: 12) {
                         let size = Binding<Double>(get: { item.width }, set: { value in change {
-                            try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale, diameter: value), modeID: mode.id)
+                            try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale, diameter: value.rounded()), modeID: mode.id)
                         } })
-                        Text("Size · \(Int(item.width.rounded())) pt").monospacedDigit().fixedSize()
+                        Text("Size · 999 pt").hidden()
+                            .overlay(alignment: .leading) { Text("Size · \(Int(item.width.rounded())) pt") }
+                            .monospacedDigit().fixedSize()
                         Button { size.wrappedValue = max(44, item.width.rounded() - 1) } label: { Image(systemName: "minus") }
                             .disabled(item.width <= 44).accessibilityLabel("Decrease size by one point")
-                        Slider(value: size, in: 44...240, step: 1).frame(minWidth: 80, maxWidth: 260)
+                        Slider(value: size, in: 44...240, onEditingChanged: resizeEditing).frame(minWidth: 80, maxWidth: 260)
                         Button { size.wrappedValue = min(240, item.width.rounded() + 1) } label: { Image(systemName: "plus") }
                             .disabled(item.width >= 240).accessibilityLabel("Increase size by one point")
                     }
@@ -300,7 +316,7 @@ struct LayoutEditor: View {
                         Slider(value: Binding(get: { axis == "Width" ? item.width / (control.role == "trackpad" ? width : 800) : item.height / (control.role == "trackpad" ? height : 320) }, set: { value in
                             change { try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale,
                                 width: axis == "Width" ? value : item.width / (control.role == "trackpad" ? width : 800), height: axis == "Height" ? value : item.height / (control.role == "trackpad" ? height : 320)), modeID: mode.id) }
-                        }), in: 0.03...1) { Text(axis) }
+                        }), in: 0.03...1, onEditingChanged: resizeEditing) { Text(axis) }
                     }
                     Button("Reset shape and position") { change { try $0.resetPlacement(selected, modeID: mode.id) } }
                 }

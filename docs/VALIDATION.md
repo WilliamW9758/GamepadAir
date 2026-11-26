@@ -247,3 +247,9 @@ Run `swift test` to validate the current checkout. Report your OS versions, tran
 - Game search offers Use/create for a nonempty name up to 200 characters after a successful search with no case-insensitive exact match. Selecting it updates only the form; abandoned forms do not create catalog entries. Existing game selection clears the typed name and vice versa, and Clear restores general-purpose behavior.
 - New layout POSTs send optional game_name mutually exclusive with game_id. Names collapse surrounding/repeated whitespace; empty/oversized names and conflicting ID/name arguments fail before any request. Backend owns canonical duplicate resolution and transactional catalog creation with the layout submission.
 - 166 Swift tests passed (122 GamepadCore, 44 MacSupport), including typed-name payload, unchanged existing-ID payload, invalid-name/conflicting-input rejection, and no additional creation request. Both signed app builds passed. No layout or game was created during verification; connected app was not restarted. Live creation requires the coordinated backend game_name rollout and UI acceptance remains pending.
+
+### Resize undo and stable size controls (2026-11-25)
+
+- Mac size/width/height sliders capture the pre-gesture document and record one history entry when interaction ends. A drag that returns to its starting document records nothing; ordinary plus/minus clicks remain individual edits. History remains capped at 50 entries, and changed gestures clear redo once on completion.
+- Removed the size slider's discrete step setting (the source of its dense tick-mark line), retaining integer-point rounding in the binding. The size label reserves the width of three monospaced digits, preventing slider movement when crossing 100 points.
+- 166 Swift tests and both signed app builds passed. Running app/draft left untouched; native drag/undo and visual acceptance in the new build remain pending.
