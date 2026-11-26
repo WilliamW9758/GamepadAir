@@ -150,4 +150,9 @@ that feature still needs explicit switching semantics, UI and capability-profile
 control keeps its ordinary mapping. Removing that control turns motion off. Both
 editors expose this setting and the phone tests the held control before mappings.
 The shared schema and local Python validator/tests accept and validate the reference;
-deploy the matching backend validator before publishing layouts using the field.
+the matching backend validator is deployed at https://api.gamepadair.com (image
+`beta-20261125-gyro-01`, digest
+`sha256:80274e88a2346be96f2516cacd6f5dd2187c77a39eacb22bd25cbbd599bf2de4`).
+The release changes only the validator and schema over `beta-20261125-01`, with no
+database migration. Local format tests (47), live acceptance/rejection checks and
+public readiness passed. A fresh authenticated HTTP submission was not performed.

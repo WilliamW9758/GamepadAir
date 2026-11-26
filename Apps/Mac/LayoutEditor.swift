@@ -269,13 +269,22 @@ struct LayoutEditor: View {
     }
     @ViewBuilder private var inspector: some View {
         if let selected, let item = items.first(where: { $0.id == selected }), let control = layout.document.controls.first(where: { $0.id == selected }) {
-            HStack {
-                TextField("Control name", text: Binding(get: { item.label }, set: { value in change { try $0.renameControl(selected, caption: value, modeID: mode.id) } })).frame(width: 180)
-                Button("Remove", role: .destructive) { change { try $0.removeControl(selected) }; self.selected = nil }.fixedSize()
-                Text(item.rectangular ? "Rectangle" : "Size · \(Int(item.width)) pt")
-                if !item.rectangular { Slider(value: Binding(get: { item.placement.scale }, set: { value in change { try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: value), modeID: mode.id) } }), in: 0.65...1.8).frame(width: 160) }
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    TextField("Control name", text: Binding(get: { item.label }, set: { value in change { try $0.renameControl(selected, caption: value, modeID: mode.id) } }))
+                        .frame(minWidth: 120, maxWidth: .infinity)
+                    Button("Remove", role: .destructive) { change { try $0.removeControl(selected) }; self.selected = nil }.fixedSize()
+                }
+                if !item.rectangular {
+                    HStack(spacing: 12) {
+                        Text("Size · \(Int(item.width)) pt").fixedSize()
+                        Slider(value: Binding(get: { item.placement.scale }, set: { value in change { try $0.placeControl(selected, at: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: value), modeID: mode.id) } }), in: 0.65...1.8)
+                            .frame(minWidth: 100, maxWidth: 260)
+                    }
+                }
                 if layout.document.modes.count > 1 {
                     Toggle("Keep position in both modes", isOn: Binding(get: { layout.document.linkedControls?.contains(selected) == true }, set: { linked in change { try $0.linkControl(selected, linked: linked, modeID: mode.id, placement: DocumentPlacement(x: item.placement.x, y: item.placement.y, scale: item.placement.scale)) } }))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             if ["customButton", "trackpad"].contains(control.role) {
