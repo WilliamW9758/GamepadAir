@@ -2,12 +2,14 @@
 
 ## Beta 12 — November 25, 2026
 
-- Version 1.0 (12), source commit `4f8517b`, uploaded successfully to App Store Connect; upload status is Processing.
-- AI assist is disabled and grayed out in Mac setup and New layout. Updated Mac build installed locally; no new distributable Mac download published in this pass.
-- iPhone Release archive and Mac Gamepad build passed; all 122 Swift tests passed, plus iPhone release resource checks.
-- Archive and upload logs: `~/PocketPad Backups/Beta 1.0-build12-2026-11-25/`.
-- Build 11 is now Approved, but Notify Testers remains pending. Friends public link is enabled with no criteria or limit, and zero testers. Build 12 is not yet assigned to external testers or submitted for beta review.
-- External testing of build 12 needs the matching current Mac companion; the beta 11 download predates the canonical layout format.
+- Version 1.0 (12), app source commit `4f8517b`, release tag `v1.0-beta.12` at `fa8c49e` (adds upload documentation).
+- iPhone upload, processing and encryption compliance completed. Submitted to Beta App Review with Friends and **Automatically notify testers** checked. Apple immediately returned **Approved**; no manual Notify Testers action is pending for build 12.
+- [Public TestFlight invitation](https://testflight.apple.com/join/BXcJ2RJU) verified to show **View Gamepad Air Beta / View in TestFlight**, replacing the closed-enrollment message.
+- [Matching Mac download](https://github.com/WilliamW9758/GamepadAir/releases/tag/v1.0-beta.12) published. Developer ID signing, notarization, stapling, Gatekeeper assessment and DMG validation passed. Uploaded SHA-256 matches local: `b737445a7d4f6f88fbdd56f628cbf387bcf039750949efbc3d3409cb72be6af2`.
+- Updated beta description, review notes and What to Test with the build 12 Mac link, current Marketplace functionality, disabled AI and version compatibility guidance.
+- AI assist is disabled and grayed out in Mac setup and New layout. iPhone Release archive and universal Mac Gamepad archive passed; all 122 Swift tests passed, plus release resource checks.
+- Archives, notarized export, DMG, checksum and logs: `~/PocketPad Backups/Beta 1.0-build12-2026-11-25/`.
+- Use matching build 12 on both platforms; beta 11 layouts use the old representation and are not migrated. A separate clean-Mac installation remains for beta testers to verify.
 
 ## Beta 11 — November 24, 2026
 
