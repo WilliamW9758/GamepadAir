@@ -3,6 +3,16 @@ import Foundation
 import GamepadCore
 #endif
 
+public struct MarketplaceGame: Decodable, Identifiable, Equatable {
+    public let id: String
+    public let slug: String
+    public let name: String
+}
+public struct MarketplaceTag: Decodable, Identifiable {
+    public let id: String
+    public let slug: String
+    public let label: String
+}
 public struct MarketplaceAccount: Decodable { public let id: String }
 public struct OwnedListing: Decodable, Identifiable {
     public let id: String
@@ -59,10 +69,19 @@ public struct MarketplaceAPI {
         struct Page: Decodable { let items: [OwnedListing] }
         return try JSONDecoder().decode(Page.self, from: await request("v1/me/layouts")).items
     }
-    public func submit(document: LayoutDocument, title: String, description: String) async throws -> MarketplaceSubmission {
-        struct Body: Encodable { let title: String; let description: String; let tags: [String]; let document: LayoutDocument }
+    public func games(query: String = "") async throws -> [MarketplaceGame] {
+        struct Page: Decodable { let items: [MarketplaceGame] }
+        return try JSONDecoder().decode(Page.self, from: await request("v1/games", authenticated: false, query: [URLQueryItem(name: "q", value: query), URLQueryItem(name: "limit", value: "20")])).items
+    }
+    public func tags() async throws -> [MarketplaceTag] {
+        struct Page: Decodable { let items: [MarketplaceTag] }
+        return try JSONDecoder().decode(Page.self, from: await request("v1/tags", authenticated: false)).items
+    }
+    public func submit(document: LayoutDocument, title: String, description: String, gameID: String? = nil, tags: [String] = []) async throws -> MarketplaceSubmission {
+        guard tags.count <= 10, Set(tags).count == tags.count else { throw MarketplaceAuthError("Choose up to 10 distinct use-case tags.") }
+        struct Body: Encodable { let title: String; let description: String; let game_id: String?; let tags: [String]; let document: LayoutDocument }
         try document.validate()
-        let body = try JSONEncoder().encode(Body(title: title, description: description, tags: [], document: document))
+        let body = try JSONEncoder().encode(Body(title: title, description: description, game_id: gameID, tags: tags, document: document))
         return try JSONDecoder().decode(MarketplaceSubmission.self, from: await request("v1/layouts", method: "POST", body: body))
     }
     public func revise(_ listing: OwnedListing, document: LayoutDocument) async throws -> MarketplaceSubmission {

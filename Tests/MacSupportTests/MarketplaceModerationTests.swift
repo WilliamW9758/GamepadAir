@@ -1,4 +1,5 @@
 import XCTest
+import GamepadCore
 @testable import MacSupport
 
 final class MarketplaceModerationTests: XCTestCase {
@@ -133,6 +134,56 @@ final class MarketplaceModerationTests: XCTestCase {
         XCTAssertEqual(requests, 3)
         api.send = { _ in (Data(), 401) }
         do { _ = try await api.waitForDeletion(accessToken: "token", pause: {}); XCTFail() } catch {}
+    }
+    func testSubmissionCarriesGameAndTagSlugs() async throws {
+        var api = try MarketplaceAPI(baseURL: "http://localhost:8001")
+        api.token = { "test-token" }
+        var calls = 0
+        api.send = { request in
+            calls += 1
+            XCTAssertEqual(request.httpMethod, "POST")
+            let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
+            XCTAssertEqual(body["title"] as? String, "Farm controls")
+            XCTAssertEqual(body["description"] as? String, "For farming and fishing")
+            if calls == 1 {
+                XCTAssertEqual(body["game_id"] as? String, "game-id")
+                XCTAssertEqual(body["tags"] as? [String], ["farming", "fishing"])
+            } else {
+                XCTAssertNil(body["game_id"])
+                XCTAssertEqual(body["tags"] as? [String], [])
+            }
+            return (Data(#"{"id":"listing","revision":1,"review_status":"pending"}"#.utf8), 201)
+        }
+        let document = LocalLayout(name: "Farm", style: .xbox).document
+        let result = try await api.submit(document: document, title: "Farm controls", description: "For farming and fishing", gameID: "game-id", tags: ["farming", "fishing"])
+        XCTAssertEqual(result.review_status, "pending")
+        _ = try await api.submit(document: document, title: "Farm controls", description: "For farming and fishing")
+        do { _ = try await api.submit(document: document, title: "Title", description: "", tags: (0..<11).map { "tag-\($0)" }); XCTFail() } catch {}
+        do { _ = try await api.submit(document: document, title: "Title", description: "", tags: ["farming", "farming"]); XCTFail() } catch {}
+        XCTAssertEqual(calls, 2)
+    }
+    func testMetadataCatalogRequestsArePublicAndSearchIsEncoded() async throws {
+        var api = try MarketplaceAPI(baseURL: "http://localhost:8001")
+        api.token = { XCTFail("Public catalogs do not require credentials"); return "" }
+        api.send = { request in
+            XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+            if request.url!.path == "/v1/games" {
+                let items = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!.queryItems!
+                XCTAssertEqual(items.first { $0.name == "q" }?.value, "Farm & fish")
+                XCTAssertEqual(items.first { $0.name == "limit" }?.value, "20")
+                return (Data(#"{"items":[{"id":"game-id","slug":"stardew-valley","name":"Stardew Valley"}]}"#.utf8), 200)
+            }
+            return (Data(#"{"items":[{"id":"tag-id","slug":"farming","label":"Farming"}]}"#.utf8), 200)
+        }
+        let games = try await api.games(query: "Farm & fish")
+        let tags = try await api.tags()
+        XCTAssertEqual(games.first?.name, "Stardew Valley")
+        XCTAssertEqual(tags.first?.slug, "farming")
+        api.send = { _ in (Data(#"{"items":[]}"#.utf8), 200) }
+        let empty = try await api.tags()
+        XCTAssertTrue(empty.isEmpty)
+        api.send = { _ in (Data(), 503) }
+        do { _ = try await api.games(); XCTFail() } catch {}
     }
     func testDeletionCleanupDoesNotDependOnRevocationNetwork() async throws {
         var stored = OAuthTokens(accessToken: "test", refreshToken: "refresh", expires: .distantFuture, identity: MarketplaceIdentity(issuer: "issuer", subject: "subject")) as OAuthTokens?

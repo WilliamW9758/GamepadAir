@@ -191,16 +191,8 @@ struct MarketplaceAccountView: View {
     @ObservedObject var account: MarketplaceAccountModel
     let layouts: [LocalLayout]
     let screen: PhoneScreen?
-    @State private var selectedLayoutID = ""
-    @State private var submissionLayout: LocalLayout?
-    private var selectedLayout: LocalLayout? { layouts.first { $0.id == selectedLayoutID } }
-    private func updateSelection() {
-        if selectedLayout == nil { selectedLayoutID = ""; submissionLayout = nil }
-    }
     let openCreator: (String) -> Void
     let importLayout: (LayoutDocument) -> Void
-    @State private var title = ""
-    @State private var description = ""
     @State private var submitting = false
     @State private var revising: OwnedListing?
     @State private var removing: OwnedListing?
@@ -243,8 +235,7 @@ struct MarketplaceAccountView: View {
             }
             if account.accountID != nil {
                 Button("Submit layout…") {
-                    selectedLayoutID = ""; submissionLayout = nil; revising = nil
-                    title = ""; description = ""; submitting = true
+                    revising = nil; submitting = true
                 }.disabled(layouts.isEmpty)
                 ForEach(account.listings) { item in
                     VStack(alignment: .leading, spacing: 10) {
@@ -256,7 +247,7 @@ struct MarketplaceAccountView: View {
                         }
                         HStack {
                             Button("Download a copy") { account.perform { importLayout(try await account.api.revision(item)); account.notice = "Downloaded revision \(item.latest_revision) to your layout library." } }.help("Download the newest submitted revision, including one awaiting review, as a new local copy.")
-                            Button("Submit revision…") { selectedLayoutID = ""; submissionLayout = nil; revising = item; submitting = true }.disabled(layouts.isEmpty || item.status == "removed")
+                            Button("Submit revision…") { revising = item; submitting = true }.disabled(layouts.isEmpty || item.status == "removed")
                             Button("Remove…", role: .destructive) { removing = item }.disabled(item.status == "removed")
                         }
                     }.padding().frame(maxWidth: .infinity, alignment: .leading).background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
@@ -269,53 +260,11 @@ struct MarketplaceAccountView: View {
             if account.identity != nil {
                 Divider()
                 Button("Delete account…", role: .destructive) { deleting = true }
+                    .foregroundStyle(.red)
             }
         }.disabled(account.busy)
-        .onAppear { updateSelection() }
-        .onChange(of: layouts.map(\.id)) { _, _ in updateSelection() }
         .sheet(isPresented: $submitting) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text(revising == nil ? "Submit layout" : "Submit a new revision").font(.title2.bold())
-                if let revising { Text(revising.title).foregroundStyle(.secondary) }
-                Picker("Layout", selection: $selectedLayoutID) {
-                    Text("Choose a layout").tag("")
-                    ForEach(layouts) { layout in
-                        Text(layout.name + (layout.isPreset ? " · preset" : "") +
-                             (layouts.filter { $0.name == layout.name }.count > 1 ? " · " + String(layout.id.prefix(6)) : ""))
-                            .tag(layout.id)
-                    }
-                }.pickerStyle(.menu)
-                if let submissionLayout {
-                    SubmissionLayoutPreview(layout: submissionLayout, screen: screen)
-                    if revising == nil {
-                        TextField("Title", text: $title)
-                        TextField("Description", text: $description, axis: .vertical).lineLimit(2...3)
-                    }
-                    Text("A copy of “\(submissionLayout.name)” will be submitted for review.").font(.callout).foregroundStyle(.secondary)
-                } else {
-                    RoundedRectangle(cornerRadius: 18).fill(.quaternary.opacity(0.4))
-                        .overlay { Label("Choose a layout to preview", systemImage: "gamecontroller").foregroundStyle(.secondary) }
-                        .frame(height: 240)
-                }
-                HStack {
-                    Button("Cancel") { submitting = false }
-                    Spacer()
-                    Button("Submit for review") {
-                        guard let submissionLayout else { return }
-                        let listing = revising
-                        let submittedTitle = title, submittedDescription = description
-                        submitting = false
-                        account.perform {
-                            let result: MarketplaceSubmission
-                            if let listing { result = try await account.api.revise(listing, document: submissionLayout.document) }
-                            else { result = try await account.api.submit(document: submissionLayout.document, title: submittedTitle, description: submittedDescription) }
-                            try await account.loadAccount(); account.notice = "Revision \(result.revision) submitted for review."
-                        }
-                    }.buttonStyle(PadActionStyle(prominent: submissionLayout != nil))
-                        .disabled(submissionLayout == nil || (revising == nil && (title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || title.count > 120 || description.count > 4000)))
-                }
-            }.padding(24).frame(width: 600)
-                .onChange(of: selectedLayoutID) { _, _ in submissionLayout = selectedLayout; title = selectedLayout?.name ?? "" }
+            MarketplaceSubmissionView(account: account, layouts: layouts, screen: screen, revising: revising)
         }
         .sheet(isPresented: $account.deletionInProgress) {
             VStack(spacing: 18) {
@@ -327,13 +276,15 @@ struct MarketplaceAccountView: View {
         .sheet(isPresented: $deleting) {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Delete your account?").font(.title2.bold())
-                Text("Your uploads will be hidden immediately. Your account, uploads, reports, and account blocks will then be queued for permanent deletion. This cannot be undone.")
-                Text("Local layouts and copies downloaded by other people remain. Your local sign-in credentials will be cleared when the server accepts the request.")
-                Text("You’ll sign in again to confirm the account. After requesting deletion, remove this app from Sign in with Apple at account.apple.com; deleting this account does not automatically revoke Apple authorization.")
+                Text("Your uploads will be **hidden immediately**. Your marketplace account, **all uploaded layouts**, reports, and account blocks will then be permanently deleted. **This cannot be undone.**")
+                Text("**Local layouts stay on your devices.** Copies downloaded by other people remain, and you can keep using the controller without an account. Your local sign-in credentials will be cleared when the server accepts the request.")
+                Text("You’ll **sign in again** to confirm the account. **Your Apple Account will not be deleted.** Afterward, remove this app from Sign in with Apple at account.apple.com; marketplace deletion does not automatically revoke Apple authorization.")
                 HStack {
                     Button("Cancel") { deleting = false }
                     Spacer()
                     Button("Sign in and delete account", role: .destructive) { deleting = false; account.deleteAccount() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
                 }
             }.padding(24).frame(width: 480)
         }
@@ -388,6 +339,193 @@ struct SubmissionLayoutPreview: View {
                 }.overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.35), lineWidth: 1.5) }
             }.aspectRatio(width / height, contentMode: .fit)
                 .accessibilityElement(children: .ignore).accessibilityLabel("Preview of \(layout.name)")
+        }
+    }
+}
+
+private struct MarketplaceSubmissionView: View {
+    @ObservedObject var account: MarketplaceAccountModel
+    let layouts: [LocalLayout]
+    let screen: PhoneScreen?
+    let revising: OwnedListing?
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedLayoutID = ""
+    @State private var submissionLayout: LocalLayout?
+    @State private var title = ""
+    @State private var description = ""
+    @State private var selectedGame: MarketplaceGame?
+    @State private var selectedTags: Set<String> = []
+    @State private var tags: [MarketplaceTag] = []
+    @State private var loadingTags = false
+    @State private var tagsError: String?
+    @State private var choosingGame = false
+    @State private var gameQuery = ""
+    @State private var games: [MarketplaceGame] = []
+    @State private var loadingGames = false
+    @State private var gamesError: String?
+    @State private var gamesRetry = 0
+    @State private var submissionError: String?
+    private var invalid: Bool {
+        submissionLayout == nil || (revising == nil && (title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || title.count > 120 || description.count > 4000 || selectedTags.count > 10))
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(revising == nil ? "Submit layout" : "Submit a new revision").font(.title2.bold())
+            if let revising {
+                Text(revising.title).foregroundStyle(.secondary)
+                Text("This updates the controls only. The listing’s title, game, description, and tags stay the same.").font(.callout).foregroundStyle(.secondary)
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Picker("Layout", selection: $selectedLayoutID) {
+                        Text("Choose a layout").tag("")
+                        ForEach(layouts) { layout in
+                            Text(layout.name + (layout.isPreset ? " · preset" : "") + (layouts.filter { $0.name == layout.name }.count > 1 ? " · " + String(layout.id.prefix(6)) : ""))
+                                .tag(layout.id)
+                        }
+                    }.pickerStyle(.menu)
+                    if let submissionLayout {
+                        SubmissionLayoutPreview(layout: submissionLayout, screen: screen)
+                    } else {
+                        RoundedRectangle(cornerRadius: 18).fill(.quaternary.opacity(0.4))
+                            .overlay { Label("Choose a layout to preview", systemImage: "gamecontroller").foregroundStyle(.secondary) }
+                            .frame(height: 160)
+                    }
+                    if revising == nil {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Title").font(.headline)
+                            TextField("Give your layout a name", text: $title)
+                            if title.count > 120 { Text("Keep the title within 120 characters.").font(.caption).foregroundStyle(.red) }
+                        }
+                        gameChoice
+                        tagChoices
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Intended use & description").font(.headline)
+                            TextField("What is this layout useful for? Describe activities, key controls, and any setup needed.", text: $description, axis: .vertical).lineLimit(3...5)
+                            if description.count > 4000 { Text("Keep the description within 4,000 characters.").font(.caption).foregroundStyle(.red) }
+                        }
+                    }
+                    if let submissionLayout {
+                        Text("A copy of “\(submissionLayout.name)” will be submitted for review.").font(.callout).foregroundStyle(.secondary)
+                    }
+                }.padding(.trailing, 8)
+            }.frame(maxHeight: 580)
+            if let submissionError { Text(submissionError).foregroundStyle(.red).textSelection(.enabled) }
+            HStack {
+                Button("Cancel") { dismiss() }.disabled(account.busy)
+                Spacer()
+                if account.busy { ProgressView().controlSize(.small) }
+                if account.identity == nil { Button("Sign in again") { account.signIn() }.disabled(account.busy) }
+                Button("Submit for review") { submit() }
+                    .buttonStyle(PadActionStyle(prominent: !invalid))
+                    .disabled(invalid || account.busy || account.identity == nil)
+            }
+        }.padding(24).frame(width: 640)
+            .interactiveDismissDisabled(account.busy)
+            .onChange(of: selectedLayoutID) { _, id in
+                let previousName = submissionLayout?.name
+                submissionLayout = layouts.first { $0.id == id }
+                if title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || title == previousName { title = submissionLayout?.name ?? "" }
+            }
+            .onChange(of: layouts.map(\.id)) { _, ids in
+                if !ids.contains(selectedLayoutID) { selectedLayoutID = ""; submissionLayout = nil }
+            }
+            .task { if revising == nil { await loadTags() } }
+    }
+    private var gameChoice: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Game").font(.headline)
+                Text("Optional").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button(choosingGame ? "Done" : "Choose game…") { choosingGame.toggle() }
+            }
+            HStack {
+                Text(selectedGame?.name ?? "General-purpose / no specific game")
+                if selectedGame != nil { Button("Clear") { selectedGame = nil }.buttonStyle(.link) }
+            }.foregroundStyle(.secondary)
+            if choosingGame {
+                TextField("Search games", text: $gameQuery)
+                VStack(alignment: .leading, spacing: 8) {
+                    if loadingGames { ProgressView().controlSize(.small) }
+                    if let gamesError {
+                        Text(gamesError).font(.callout).foregroundStyle(.secondary)
+                        Button("Retry game search") { gamesRetry += 1 }
+                    } else if !loadingGames && games.isEmpty {
+                        Text(gameQuery.isEmpty ? "No games are available yet. You can submit a general-purpose layout." : "No matching games. Try another search, or leave the game unset.").font(.callout).foregroundStyle(.secondary)
+                    }
+                    ForEach(games) { game in
+                        Button { selectedGame = game; choosingGame = false } label: {
+                            HStack {
+                                Text(game.name)
+                                Spacer()
+                                if selectedGame?.id == game.id { Image(systemName: "checkmark") }
+                            }.padding(.vertical, 4).contentShape(Rectangle())
+                        }.buttonStyle(.plain)
+                    }
+                }.task(id: gameQuery + ":" + String(gamesRetry)) { await searchGames() }
+            }
+        }
+    }
+    private var tagChoices: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Use-case tags").font(.headline)
+                Text("Optional · \(selectedTags.count)/10").font(.caption).foregroundStyle(.secondary)
+            }
+            if loadingTags { ProgressView().controlSize(.small) }
+            if let tagsError {
+                Text(tagsError).font(.callout).foregroundStyle(.secondary)
+                Button("Retry tags") { Task { await loadTags() } }
+            } else if !loadingTags && tags.isEmpty {
+                Text("No tags are available yet. You can submit without tags.").font(.callout).foregroundStyle(.secondary)
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), alignment: .leading)], alignment: .leading, spacing: 10) {
+                ForEach(tags) { tag in
+                    Toggle(tag.label, isOn: Binding(get: { selectedTags.contains(tag.slug) }, set: { selected in
+                        if selected && selectedTags.count < 10 { selectedTags.insert(tag.slug) }
+                        else if !selected { selectedTags.remove(tag.slug) }
+                    })).toggleStyle(.checkbox)
+                        .disabled(!selectedTags.contains(tag.slug) && selectedTags.count >= 10)
+                }
+            }
+        }
+    }
+    private func searchGames() async {
+        loadingGames = true; gamesError = nil; games = []
+        do {
+            try await Task.sleep(for: .milliseconds(250))
+            let result = try await account.api.games(query: gameQuery)
+            guard !Task.isCancelled else { return }
+            games = result; loadingGames = false
+        } catch {
+            guard !Task.isCancelled else { return }
+            gamesError = "Could not load games. Your current choice is unchanged. " + error.localizedDescription
+            loadingGames = false
+        }
+    }
+    private func loadTags() async {
+        guard !loadingTags else { return }
+        loadingTags = true; tagsError = nil
+        defer { loadingTags = false }
+        do { tags = try await account.api.tags() }
+        catch { tagsError = "Could not load tags. You can retry or submit without them. " + error.localizedDescription }
+    }
+    private func submit() {
+        guard let layout = submissionLayout else { return }
+        let submittedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines), submittedDescription = description
+        let gameID = selectedGame?.id, tagSlugs = selectedTags.sorted()
+        submissionError = nil
+        account.perform {
+            let result: MarketplaceSubmission
+            do {
+                if let revising { result = try await account.api.revise(revising, document: layout.document) }
+                else { result = try await account.api.submit(document: layout.document, title: submittedTitle, description: submittedDescription, gameID: gameID, tags: tagSlugs) }
+            } catch { submissionError = error.localizedDescription; throw error }
+            dismiss()
+            let confirmation = "Revision \(result.revision) submitted for review."
+            do { try await account.loadAccount(); account.notice = confirmation }
+            catch { account.notice = confirmation + " Could not refresh My submissions: " + error.localizedDescription }
         }
     }
 }
