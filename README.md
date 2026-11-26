@@ -7,7 +7,7 @@
 Xbox · PlayStation · Keyboard & mouse<br>
 USB · Wi-Fi · Bluetooth
 
-**[Download for Mac](https://github.com/WilliamW9758/GamepadAir/releases/download/v1.0-beta.13/GamepadAir-1.0-build13.dmg)** · **[Join the iPhone beta](https://testflight.apple.com/join/ZaVJEpX3)**
+**[Download for Mac](https://github.com/WilliamW9758/GamepadAir/releases/download/v1.0-beta.14/GamepadAir-1.0-build14.dmg)** · **[Join the iPhone beta](https://testflight.apple.com/join/ZaVJEpX3)**
 
 [Report a bug](https://github.com/WilliamW9758/GamepadAir/issues) · [Roadmap](docs/RELEASE_PLAN.md)
 
@@ -29,13 +29,15 @@ USB · Wi-Fi · Bluetooth
 
 Free public beta · **macOS 15+** · **iOS 17+**
 
-1. **[Download the Mac app](https://github.com/WilliamW9758/GamepadAir/releases/download/v1.0-beta.13/GamepadAir-1.0-build13.dmg)**, open the DMG, and drag **Gamepad Air** to Applications. Signed and notarized by Apple.
+1. **[Download the Mac app](https://github.com/WilliamW9758/GamepadAir/releases/download/v1.0-beta.14/GamepadAir-1.0-build14.dmg)**, open the DMG, and drag **Gamepad Air** to Applications. Signed and notarized by Apple.
 2. **[Join the iPhone beta in TestFlight](https://testflight.apple.com/join/ZaVJEpX3)** and install Gamepad Air.
 3. Open both apps, connect your iPhone with a USB data cable, and follow setup. Keep the iPhone app open while playing.
 
-Use **build 13 on both devices**. No Xcode, Developer Mode, or account is needed for local play. Keyboard/mouse output needs Accessibility permission on Mac. Game compatibility and Steam Input settings vary.
+Use **build 14 on both devices**. No Xcode, Developer Mode, or account is needed for local play. Keyboard/mouse output needs Accessibility permission on Mac. Game compatibility and Steam Input settings vary.
 
-[Release notes](https://github.com/WilliamW9758/GamepadAir/releases/tag/v1.0-beta.13) · [Report a bug](https://github.com/WilliamW9758/GamepadAir/issues)
+Mac build 13 or earlier needs one manual update to build 14. After that, automatic updates are available; change preferences in General → Updates.
+
+[Release notes](https://github.com/WilliamW9758/GamepadAir/releases/tag/v1.0-beta.14) · [Report a bug](https://github.com/WilliamW9758/GamepadAir/issues)
 
 ### Community layouts
 

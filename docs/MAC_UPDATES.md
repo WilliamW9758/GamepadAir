@@ -29,4 +29,4 @@ The app checks automatically and defaults to downloading/installing updates auto
 - Universal Mac build 14 and iPhone build passed; Mac nested signatures and release-resource checks passed.
 - In the running Mac app, Check for Updates successfully fetched the live empty feed and reported up to date. Both General update switches defaulted on.
 - Generated a signed appcast from a local test DMG; signature verification accepted the original and rejected an altered payload.
-- The test DMG/feed were not published. Public release 13 still requires manual downloads. A notarized updater-enabled release and a subsequent install/relaunch test remain release gates; the empty production feed intentionally offers no update yet.
+- The development test DMG/feed were not published. A separate Developer ID signed, notarized build 14 DMG and its signed feed were subsequently published on November 26, 2026. Its public download signature was independently verified. Build 13 users need one manual update; a subsequent version-to-version automatic install/relaunch test remains to be performed.

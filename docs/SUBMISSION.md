@@ -1,5 +1,15 @@
 # Gamepad Air release preparation
 
+## Beta 14 — November 26, 2026
+
+- Version 1.0 (14), app source `49e1d92`; release tag `v1.0-beta.14` at `ab23d01` (published privacy copy aligned). Includes settings cleanup, setup replay in Help, website Mac-download link and the Mac Sparkle updater.
+- iPhone archive/upload/compliance completed. Added Friends and PublicTesters with automatic notification, submitted for review, and Apple returned **Approved**. PublicTesters → Builds explicitly shows **1.0 (14) Approved**.
+- [Public iPhone beta](https://testflight.apple.com/join/ZaVJEpX3) · [Mac beta 14 download](https://github.com/WilliamW9758/GamepadAir/releases/tag/v1.0-beta.14).
+- Universal Mac archive, Developer ID signing, Apple notarization/stapling, nested signature validation, Gatekeeper and DMG validation passed. Public DMG downloaded with HTTP 200 and SHA-256 `e3d5eb88cf037e6a01a29cde559b25d118be559866797ea95f202cbc9841b955` matching the local artifact and GitHub digest.
+- Signed updater entry published to `updates/macos.xml`; CryptoKit verified the downloaded DMG against the app's public key and appcast signature. Build 13 and older still need one manual installation. The first actual version-to-version automatic install/relaunch test remains for a subsequent release.
+- All 122 Swift tests passed; both app release-resource checks passed. Development build 14 was installed/launched on iPhone Air and Mac for user testing before archiving.
+- Archives, exported app, DMG, checksum, signed feed and logs: `~/PocketPad Backups/Beta 1.0-build14-2026-11-26/`. Separate clean-Mac installation remains for beta testers to verify.
+
 ## Beta 13 — November 25, 2026
 
 - Version 1.0 (13), source/release tag commit `98d4db5`. Setup links now open PublicTesters and the matching Mac download, including the iPhone settings link.
