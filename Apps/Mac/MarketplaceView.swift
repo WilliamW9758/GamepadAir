@@ -14,7 +14,7 @@ struct MarketplaceView: View {
     @State private var selectedExample: Example?
     @State private var selectedListing: PublicListing?
     @State private var reporting: PublicListing?
-    @State private var blocking: PublicListing?
+    @State private var selectedCreator: MarketplaceCreator?
     @State private var reportReason = MarketplaceReportReason.abuse
     @State private var reportExplanation = ""
     @State private var reportError: String?
@@ -48,17 +48,13 @@ struct MarketplaceView: View {
                     Button { selectedListing = nil } label: { Label("Back to Marketplace", systemImage: "chevron.left") }
                     HStack {
                         Text(item.title).font(.largeTitle.bold())
+                        creatorLink(item)
                         Spacer()
+                        reportButton(item)
                         Button(isSaved(item) ? "Saved" : "Get layout") { save(item) }.disabled(isSaved(item) || previews[previewKey(item)] == nil)
                     }
                     Text(item.description).foregroundStyle(.secondary)
                     Text(inputCategory(item)).font(.headline)
-                    HStack {
-                        Button("Report layout…") { reportReason = .abuse; reportExplanation = ""; reportError = nil; reporting = item }
-                        if let creator = item.creator_id, creator != account.accountID {
-                            Button("Block creator…") { blocking = item }.disabled(account.busy)
-                        }
-                    }
                     if let preview = previews[previewKey(item)] {
                         SubmissionLayoutPreview(layout: preview, screen: model.update.connected ? model.libraryScreen : nil)
                         if model.update.connected, let screen = model.libraryScreen {
@@ -68,7 +64,7 @@ struct MarketplaceView: View {
                     if let notice { Text(notice).foregroundStyle(.secondary) }
                 } else if showingSubmissions {
                     Button { showingSubmissions = false } label: { Label("Back to Marketplace", systemImage: "chevron.left") }
-                    MarketplaceAccountView(account: account, layouts: model.localLayouts, screen: model.libraryScreen) { document in model.importMarketplaceDocument(document) }
+                    MarketplaceAccountView(account: account, layouts: model.localLayouts, screen: model.libraryScreen, openCreator: { id in selectedCreator = MarketplaceCreator(id: id, name: listings.first { $0.creator_id == id }?.creatorName ?? "Creator " + String(id.prefix(8))) }) { document in model.importMarketplaceDocument(document) }
                 } else {
                     HStack {
                         Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
@@ -105,9 +101,14 @@ struct MarketplaceView: View {
                                     else if loading { MarketplaceSkeletonBlock().accessibilityLabel("Loading layout preview") }
                                     else { RoundedRectangle(cornerRadius: 14).fill(Color.accentColor.opacity(0.08)).overlay { Text("Preview unavailable").font(.callout).foregroundStyle(.secondary) } }
                                 }.frame(height: 140)
-                                Text(item.title).font(.headline)
-                                Text(item.description).foregroundStyle(.secondary)
                                 }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle()) }.buttonStyle(.plain)
+                                HStack(alignment: .firstTextBaseline) {
+                                    Button(item.title) { selectedListing = item }.font(.headline).buttonStyle(.plain)
+                                    creatorLink(item)
+                                    Spacer(minLength: 0)
+                                    reportButton(item)
+                                }
+                                Text(item.description).foregroundStyle(.secondary)
                                 HStack {
                                     Text(inputCategory(item)).foregroundStyle(.secondary)
                                     Spacer()
@@ -175,17 +176,18 @@ struct MarketplaceView: View {
                 }
             }.padding(24).frame(width: 480).interactiveDismissDisabled(reportingBusy)
         }
-        .confirmationDialog("Block this creator?", isPresented: Binding(get: { blocking != nil }, set: { if !$0 { blocking = nil } })) {
-            if let creator = blocking?.creator_id {
-                Button("Block creator") {
-                    blocking = nil
-                    account.perform {
-                        do { try await account.setBlocked(creator, blocked: true); notice = "Creator blocked." }
-                        catch { notice = error.localizedDescription; throw error }
+        .sheet(item: $selectedCreator) { creator in
+            MarketplaceCreatorView(creator: creator, account: account) { item in
+                selectedCreator = nil
+                selectedListing = item
+                Task {
+                    if previews[previewKey(item)] == nil {
+                        do { previews[previewKey(item)] = try await account.api.download(item) }
+                        catch { notice = error.localizedDescription }
                     }
                 }
             }
-        } message: { Text("Their layouts will be hidden. Downloaded copies remain. Manage blocks in My submissions." + (account.identity == nil ? " This block stays on this Mac while signed out." : "")) }
+        }
         .sheet(item: $selectedExample) { item in
             VStack(alignment: .leading, spacing: 20) {
                 artwork(item.symbol)
@@ -195,6 +197,18 @@ struct MarketplaceView: View {
                 HStack { Spacer(); Button("Done") { selectedExample = nil } }
             }.padding(24).frame(width: 440)
         }
+    }
+    @ViewBuilder private func creatorLink(_ item: PublicListing) -> some View {
+        if let id = item.creator_id {
+            Button(item.creatorName) { selectedCreator = MarketplaceCreator(id: id, name: item.creatorName) }
+                .buttonStyle(.link).font(.callout).lineLimit(1).help("View layouts by " + item.creatorName)
+        }
+    }
+    private func reportButton(_ item: PublicListing) -> some View {
+        Button {
+            reportReason = .abuse; reportExplanation = ""; reportError = nil; reporting = item
+        } label: { Image(systemName: "flag") }
+            .buttonStyle(.borderless).help("Report layout").accessibilityLabel("Report " + item.title)
     }
     private func save(_ item: PublicListing) {
         let version = account.catalogVersion
@@ -224,7 +238,6 @@ struct MarketplaceView: View {
             let loaded = try await client.browse()
             guard version == account.catalogVersion else { return }
             listings = loaded.filter { !account.blockedCreators.contains($0.creator_id ?? "") }
-            if let selectedListing, !listings.contains(where: { $0.id == selectedListing.id }) { self.selectedListing = nil }
             let validKeys = Set(listings.map(previewKey))
             previews = previews.filter { validKeys.contains($0.key) }
             for listing in listings where previews[previewKey(listing)] == nil {
@@ -305,5 +318,90 @@ private struct MarketplaceSkeletonCard: View {
             .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 18))
             .accessibilityElement(children: .ignore).accessibilityLabel("Loading layout")
             .allowsHitTesting(false)
+    }
+}
+
+private struct MarketplaceCreator: Identifiable {
+    let id: String
+    let name: String
+}
+
+private struct MarketplaceCreatorView: View {
+    let creator: MarketplaceCreator
+    @ObservedObject var account: MarketplaceAccountModel
+    let openLayout: (PublicListing) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var layouts: [PublicListing] = []
+    @State private var cursor: String?
+    @State private var loading = false
+    @State private var error: String?
+    @State private var confirmingBlock = false
+    private var blocked: Bool { account.blockedCreators.contains(creator.id) }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Text(creator.name).font(.title2.bold())
+                Spacer()
+                if creator.id != account.accountID {
+                    Button(blocked ? "Unblock creator" : "Block creator…") {
+                        if blocked { changeBlock(false) } else { confirmingBlock = true }
+                    }.disabled(account.busy)
+                }
+                Button("Done") { dismiss() }
+            }
+            if let error { Text(error).foregroundStyle(.red) }
+            if blocked {
+                Text("This creator is blocked. Unblock them to see their layouts.").foregroundStyle(.secondary)
+            } else {
+                Text("Layouts by this creator").font(.headline)
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        ForEach(layouts) { item in
+                            Button { openLayout(item) } label: {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(item.title).font(.headline)
+                                    Text(item.description).foregroundStyle(.secondary).lineLimit(3)
+                                }.frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+                            }.buttonStyle(.plain)
+                        }
+                        if loading { ProgressView().controlSize(.small) }
+                        else if cursor != nil { Button("Load more") { Task { await load(reset: false) } } }
+                        else if layouts.isEmpty && error == nil { Text("No published layouts.").foregroundStyle(.secondary) }
+                        if error != nil { Button("Try again") { Task { await load(reset: true) } } }
+                    }
+                }
+            }
+        }.padding(24).frame(width: 560, height: 460)
+            .task(id: account.catalogVersion) { await load(reset: true) }
+            .confirmationDialog("Block this creator?", isPresented: $confirmingBlock) {
+                Button("Block creator") { changeBlock(true) }
+            } message: {
+                Text("Their layouts will be hidden. Downloaded copies remain." + (account.identity == nil ? " This block stays on this Mac while signed out." : ""))
+            }
+    }
+    private func changeBlock(_ blocked: Bool) {
+        error = nil
+        account.perform {
+            do { try await account.setBlocked(creator.id, blocked: blocked) }
+            catch { self.error = error.localizedDescription; throw error }
+        }
+    }
+    private func load(reset: Bool) async {
+        if reset { layouts = []; cursor = nil }
+        guard !blocked else { loading = false; return }
+        let version = account.catalogVersion
+        loading = true; error = nil
+        defer { if version == account.catalogVersion { loading = false } }
+        do {
+            let page = try await account.api.creatorLayouts(creator.id, cursor: cursor)
+            guard !Task.isCancelled, version == account.catalogVersion, !blocked else { return }
+            let known = Set(layouts.map(\.id))
+            layouts += page.items.filter { !known.contains($0.id) }
+            cursor = page.next_cursor
+        } catch {
+            guard !Task.isCancelled, version == account.catalogVersion else { return }
+            self.error = error.localizedDescription
+        }
     }
 }

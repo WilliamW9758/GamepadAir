@@ -10,6 +10,8 @@ import AuthenticationServices
     @Published var reviews: [String: MarketplaceReview] = [:]
     @Published var blockedCreators: Set<String> = []
     @Published var catalogVersion = UUID()
+    @Published var deletionInProgress = false
+    @Published var credentialCleanupFailed = false
     @Published var deletionReceipt = UserDefaults.standard.string(forKey: "marketplace-deletion-receipt")
     private var localBlocksKey: String { "marketplace-local-blocks:" + activeEndpoint }
     func refreshBlocks() async throws {
@@ -33,7 +35,8 @@ import AuthenticationServices
         UserDefaults.standard.set(result.status, forKey: "marketplace-deletion-receipt")
         clearAccountState()
         // Clear credentials immediately; neither polling nor provider revocation may delay cleanup.
-        try await MarketplaceAuth.shared.clearLocalCredentials()
+        do { try await MarketplaceAuth.shared.clearLocalCredentials(); credentialCleanupFailed = false }
+        catch { credentialCleanupFailed = true; throw error }
         notice = nil
     }
     func deleteAccount() { perform {
@@ -47,16 +50,31 @@ import AuthenticationServices
             self.clearAccountState()
             throw MarketplaceAuthError("A different account was selected. No deletion was requested. Sign in to the account you want to delete.")
         }
-        try await self.acceptDeletion(self.api.deleteAccount())
-    } }
-    func checkDeletion() { perform {
-        let result = try await self.api.deletionStatus()
-        if result.status == "none" { self.notice = "No deletion request is pending." }
-        else { try await self.acceptDeletion(result) }
+        self.deletionInProgress = true
+        defer { self.deletionInProgress = false }
+        let client = try self.api
+        let token = try await MarketplaceAuth.shared.accessToken()
+        let accepted: MarketplaceDeletion
+        do { accepted = try await client.deleteAccount() }
+        catch {
+            // An interrupted POST may already have queued deletion. Recover without resubmitting.
+            if let status = try? await client.deletionStatus(), ["pending", "complete"].contains(status.status) { accepted = status }
+            else { throw error }
+        }
+        try await self.acceptDeletion(accepted)
+        guard accepted.status == "pending" else { return }
+        do {
+            let result = try await client.waitForDeletion(accessToken: token)
+            if result.status == "complete" { try await self.acceptDeletion(result) }
+            else { self.notice = "Deletion is taking longer than expected. Your request is saved and will continue on the server; you can close this window." }
+        } catch {
+            self.notice = "Your deletion request was accepted, but completion could not be confirmed. It will continue on the server; you can close this window."
+        }
     } }
     func clearCredentials() { perform {
         try await MarketplaceAuth.shared.clearLocalCredentials()
         self.clearAccountState()
+        self.credentialCleanupFailed = false
     } }
     @Published var endpoint = UserDefaults.standard.string(forKey: "marketplace-api-url") ?? "http://127.0.0.1:8001"
     private var activeEndpoint = UserDefaults.standard.string(forKey: "marketplace-api-url") ?? "http://127.0.0.1:8001"
@@ -179,6 +197,7 @@ struct MarketplaceAccountView: View {
     private func updateSelection() {
         if selectedLayout == nil { selectedLayoutID = ""; submissionLayout = nil }
     }
+    let openCreator: (String) -> Void
     let importLayout: (LayoutDocument) -> Void
     @State private var title = ""
     @State private var description = ""
@@ -209,14 +228,14 @@ struct MarketplaceAccountView: View {
                         UserDefaults.standard.removeObject(forKey: "marketplace-deletion-receipt")
                     }
                     Link("Open Apple Account", destination: URL(string: "https://account.apple.com/")!)
-                    Button("Clear local account credentials") { account.clearCredentials() }
+                    if account.credentialCleanupFailed { Button("Retry credential cleanup") { account.clearCredentials() } }
                 }.font(.callout).padding().background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
             }
             DisclosureGroup("Blocked creators (\(account.blockedCreators.count))") {
                 Text(account.identity == nil ? "Blocks apply on this Mac while signed out." : "Blocks apply to your signed-in account.").foregroundStyle(.secondary)
                 ForEach(account.blockedCreators.sorted(), id: \.self) { creator in
                     HStack {
-                        Text(creator).font(.caption).textSelection(.enabled)
+                        Button("Creator " + String(creator.prefix(8))) { openCreator(creator) }.buttonStyle(.link)
                         Spacer()
                         Button("Unblock") { account.perform { try await account.setBlocked(creator, blocked: false) } }
                     }
@@ -225,7 +244,6 @@ struct MarketplaceAccountView: View {
             if account.identity != nil {
                 HStack {
                     Button("Delete account…", role: .destructive) { deleting = true }
-                    Button("Check deletion status") { account.checkDeletion() }
                 }
             }
             if account.accountID != nil {
@@ -299,6 +317,13 @@ struct MarketplaceAccountView: View {
                 }
             }.padding(24).frame(width: 600)
                 .onChange(of: selectedLayoutID) { _, _ in submissionLayout = selectedLayout; title = selectedLayout?.name ?? "" }
+        }
+        .sheet(isPresented: $account.deletionInProgress) {
+            VStack(spacing: 18) {
+                ProgressView()
+                Text("Deleting account…").font(.title2.bold())
+                Text("Please wait while we confirm deletion.").foregroundStyle(.secondary)
+            }.padding(32).frame(width: 400).interactiveDismissDisabled()
         }
         .sheet(isPresented: $deleting) {
             VStack(alignment: .leading, spacing: 16) {

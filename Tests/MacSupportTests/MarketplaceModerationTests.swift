@@ -76,6 +76,64 @@ final class MarketplaceModerationTests: XCTestCase {
         let legacy = listingJSON.replacingOccurrences(of: #""creator_id":"creator-1","#, with: "")
         XCTAssertNil(try JSONDecoder().decode(PublicListing.self, from: Data(legacy.utf8)).creator_id)
     }
+    func testCreatorPageUsesFilterAndCursorWithPublicName() async throws {
+        var api = try MarketplaceAPI(baseURL: "http://localhost:8001")
+        api.signedIn = { false }
+        let named = listingJSON.replacingOccurrences(of: #""title":"Test""#, with: #""creator_name":"River","title":"Test""#)
+        api.send = { request in
+            let query = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!.queryItems!
+            XCTAssertEqual(query.first { $0.name == "creator_id" }?.value, "creator-1")
+            XCTAssertEqual(query.first { $0.name == "cursor" }?.value, "a+b/=")
+            return (Data((#"{"items":["# + named + #"],"next_cursor":"next"}"#).utf8), 200)
+        }
+        let page = try await api.creatorLayouts("creator-1", cursor: "a+b/=")
+        XCTAssertEqual(page.items.first?.creatorName, "River")
+        XCTAssertEqual(page.next_cursor, "next")
+        api.send = { _ in (Data((#"{"items":["# + named + "]}").utf8), 200) }
+        let other = try await api.creatorLayouts("other", cursor: "a+b/=")
+        XCTAssertTrue(other.items.isEmpty, "Never show another creator’s work if the server ignores the filter")
+    }
+    func testCreatorPageFallbackScansOlderServerPages() async throws {
+        var api = try MarketplaceAPI(baseURL: "http://localhost:8001")
+        api.signedIn = { false }
+        var calls = 0
+        api.send = { request in
+            calls += 1
+            if calls == 1 { return (Data(#"{"items":[],"next_cursor":"page-two"}"#.utf8), 200) }
+            XCTAssertEqual(URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "cursor" }?.value, "page-two")
+            return (Data((#"{"items":["# + self.listingJSON + "]}").utf8), 200)
+        }
+        let page = try await api.creatorLayouts("creator-1")
+        XCTAssertEqual(page.items.count, 1)
+        XCTAssertEqual(calls, 2)
+        api.send = { _ in (Data(#"{"items":[],"next_cursor":"repeated"}"#.utf8), 200) }
+        do { _ = try await api.creatorLayouts("creator-1"); XCTFail("Repeated cursors must terminate") } catch {}
+    }
+    func testDeletionWaitUsesCapturedTokenUntilComplete() async throws {
+        var api = try MarketplaceAPI(baseURL: "http://localhost:8001")
+        api.token = { XCTFail("Must not read or refresh cleared credentials"); return "" }
+        var requests = 0, pauses = 0
+        api.send = { request in
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer memory-only")
+            XCTAssertEqual(request.timeoutInterval, 5)
+            requests += 1
+            return (Data((requests < 3 ? #"{"status":"pending"}"# : #"{"status":"complete"}"#).utf8), 200)
+        }
+        let result = try await api.waitForDeletion(accessToken: "memory-only", pause: { pauses += 1 })
+        XCTAssertEqual(result.status, "complete")
+        XCTAssertEqual(requests, 3)
+        XCTAssertEqual(pauses, 2)
+    }
+    func testDeletionWaitDoesNotClaimCompletionOnTimeoutOrError() async throws {
+        var api = try MarketplaceAPI(baseURL: "http://localhost:8001")
+        var requests = 0
+        api.send = { _ in requests += 1; return (Data(#"{"status":"pending"}"#.utf8), 200) }
+        let result = try await api.waitForDeletion(accessToken: "token", attempts: 2, pause: {})
+        XCTAssertEqual(result.status, "pending")
+        XCTAssertEqual(requests, 3)
+        api.send = { _ in (Data(), 401) }
+        do { _ = try await api.waitForDeletion(accessToken: "token", pause: {}); XCTFail() } catch {}
+    }
     func testDeletionCleanupDoesNotDependOnRevocationNetwork() async throws {
         var stored = OAuthTokens(accessToken: "test", refreshToken: "refresh", expires: .distantFuture, identity: MarketplaceIdentity(issuer: "issuer", subject: "subject")) as OAuthTokens?
         let auth = MarketplaceAuth(read: { stored }, write: { stored = $0 }, clear: { stored = nil }, exchange: { _, _, _ in XCTFail(); throw CancellationError() })

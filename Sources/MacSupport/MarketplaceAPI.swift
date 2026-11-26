@@ -26,8 +26,10 @@ public struct MarketplaceAPI {
               url.scheme == "https" || (url.scheme == "http" && ["127.0.0.1", "localhost", "::1"].contains(host)) else { throw MarketplaceAuthError("Use an HTTPS server address, or HTTP on localhost for development.") }
         self.baseURL = url
     }
-    public func request(_ path: String, method: String = "GET", body: Data? = nil, authenticated: Bool = true) async throws -> Data {
-        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+    public func request(_ path: String, method: String = "GET", body: Data? = nil, authenticated: Bool = true, query: [URLQueryItem] = [], timeout: TimeInterval = 30) async throws -> Data {
+        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        if !query.isEmpty { components.queryItems = query }
+        var request = URLRequest(url: components.url!, timeoutInterval: timeout)
         request.httpMethod = method; request.httpBody = body
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if body != nil { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
@@ -84,9 +86,35 @@ public struct PublicListing: Decodable, Identifiable {
     public let description: String
     public let input_type: String
     public let creator_id: String?
+    public let creator_name: String?
+    public var creatorName: String {
+        if let name = creator_name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty { return name }
+        return creator_id.map { "Creator " + String($0.prefix(8)) } ?? "Community"
+    }
     public let current_revision: Revision
 }
+public struct MarketplaceCatalogPage: Decodable {
+    public let items: [PublicListing]
+    public let next_cursor: String?
+}
 extension MarketplaceAPI {
+    public func creatorLayouts(_ creator: String, cursor: String? = nil) async throws -> MarketplaceCatalogPage {
+        var next = cursor
+        var visited = Set<String>()
+        while true {
+            try Task.checkCancellation()
+            var query = [URLQueryItem(name: "creator_id", value: creator), URLQueryItem(name: "limit", value: "100")]
+            if let next {
+                guard visited.insert(next).inserted else { throw MarketplaceAuthError("The server repeated a catalog page. Try again later.") }
+                query.append(URLQueryItem(name: "cursor", value: next))
+            }
+            let page = try JSONDecoder().decode(MarketplaceCatalogPage.self, from: await request("v1/layouts", authenticated: signedIn(), query: query))
+            // Older servers ignore creator_id. Filter their paginated results locally as a fallback.
+            let items = page.items.filter { $0.creator_id == creator }
+            if !items.isEmpty || page.next_cursor == nil { return MarketplaceCatalogPage(items: items, next_cursor: page.next_cursor) }
+            next = page.next_cursor
+        }
+    }
     public func browse() async throws -> [PublicListing] {
         struct Page: Decodable { let items: [PublicListing] }
         return try JSONDecoder().decode(Page.self, from: await request("v1/layouts", authenticated: try await signedIn())).items
@@ -138,7 +166,21 @@ extension MarketplaceAPI {
         try JSONDecoder().decode(MarketplaceReview.self, from: await request("v1/me/layouts/\(listing.id)/revisions/\(listing.latest_revision)"))
     }
     public func deletionStatus() async throws -> MarketplaceDeletion {
-        try JSONDecoder().decode(MarketplaceDeletion.self, from: await request("v1/me/deletion"))
+        try JSONDecoder().decode(MarketplaceDeletion.self, from: await request("v1/me/deletion", timeout: 5))
+    }
+    /// The captured access token lives only for this operation. Never refresh or persist it.
+    public func waitForDeletion(accessToken: String, attempts: Int = 45, pause: () async throws -> Void = { try await Task.sleep(for: .seconds(2)) }) async throws -> MarketplaceDeletion {
+        var client = self
+        client.token = { accessToken }
+        let deadline = Date().addingTimeInterval(90)
+        var result = try await client.deletionStatus()
+        for _ in 0..<max(0, attempts) {
+            guard result.status == "pending", Date() < deadline else { return result }
+            try await pause()
+            try Task.checkCancellation()
+            result = try await client.deletionStatus()
+        }
+        return result
     }
     public func deleteAccount() async throws -> MarketplaceDeletion {
         try JSONDecoder().decode(MarketplaceDeletion.self, from: await request("v1/me/deletion", method: "POST", body: Data(#"{"confirmation":"delete_my_account"}"#.utf8)))
