@@ -257,7 +257,7 @@ struct HostView: View {
     @State private var duplicateSource: LocalLayout?
     @State private var section: WorkspaceSection = .connection
     enum WorkspaceSection: String, CaseIterable, Identifiable {
-        case connection = "Connection", layouts = "Layout & mappings", marketplace = "Marketplace", assistant = "AI helper", general = "General", diagnostics = "Diagnostics", about = "About"
+        case connection = "Connection", layouts = "Layout & mappings", marketplace = "Marketplace", assistant = "AI helper", general = "General", about = "About"
         var id: String { rawValue }
         var icon: String {
             switch self {
@@ -266,7 +266,6 @@ struct HostView: View {
             case .marketplace: "square.grid.2x2"
             case .assistant: "sparkles"
             case .general: "gearshape"
-            case .diagnostics: "waveform.path.ecg"
             case .about: "info.circle"
             }
         }
@@ -283,13 +282,12 @@ struct HostView: View {
     @State private var controlsPage = -1
     @State private var setupLayoutCommandID: String?
     @State private var previousMode = OutputMode.keyboardMouse
-    @State private var settingsTab = 0
     @State private var confirmDataAction = false
     @State private var dataAction = "delete"
     @State private var deletionLayout: LocalLayout?
     @State private var accessibilityAllowed = KeyboardMousePermissions.allowed
     private let accent = PadAppearance.accent
-    enum Panel: String, Identifiable { case settings, mappings, gamepadMappings, layout; var id: String { rawValue } }
+    enum Panel: String, Identifiable { case mappings, gamepadMappings, layout; var id: String { rawValue } }
     init(model: HostModel, initialStep: Int = 0) {
         self.model = model; _step = State(initialValue: initialStep)
     }
@@ -461,7 +459,6 @@ struct HostView: View {
         .onChange(of: showingSettings) { _, showing in model.pauseOutput(showing && section != .connection) }
         .sheet(item: $panel, onDismiss: { model.pauseOutput(panel != nil || (!isSettingUp && showingSettings && section != .connection)) }) { selected in
             switch selected {
-            case .settings: settingsView
             case .mappings, .gamepadMappings, .layout:
                 LayoutEditor(layout: model.portable ?? LocalLayout(name: "New Controls", style: .xbox)) { layout, _ in model.saveLocal(layout) }
 
@@ -555,7 +552,7 @@ struct HostView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Button { showingSettings = false } label: { Label("Back to controller", systemImage: "chevron.left") }
                     .buttonStyle(.plain).padding(.horizontal, 12).padding(.top, 20)
-                List(WorkspaceSection.allCases.filter { $0 != .assistant && $0 != .diagnostics }, selection: Binding<WorkspaceSection?>(get: { section }, set: { if let value = $0 { section = value } })) { item in
+                List(WorkspaceSection.allCases.filter { $0 != .assistant }, selection: Binding<WorkspaceSection?>(get: { section }, set: { if let value = $0 { section = value } })) { item in
                     Label(item.rawValue, systemImage: item.icon).tag(item)
                 }.listStyle(.sidebar)
                 Label(model.update.connected ? "Connected" : model.running ? "Connecting…" : "Not connected",
@@ -627,6 +624,12 @@ struct HostView: View {
                     Button("Check for Updates…") { appUpdater.checkForUpdates() }
                         .disabled(!appUpdater.canCheckForUpdates)
                 }
+                Section("Help") {
+                    Button("Show setup again") {
+                        model.stop(); model.pauseOutput(false); testing = false; pairingAttempt = false
+                        pairing = false; step = 0; companionReady = false; replaySetup = true
+                    }
+                }
                 Section("Permissions") {
                     Button("Accessibility settings") { AccessibilityHelper.shared.show() }
                 }
@@ -643,24 +646,13 @@ struct HostView: View {
                     Button("Erase all local Mac data…", role: .destructive) { dataAction = "erase"; confirmDataAction = true }
                 }
             }.formStyle(.grouped)
-        case .diagnostics:
-            Form {
-                LabeledContent("Status", value: model.update.message)
-                LabeledContent("Transport", value: model.transport.rawValue)
-                Button("Open input log") { NSWorkspace.shared.open(InputDiagnostics.url) }
-                Text("Gamepad Air output only. Keeps the last five minutes, up to 512 KB; older entries are discarded.").foregroundStyle(.secondary)
-                Button("Local Network settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")!) }
-            }.formStyle(.grouped)
         case .about:
             Form {
                 Text("Gamepad Air").font(.title2)
                 Text(AppInformation.privacy)
                 Link("Support", destination: AppInformation.supportURL)
                 Link("Source and setup", destination: AppInformation.projectURL)
-                Button("Replay getting started") {
-                    model.stop(); model.pauseOutput(false); testing = false; pairingAttempt = false
-                    pairing = false; step = 0; companionReady = false; replaySetup = true
-                }
+
             }.formStyle(.grouped)
         }
     }
@@ -991,69 +983,7 @@ struct HostView: View {
                 .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.primary.opacity(0.08)))
         }.buttonStyle(.plain)
     }
-    private var settingsView: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Text("Settings").font(.title2.weight(.medium))
-                Spacer()
-                Button("Done") { panel = nil }.keyboardShortcut(.cancelAction)
-            }
-            HStack {
-                ForEach(Array(["Controls", "Layouts", "Diagnostics", "About"].enumerated()), id: \.offset) { index, title in
-                    Button(title) { settingsTab = index }.buttonStyle(PadActionStyle(prominent: settingsTab == index))
-                }
-            }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if settingsTab == 0 {
-                        Text("Input mappings").font(.headline)
-                        Text(model.mode == .gamepad ? "Remap controller buttons and adjust stick axes. Mappings are saved with the layout and synchronized with your phone." : "Edit key combinations, mouse sensitivity, and automatic running. Arrange controls in the Layouts tab.").foregroundStyle(.secondary)
-                        Button("Edit mappings") { panel = model.mode == .gamepad ? .gamepadMappings : .mappings }
-                    } else if settingsTab == 1 {
-                        Text(model.portable?.name ?? "Your current controls").font(.headline)
-                        Text("Import your iPhone profile to arrange it here. Export your changes and import them on your phone as a new layout.").foregroundStyle(.secondary)
-                        Button("Open layout studio") { panel = .layout }
-                        HStack {
-                            Button("Import layout…") { model.importProfile() }.disabled(model.running)
-                            Button("Export layout…") { model.exportProfile() }.disabled(model.running || model.portable == nil)
-                        }
-                        if model.running { Text("Disconnect before changing profiles.").font(.callout).foregroundStyle(.secondary) }
-                        if let notice = model.profileNotice { Text(notice).font(.callout) }
-                    } else if settingsTab == 3 {
-                        Text("Gamepad Air").font(.headline)
-                        Button("Replay getting started") { model.stop(); testing = false; pairingAttempt = false; connectionWalkthroughComplete = false; pairing = false; step = 0; panel = nil; companionReady = false; replaySetup = true }
-                        HStack {
-                            Link("Support", destination: AppInformation.supportURL)
-                            Link("Source and setup", destination: AppInformation.projectURL)
-                        }
-                        Text(AppInformation.privacy).textSelection(.enabled)
-                    } else {
-                        Text(model.update.message).font(.callout).textSelection(.enabled)
-                        Text("USB: unlock your phone, trust this Mac, and choose USB cable on the phone. Wi-Fi: use the same private network; hotel or guest networks may block devices from connecting.").foregroundStyle(.secondary)
-                        HStack {
-                            Button("Local Network settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")!) }
-                            Button("Accessibility settings") { AccessibilityHelper.shared.show() }
-                            Button("Open input log") { NSWorkspace.shared.open(InputDiagnostics.url) }
-                Text("Gamepad Air output only. Keeps the last five minutes, up to 512 KB; older entries are discarded.").foregroundStyle(.secondary)
-                        }
-                        Divider()
-                        Text("Live input").font(.headline)
-                        Text("\(model.update.frames) frames · \(model.transport.rawValue)").font(.callout).foregroundStyle(.secondary)
-                        HStack(spacing: 28) {
-                            stick("Left stick", x: model.update.state.leftX, y: model.update.state.leftY)
-                            stick("Right stick", x: model.update.state.rightX, y: model.update.state.rightY)
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("LT \(model.update.state.leftTrigger) · RT \(model.update.state.rightTrigger)")
-                                Text("D-pad \(model.update.state.hat)")
-                                Text("Buttons \(model.update.state.buttons)")
-                                Text("Custom \(model.update.state.customButtons)")
-                            }.font(.caption.monospaced())
-                        }
-                    }
-                }.frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }.padding(24).frame(width: 620, height: 510).background { PadBackdrop() }.tint(accent)
-    }
+
     private func stick(_ title: String, x: Int16, y: Int16) -> some View {
         VStack(spacing: 8) {
             ZStack {

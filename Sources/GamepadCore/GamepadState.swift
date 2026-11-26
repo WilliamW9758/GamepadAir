@@ -173,10 +173,10 @@ public enum StickTapAction: String, Codable, CaseIterable {
     public var label: String {
         switch self {
         case .off: return "Off"
-        case .leftClick: return "L3 · Sneak mapping"
-        case .rightTrigger: return "RT · Attack mapping"
-        case .rightClick: return "R3 mapping"
-        case .leftTrigger: return "LT · Block mapping"
+        case .leftClick: return "L3 input"
+        case .rightTrigger: return "RT / R2 input"
+        case .rightClick: return "R3 input"
+        case .leftTrigger: return "LT / L2 input"
         }
     }
     public func apply(to state: inout GamepadState) {

@@ -70,6 +70,7 @@ struct DocumentMotionSettingsView: View {
                     Text("Off").tag("off"); Text("Gyro aim").tag("aim")
                     if document.inputType == "gamepad" { Text("Analog steering").tag("steering") }
                 }
+                if (document.motion?.mode ?? "off") != "off" {
                 Picker("Activation button", selection: Binding(get: { document.motionActivationControl?.id ?? "" }, set: { value in
                     if document.motion == nil { document.motion = DocumentMotionSettings() }
                     document.motion?.activationControl = value
@@ -81,7 +82,8 @@ struct DocumentMotionSettingsView: View {
                 }
                 Slider(value: Binding(get: { document.motion?.sensitivity ?? 1 }, set: { if document.motion == nil { document.motion = DocumentMotionSettings() }; document.motion?.sensitivity = $0 }), in: 0.1...4) { Text("Sensitivity") }
                 Slider(value: Binding(get: { document.motion?.deadZone ?? 0.03 }, set: { if document.motion == nil { document.motion = DocumentMotionSettings() }; document.motion?.deadZone = $0 }), in: 0...0.3) { Text("Dead zone") }
-                Text("Hold the selected button to calibrate and activate motion. Release to stop; hold again to recalibrate. The button keeps its normal mapping. Aim controls the right stick; steering controls left X. Requires a physical iPhone.").foregroundStyle(.secondary)
+                Text("Hold the selected button to calibrate and activate motion. Release to stop; hold again to recalibrate. The button keeps its normal mapping. Aim moves the mouse or right stick; steering controls left X. Requires a physical iPhone.").foregroundStyle(.secondary)
+                }
             }
         }.formStyle(.grouped)
     }

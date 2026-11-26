@@ -173,7 +173,7 @@ struct PhoneGamepadApp: App {
                                         .disabled(selectedDiameter.wrappedValue >= 240).accessibilityLabel("Increase size by one point")
                                 }
                                 Button { buttonOptions = true } label: {
-                                    Label("Button options", systemImage: "slider.horizontal.3")
+                                    Label("Control options", systemImage: "slider.horizontal.3")
                                         .frame(minWidth: 110, minHeight: 44)
                                 }
                             }
@@ -185,6 +185,17 @@ struct PhoneGamepadApp: App {
                         if layout.hasCursorSwitching { Picker("Mode", selection: Binding(get: { modeID }, set: { layouts.selectMode($0); selectedID = nil; release() })) {
                             ForEach(layout.document.modes, id: \.id) { Text($0.name).tag($0.id) }
                         }.pickerStyle(.segmented).frame(width: 180) }
+                        Menu("Add control") {
+                            ForEach(["customButton", "leftStick", "rightStick", "dpad", "radial"] + (layout.effectiveInputType == .keyboardMouse ? ["trackpad"] : []), id: \.self) { role in
+                                Button(["customButton": "Button", "leftStick": "Left joystick", "rightStick": "Right joystick", "dpad": "D-pad", "radial": "Radial", "trackpad": "Trackpad"][role]!) {
+                                    layouts.change { doc in
+                                        if doc.controls.contains(where: { $0.role == role }) && role != "customButton" {
+                                            try doc.setControlVisible(role: role, visible: true, modeID: modeID)
+                                        } else { _ = try doc.addControl(role: role) }
+                                    }; release()
+                                }.disabled(role == "customButton" ? layout.document.controls.filter { $0.role == role }.count >= 16 : layout.document.controls.contains { $0.role == role && layout.document.resolvedControl($0.id, modeID: modeID)?.hidden != true })
+                            }
+                        }
                         Spacer()
                         Button("Done editing") { editing = false; selectedID = nil; release() }
                             .buttonStyle(PadActionStyle(prominent: true)).frame(minWidth: 120, minHeight: 44)
@@ -262,7 +273,7 @@ struct PhoneGamepadApp: App {
                                 layouts.change { try $0.placeControl(controlID, at: DocumentPlacement(x: p.x, y: p.y, scale: p.scale, width: axis == "Width" ? value : p.width ?? 0.28, height: axis == "Height" ? value : p.height ?? 0.4), modeID: modeID) }
                             }), in: 0.03...1) { Text(axis) }
                         }
-                        Button("Reset shape and position") { layouts.change { try $0.resetPlacement(controlID, modeID: modeID) } }
+
                     }
                 }
                 if layout.hasCursorSwitching { Section("Position across modes") {
@@ -289,6 +300,65 @@ struct PhoneGamepadApp: App {
                         Text("4 directions selects one direction at a time. 8 directions also allows diagonals.")
                     }
                 }
+                if selectedID == "radial" {
+                    Section("Radial directions") {
+                    Text("Hold, swipe, and release to select. Return to the center to cancel.").font(.callout)
+                    if mode.radialEnabled == true {
+                        Button("Hide separate buttons used by the radial") {
+                            layouts.change { try $0.hideRadialSources(modeID: modeID) }; release()
+                        }
+                        ForEach(0..<8, id: \.self) { i in
+                            Picker(["↑ Up", "↗ Upper right", "→ Right", "↘ Lower right", "↓ Down", "↙ Lower left", "← Left", "↖ Upper left"][i], selection: Binding(get: { (mode.radialSlots ?? Array(repeating: -1, count: 8))[i] }, set: { slot in
+                                layouts.change { try $0.assignRadial(direction: i, customSlot: slot) }; release()
+                            })) {
+                                Text("None").tag(-1)
+                                ForEach(layout.document.controls.filter { $0.role == "customButton" }, id: \.id) { control in Text(control.label ?? "Custom \((control.customSlot ?? 0) + 1)").tag(control.customSlot!) }
+                            }
+                        }
+                    }
+                    }
+                }
+                if selectedID == "left-stick" || (selectedID == "right-stick" && !mode.cursor) {
+                    Section("Stick behavior") {
+                        let left = selectedID == "left-stick"
+                        Picker("Position", selection: optionBinding(left ? \.floatingLeft : \.floatingRight, default: false)) {
+                            Text("Center on touch").tag(true)
+                            Text("Fixed position").tag(false)
+                        }
+                        Picker("Tap action", selection: Binding(get: { left ? mode.leftTap : mode.rightTap }, set: { value in
+                            changeMode { if left { $0.leftTap = value.rawValue } else { $0.rightTap = value.rawValue } }; release()
+                        })) {
+                            ForEach(StickTapAction.allCases, id: \.self) { Text($0.label).tag($0) }
+                        }
+                        Text("A quick tap sends the selected control's input. Holding near the center triggers L3 or R3.")
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
+                }
+                if selectedID == "right-trigger" && !mode.cursor {
+                    Section("Hold and drag") {
+                        if (layout.document.motion?.mode ?? "off") == "off" {
+                            Toggle("Drag to aim while holding", isOn: optionBinding(\.holdAimEnabled, default: true))
+                            if mode.holdAimEnabled {
+                                Picker("Hold delay", selection: optionBinding(\.holdAimDelay, default: 0.3)) {
+                                    ForEach([0.2, 0.3, 0.5, 0.8], id: \.self) { Text("\($0, specifier: "%.1f") seconds").tag($0) }
+                                }
+                            }
+                            Text("After holding this trigger, drag your finger to aim. This is a touch gesture, not gyro motion.").font(.callout)
+                        } else {
+                            Text("Hold-and-drag aiming is unavailable while gyro or steering is enabled.").font(.callout)
+                        }
+                    }
+                }
+                if selectedID == "trackpad" || (selectedID == "right-stick" && mode.cursor) {
+                    Section("Trackpad gestures") {
+                        if selectedID == "trackpad" {
+                            Toggle("Two-finger scrolling", isOn: optionBinding(\.trackpadScroll, default: true))
+                        }
+                        Picker("Hold for right-click", selection: optionBinding(\.trackpadHoldDelay, default: 0.5)) {
+                            ForEach([0.3, 0.5, 0.7], id: \.self) { Text("\($0, specifier: "%.1f") seconds").tag($0) }
+                        }
+                    }
+                }
                 Section("Appearance") {
                     Picker("Button color", selection: tintBinding) {
                         ForEach(ButtonTint.allCases, id: \.self) { tint in
@@ -306,7 +376,7 @@ struct PhoneGamepadApp: App {
                         buttonOptions = false; selectedID = nil; release()
                     }
                     if let id = selectedID, let controlID = layout.controlID(runtimeID: id) {
-                        Button("Remove button", role: .destructive) {
+                        Button("Remove control", role: .destructive) {
                             layouts.change { try $0.removeControl(controlID) }
                             buttonOptions = false; selectedID = nil; release()
                         }
@@ -355,42 +425,6 @@ struct PhoneGamepadApp: App {
                         Button("New pairing code") { server.newPairingCode(); release() }
                     }
                 }
-                if layout.effectiveInputType == .gamepad {
-                    Section("Controller emulation") {
-                        Picker("Emulate controller", selection: Binding(get: { layout.effectiveControllerStyle }, set: { value in
-                            if layout.isPreset { layouts.copy(name: layout.name + " Custom") }
-                            release()
-                            layouts.change { $0.controllerStyle = value == .xbox ? "xbox" : "playstation" }
-                        })) {
-                            ForEach(PadStyle.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                        }
-                        Text("Changes the controller seen by your game. Your button positions and mappings stay the same. You may need to restart the game.")
-                            .font(.callout).foregroundStyle(.secondary)
-                    }
-                }
-                Section("Layout touch feedback") {
-                    Picker("Button haptics", selection: Binding(get: { layout.effectiveTouchHaptic }, set: { value in
-                        if layout.isPreset { layouts.copy(name: layout.name + " Custom") }
-                        layouts.change { $0.haptics = value.rawValue.lowercased() }
-                        TouchPadView.playHaptic(value)
-                    })) {
-                        ForEach(ButtonHaptic.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }
-                    Text("Applies to all buttons and L3/R3 in this layout. Stick movement stays silent. Game rumble is separate.")
-                        .font(.callout).foregroundStyle(.secondary)
-                }
-                Section("Stick positioning") {
-                    Picker("Left stick", selection: optionBinding(\.floatingLeft, default: false)) {
-                        Text("Center on touch").tag(true)
-                        Text("Fixed position").tag(false)
-                    }
-                    Picker("Right stick", selection: optionBinding(\.floatingRight, default: false)) {
-                        Text("Center on touch").tag(true)
-                        Text("Fixed position").tag(false)
-                    }
-                    Text("Applies to this layout and mode. Center on touch places the stick's neutral point where your finger first lands.")
-                        .font(.callout).foregroundStyle(.secondary)
-                }
                 Section("Saved layouts") {
                     Picker("Layout", selection: Binding(get: { layouts.catalog.selectedID }, set: {
                         layouts.select($0); selectedID = nil; editing = false; release()
@@ -405,95 +439,84 @@ struct PhoneGamepadApp: App {
                     }
                     if layout.isPreset { Text("Presets stay unchanged. Save a copy to customize.").font(.callout) }
                 }
-                DisclosureGroup("Right-stick cursor switching") {
-                    Toggle("Allow switching between aim and cursor", isOn: Binding(get: { layout.hasCursorSwitching }, set: { enabled in
-                        layouts.change { $0.setModeSwitching(enabled) }; release()
-                    }))
-                    if layout.hasCursorSwitching { Picker("Edit mode", selection: Binding(get: { modeID }, set: { layouts.selectMode($0); selectedID = nil; release() })) {
-                        ForEach(layout.document.modes, id: \.id) { Text($0.name).tag($0.id) }
-                    }
-                    }
-                    if layout.hasCursorSwitching { TextField("Mode name", text: binding(\.name)) }
-                    Picker("Right control behavior", selection: Binding(get: { mode.cursor }, set: { value in changeMode { $0.pointerMode = value ? "cursor" : "aim" }; release() })) {
-                        Text("Camera aim · analog stick").tag(false)
-                        Text("Menu pointer · trackpad").tag(true)
-                    }
-                }.disabled(layout.isPreset)
-                DisclosureGroup("Add and manage controls") {
-                    if layout.effectiveInputType == .keyboardMouse {
-                        Toggle("Trackpad", isOn: Binding(get: { layout.document.controls.contains { $0.role == "trackpad" && layout.document.resolvedControl($0.id, modeID: modeID)?.hidden != true } }, set: { value in layouts.change { try $0.setControlVisible(role: "trackpad", visible: value, modeID: modeID) }; release() }))
-                        Toggle("Two-finger scrolling", isOn: optionBinding(\.trackpadScroll, default: true))
-                    }
-                    Toggle("D-pad", isOn: Binding(get: { mode.showDPad }, set: { value in layouts.change { try $0.setControlVisible(role: "dpad", visible: value, modeID: modeID) }; release() }))
-                    Button("Add custom button") {
-                        layouts.change { _ = try $0.addControl(role: "customButton") }
-                        settings = false; editing = true; release()
-                    }.disabled(layout.document.controls.filter { $0.role == "customButton" }.count >= 16)
-                    Button("Reset mode arrangement…", role: .destructive) { settings = false; confirmReset = true }
-                }.disabled(layout.isPreset)
-                DisclosureGroup("Radial quick bar") {
-                    Toggle("Show radial button", isOn: Binding(get: { mode.radialEnabled ?? false }, set: { value in
-                        layouts.change { try $0.setControlVisible(role: "radial", visible: value, modeID: modeID) }; release()
-                    }))
-                    Text("Hold, swipe, and release to select. Return to the center to cancel.").font(.callout)
-                    if mode.radialEnabled == true {
-                        Button("Hide separate buttons used by the radial") {
-                            layouts.change { try $0.hideRadialSources(modeID: modeID) }; release()
-                        }
-                        ForEach(0..<8, id: \.self) { i in
-                            Picker(["↑ Up", "↗ Upper right", "→ Right", "↘ Lower right", "↓ Down", "↙ Lower left", "← Left", "↖ Upper left"][i], selection: Binding(get: { (mode.radialSlots ?? Array(repeating: -1, count: 8))[i] }, set: { slot in
-                                layouts.change { try $0.assignRadial(direction: i, customSlot: slot) }; release()
-                            })) {
-                                Text("None").tag(-1)
-                                ForEach(layout.document.controls.filter { $0.role == "customButton" }, id: \.id) { control in Text(control.label ?? "Custom \((control.customSlot ?? 0) + 1)").tag(control.customSlot!) }
+                Section("Current layout") {
+                    NavigationLink("Layout options") {
+                        Form {
+                            if layout.effectiveInputType == .gamepad {
+                                Section("Controller emulation") {
+                                    Picker("Emulate controller", selection: Binding(get: { layout.effectiveControllerStyle }, set: { value in
+                                        if layout.isPreset { layouts.copy(name: layout.name + " Custom") }
+                                        release()
+                                        layouts.change { $0.controllerStyle = value == .xbox ? "xbox" : "playstation" }
+                                    })) {
+                                        ForEach(PadStyle.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                                    }
+                                    Text("Changes the controller seen by your game. Your button positions and mappings stay the same. You may need to restart the game.")
+                                        .font(.callout).foregroundStyle(.secondary)
+                                }
                             }
-                        }
+                            Section("Layout touch feedback") {
+                                Picker("Button haptics", selection: Binding(get: { layout.effectiveTouchHaptic }, set: { value in
+                                    if layout.isPreset { layouts.copy(name: layout.name + " Custom") }
+                                    layouts.change { $0.haptics = value.rawValue.lowercased() }
+                                    TouchPadView.playHaptic(value)
+                                })) {
+                                    ForEach(ButtonHaptic.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                                }
+                                Text("Applies to all buttons and L3/R3 in this layout. Stick movement stays silent. Game rumble is separate.")
+                                    .font(.callout).foregroundStyle(.secondary)
+                            }
+                            if layout.effectiveInputType == .keyboardMouse && layout.document.controls.contains(where: { $0.role == "rightStick" }) {
+                            DisclosureGroup("Right-stick cursor switching") {
+                                Toggle("Allow switching between aim and cursor", isOn: Binding(get: { layout.hasCursorSwitching }, set: { enabled in
+                                    layouts.change { $0.setModeSwitching(enabled) }; release()
+                                }))
+                                if layout.hasCursorSwitching { Picker("Edit mode", selection: Binding(get: { modeID }, set: { layouts.selectMode($0); selectedID = nil; release() })) {
+                                    ForEach(layout.document.modes, id: \.id) { Text($0.name).tag($0.id) }
+                                }
+                                }
+                                if layout.hasCursorSwitching { TextField("Mode name", text: binding(\.name)) }
+                                Picker("Right control behavior", selection: Binding(get: { mode.cursor }, set: { value in changeMode { $0.pointerMode = value ? "cursor" : "aim" }; release() })) {
+                                    Text("Camera aim · analog stick").tag(false)
+                                    Text("Menu pointer · trackpad").tag(true)
+                                }
+                            }.disabled(layout.isPreset)
+                            }
+                            DisclosureGroup("Motion") {
+                                Picker("Motion behavior", selection: Binding(get: { layout.document.motion?.mode ?? "off" }, set: { value in
+                                    layouts.change { doc in
+                                        if doc.motion == nil { doc.motion = DocumentMotionSettings() }
+                                        doc.motion?.mode = value
+                                        if value != "off" { try doc.revealMotionActivation(modeID: modeID) }
+                                    }; release()
+                                })) {
+                                    Text("Off").tag("off"); Text("Gyro aim").tag("aim")
+                                    if layout.effectiveInputType == .gamepad { Text("Analog steering").tag("steering") }
+                                }
+                                if (layout.document.motion?.mode ?? "off") != "off" {
+                                Picker("Activation button", selection: Binding(get: { layout.document.motionActivationControl?.id ?? "" }, set: { value in
+                                    layouts.change { doc in
+                                        if doc.motion == nil { doc.motion = DocumentMotionSettings() }
+                                        doc.motion?.activationControl = value
+                                        try doc.revealMotionActivation(modeID: modeID)
+                                    }; release()
+                                })) {
+                                    ForEach(layout.document.motionActivationControls, id: \.id) { control in
+                                        Text(layout.displayLabels(modeID: modeID)[control.runtimeID] ?? control.id).tag(control.id)
+                                    }
+                                }
+                                Slider(value: Binding(get: { layout.document.motion?.sensitivity ?? 1 }, set: { value in layouts.change { if $0.motion == nil { $0.motion = DocumentMotionSettings() }; $0.motion?.sensitivity = value } }), in: 0.1...4) { Text("Sensitivity") }
+                                Slider(value: Binding(get: { layout.document.motion?.deadZone ?? 0.03 }, set: { value in layouts.change { if $0.motion == nil { $0.motion = DocumentMotionSettings() }; $0.motion?.deadZone = value } }), in: 0...0.3) { Text("Dead zone") }
+                                Text("Hold the selected button to calibrate your current angle. Release to stop, then hold again to recalibrate. The button keeps its mapping. Aim moves the mouse or right stick; steering controls left X.").font(.callout)
+                                }
+                            }.disabled(layout.isPreset)
+                            Section {
+                                Button("Reset mode arrangement…", role: .destructive) { settings = false; confirmReset = true }
+                                    .disabled(layout.isPreset)
+                            }
+                        }.navigationTitle("Layout options")
                     }
-                }.disabled(layout.isPreset)
-                DisclosureGroup("Stick behavior") {
-                    Picker("Left stick tap", selection: Binding(get: { mode.leftTap }, set: { value in changeMode { $0.leftTap = value.rawValue }; release() })) {
-                        ForEach(StickTapAction.allCases, id: \.self) { Text($0.label).tag($0) }
-                    }
-                    Picker("Right stick tap", selection: Binding(get: { mode.rightTap }, set: { value in changeMode { $0.rightTap = value.rawValue }; release() })) {
-                        ForEach(StickTapAction.allCases, id: \.self) { Text($0.label).tag($0) }
-                    }
-                    Text("Tap actions use your Mac mappings.").font(.callout)
-                }.disabled(layout.isPreset)
-                DisclosureGroup("Motion") {
-                    Picker("Motion behavior", selection: Binding(get: { layout.document.motion?.mode ?? "off" }, set: { value in
-                        layouts.change { doc in
-                            if doc.motion == nil { doc.motion = DocumentMotionSettings() }
-                            doc.motion?.mode = value
-                            if value != "off" { try doc.revealMotionActivation(modeID: modeID) }
-                        }; release()
-                    })) {
-                        Text("Off").tag("off"); Text("Gyro aim").tag("aim")
-                        if layout.effectiveInputType == .gamepad { Text("Analog steering").tag("steering") }
-                    }
-                    Picker("Activation button", selection: Binding(get: { layout.document.motionActivationControl?.id ?? "" }, set: { value in
-                        layouts.change { doc in
-                            if doc.motion == nil { doc.motion = DocumentMotionSettings() }
-                            doc.motion?.activationControl = value
-                            try doc.revealMotionActivation(modeID: modeID)
-                        }; release()
-                    })) {
-                        ForEach(layout.document.motionActivationControls, id: \.id) { control in
-                            Text(layout.displayLabels(modeID: modeID)[control.runtimeID] ?? control.id).tag(control.id)
-                        }
-                    }
-                    Slider(value: Binding(get: { layout.document.motion?.sensitivity ?? 1 }, set: { value in layouts.change { if $0.motion == nil { $0.motion = DocumentMotionSettings() }; $0.motion?.sensitivity = value } }), in: 0.1...4) { Text("Sensitivity") }
-                    Slider(value: Binding(get: { layout.document.motion?.deadZone ?? 0.03 }, set: { value in layouts.change { if $0.motion == nil { $0.motion = DocumentMotionSettings() }; $0.motion?.deadZone = value } }), in: 0...0.3) { Text("Dead zone") }
-                    Text("Hold the selected button to calibrate your current angle. Release to stop, then hold again to recalibrate. The button keeps its mapping. Aim controls right axes; steering controls left X.").font(.callout)
-                }.disabled(layout.isPreset)
-                DisclosureGroup("Hold gestures") {
-                    Toggle("RT hold-to-aim", isOn: optionBinding(\.holdAimEnabled, default: true))
-                    Picker("Aim hold delay", selection: optionBinding(\.holdAimDelay, default: 0.3)) {
-                        ForEach([0.2, 0.3, 0.5, 0.8], id: \.self) { Text("\($0, specifier: "%.1f") seconds").tag($0) }
-                    }
-                    Picker("Trackpad right-click hold", selection: optionBinding(\.trackpadHoldDelay, default: 0.5)) {
-                        ForEach([0.3, 0.5, 0.7], id: \.self) { Text("\($0, specifier: "%.1f") seconds").tag($0) }
-                    }
-                }.disabled(layout.isPreset)
+                }
                 DisclosureGroup("Settings button") {
                     Slider(value: $settingsButtonSize, in: 44...80, step: 2) { Text("Size") }
                     Text("Size: \(Int(settingsButtonSize)) points")
@@ -502,8 +525,11 @@ struct PhoneGamepadApp: App {
                     Slider(value: $settingsInactiveOpacity, in: 0.15...1) { Text("Inactive opacity") }
                     Text("Inactive opacity: \(Int(settingsInactiveOpacity * 100))%")
                 }
+                Section("Help") {
+                    Button("Show setup again") { settings = false; tour = true; release() }
+                }
                 DisclosureGroup("About Gamepad Air") {
-                    Button("Replay getting started") { settings = false; tour = true; release() }
+
                     Link("Get the Mac app", destination: AppInformation.macDownloadURL)
                     Link("Support", destination: AppInformation.supportURL)
                     NavigationLink("Privacy policy") {
@@ -511,9 +537,9 @@ struct PhoneGamepadApp: App {
                             .navigationTitle("Privacy")
                     }
                 }
-                Section("Profiles & backups") {
-                    Button("Export this profile") { exportProfile() }
-                    Button("Import layout") { importing = true }
+                DisclosureGroup("Layout backups") {
+                    Button("Export layout…") { exportProfile() }
+                    Button("Import layout…") { importing = true }
                     Text("Layout files include controls, mappings and settings. Import creates a new local copy.").font(.callout).foregroundStyle(.secondary)
                 }
                 Section("Local data") {
