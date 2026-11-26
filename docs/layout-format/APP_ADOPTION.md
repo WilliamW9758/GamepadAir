@@ -172,3 +172,9 @@ Both editors show numeric point sizes and use 1-point adjustments. Moving a cont
 preserves its diameter; linked modes share the explicit point size. Rectangular
 controls continue using width/height. Canvas fitting and the four-way D-pad's
 minimum touch extent still apply.
+
+A signed-in Marketplace round-trip on 2026-11-25 submitted “Button size round-trip
+test” with A at 70 pt, LT at 138 pt, and View at 58 pt. Download a copy returned an
+exactly equal canonical document, including all three explicit diameters. The
+pending test submission was removed through the app without public publication;
+the two local test copies remain for inspection.

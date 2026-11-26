@@ -787,7 +787,7 @@ struct HostView: View {
             if controlsPage == -1 {
                 heading("How would you like to get started?", "Find a layout for your game, or make it your own.")
                 setupChoice("AI assist", detail: "Describe your game and how you want to play.", icon: "sparkles", preview: true) { finishSetup(in: .layouts); duplicateSource = nil; newLayoutName = ""; startNewLayoutWithAI = true; newLayoutPrompt = true }
-                setupChoice("Marketplace", detail: "Explore example layouts. Game search and downloads are coming later.", icon: "square.grid.2x2", preview: true) { finishSetup(in: .marketplace) }
+                setupChoice("Marketplace", detail: "Find and download community layouts for your games.", icon: "square.grid.2x2", preview: false) { finishSetup(in: .marketplace) }
                 setupChoice("Build manually", detail: "Choose your input type and customize your controls.", icon: "slider.horizontal.3", preview: false) { controlsPage = 0 }
             } else if controlsPage == 0 {
                 heading("Choose your controls.", "How should your game receive input?")
