@@ -156,9 +156,13 @@ struct LayoutEditor: View {
             }
             if layout.document.modes.count > 1 { Picker("Mode", selection: $modeID) { ForEach(layout.document.modes, id: \.id) { Text($0.name).tag($0.id) } }.frame(width: 280) }
             if layout.effectiveInputType == .gamepad {
-                Picker("Emulate controller", selection: Binding(get: { layout.document.controllerStyle ?? "xbox" }, set: { value in change { $0.controllerStyle = value } })) {
+                HStack {
+                    Text("Emulate controller")
+                    Picker("Emulate controller", selection: Binding(get: { layout.document.controllerStyle ?? "xbox" }, set: { value in change { $0.controllerStyle = value } })) {
                     Text("Xbox").tag("xbox"); Text("PlayStation").tag("playstation")
-                }.frame(width: 320)
+                    }.labelsHidden().frame(width: 180)
+                    Spacer()
+                }
             }
         }
     }

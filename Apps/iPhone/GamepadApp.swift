@@ -140,7 +140,6 @@ struct PhoneGamepadApp: App {
                     onRename: { id, label in selectedID = id; selectedLabel = label; nameDraft = label; nameAction = "control"; naming = true },
                     onSelect: { id, label, p in
                         layouts.beginEdit(); selectedID = id; selectedLabel = label
-                        place(p, runtimeID: id)
                     }, onPlacement: { id, p in place(p, runtimeID: id) })
                     .id(resetID).ignoresSafeArea()
                 if !editing {

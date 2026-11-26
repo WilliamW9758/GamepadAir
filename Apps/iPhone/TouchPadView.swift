@@ -32,7 +32,7 @@ final class TouchPadView: UIView {
     var onReference: ((ControlPlacement?) -> Void)?
     var onCanvasSize: ((CGSize) -> Void)?
     var document: LayoutDocument? {
-        didSet { if document != oldValue { resetMotion() } }
+        didSet { if document != oldValue { geometryCache.removeAll(); dragPlacement = nil; resetMotion() } }
     }
     var inputEnabled = true { didSet { if inputEnabled != oldValue { touches.removeAll(); cancelSticks(); cancelAim(); cancelTrackpad(); resetMotion(); refresh() } } }
     private let motionManager = CMMotionManager()
@@ -63,9 +63,21 @@ final class TouchPadView: UIView {
     }
     var activeModeID = "play"
     var referenceModeID = "play"
+    private var geometryCache: [String: [ResolvedLayoutControl]] = [:]
+    private var geometrySize = CGSize.zero
+    private var dragPlacement: (id: String, placement: ControlPlacement)?
     private func resolved(_ modeID: String) -> [ResolvedLayoutControl] {
         guard let document else { return [] }
-        return LayoutGeometry.resolve(document, modeID: modeID, width: bounds.width, height: bounds.height)
+        if geometrySize != bounds.size { geometryCache.removeAll(); geometrySize = bounds.size }
+        if geometryCache[modeID] == nil {
+            geometryCache[modeID] = LayoutGeometry.resolve(document, modeID: modeID, width: bounds.width, height: bounds.height)
+        }
+        let values = geometryCache[modeID] ?? []
+        guard modeID == activeModeID, let dragPlacement else { return values }
+        return values.map { value in
+            guard value.runtimeID == dragPlacement.id else { return value }
+            var preview = value; preview.placement = dragPlacement.placement; return preview
+        }
     }
     private func control(_ runtimeID: String) -> Control? {
         if runtimeID.hasPrefix("custom-"), let slot = Int(runtimeID.dropFirst(7)) { return .custom(slot) }
@@ -139,7 +151,7 @@ final class TouchPadView: UIView {
     var onPlacement: ((String, ControlPlacement) -> Void)?
     var onEditEnded: (() -> Void)?
     var editing = false {
-        didSet { if editing != oldValue { touches.removeAll(); cancelSticks(); cancelAim(); cancelTrackpad(); editTouch = nil; refresh() } }
+        didSet { if editing != oldValue { touches.removeAll(); cancelSticks(); cancelAim(); cancelTrackpad(); editTouch = nil; dragPlacement = nil; refresh() } }
     }
     private var editTouch: ObjectIdentifier?
     private var editControl: Control?
@@ -181,7 +193,7 @@ final class TouchPadView: UIView {
         super.layoutSubviews()
         if previousSize != bounds.size {
             previousSize = bounds.size
-            touches.removeAll(); cancelSticks(); cancelAim(); cancelTrackpad(); editTouch = nil; refresh()
+            touches.removeAll(); cancelSticks(); cancelAim(); cancelTrackpad(); editTouch = nil; dragPlacement = nil; refresh()
             let size = bounds.size
             if size.width > 0 && size.height > 0 {
                 DispatchQueue.main.async { [weak self] in
@@ -283,7 +295,8 @@ final class TouchPadView: UIView {
                 p = LayoutGeometry.snapped(p, others: resolved(activeModeID).filter { $0.runtimeID != control.id }.map(\.placement))
             }
             p = LayoutGeometry.fitted(p, canvasWidth: bounds.width, canvasHeight: bounds.height, controlWidth: base.rect.width, controlHeight: base.rect.height)
-            placements[control.id] = p; onPlacement?(control.id, p); setNeedsDisplay()
+            // No document edits, persistence, SwiftUI updates or sync on the touch path.
+            dragPlacement = (control.id, p); setNeedsDisplay()
             return
         }
         for touch in touches {
@@ -323,7 +336,10 @@ final class TouchPadView: UIView {
     private func remove(_ touches: Set<UITouch>, cancelled: Bool = false) {
         if editing {
             if touches.contains(where: { ObjectIdentifier($0) == editTouch }) {
-                editTouch = nil; editControl = nil; onEditEnded?()
+                let final = dragPlacement
+                editTouch = nil; editControl = nil; dragPlacement = nil
+                if !cancelled, let final { onPlacement?(final.id, final.placement) }
+                onEditEnded?(); setNeedsDisplay()
             }
             return
         }
@@ -468,8 +484,10 @@ final class TouchPadView: UIView {
             text(document?.motion?.mode == "steering" ? "MOTION STEERING" : "GYRO AIM", at: CGPoint(x: bounds.midX, y: 18), color: .systemBlue, size: 10)
         }
         if editing {
-            let overlaps = LayoutGeometry.overlappingIDs(resolved(activeModeID), width: bounds.width, height: bounds.height)
-            for item in items where resolved(activeModeID).contains(where: { $0.runtimeID == item.control.id && overlaps.contains($0.id) }) {
+            let geometry = resolved(activeModeID)
+            let overlaps = LayoutGeometry.overlappingIDs(geometry, width: bounds.width, height: bounds.height)
+            let overlappingRuntimeIDs = Set(geometry.filter { overlaps.contains($0.id) }.map(\.runtimeID))
+            for item in items where overlappingRuntimeIDs.contains(item.control.id) {
                 let outline = UIBezierPath(rect: item.rect.insetBy(dx: -2, dy: -2)); UIColor.systemOrange.setStroke(); outline.lineWidth = 2; outline.stroke()
             }
             if UserDefaults.standard.bool(forKey: "layout-snap"), let item = items.first(where: { $0.control.id == selectedID }) {

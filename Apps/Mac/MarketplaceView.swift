@@ -9,6 +9,7 @@ struct MarketplaceView: View {
     @State private var listings: [PublicListing] = []
     @State private var previews: [String: LocalLayout] = [:]
     @State private var loading = false
+    @State private var hasLoaded = false
     @State private var notice: String?
     @State private var selectedExample: Example?
     @State private var selectedListing: PublicListing?
@@ -75,19 +76,22 @@ struct MarketplaceView: View {
                     }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 18))
                     if let notice { Text(notice).foregroundStyle(.secondary) }
-                    if loading { ProgressView().controlSize(.small) }
                     Text(query.isEmpty ? "Explore layouts" : "Search results").font(.title2.bold())
                     if !listings.isEmpty && results.isEmpty && !loading { ContentUnavailableView.search(text: query) }
-                    if listings.isEmpty && !loading {
+                    if listings.isEmpty && !loading && hasLoaded {
                         Text("Community layouts are on their way. These examples show what you can create; they aren’t downloads.").foregroundStyle(.secondary)
                     }
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 20)], spacing: 20) {
+                        if listings.isEmpty && (loading || !hasLoaded) {
+                            ForEach(0..<4, id: \.self) { _ in MarketplaceSkeletonCard() }
+                        }
                         ForEach(results) { item in
                             VStack(alignment: .leading, spacing: 14) {
                                 Button { selectedListing = item } label: { VStack(alignment: .leading, spacing: 14) {
                                 Group {
                                     if let preview = previews[previewKey(item)] { MarketplaceLayoutThumbnail(document: preview.document) }
-                                    else { RoundedRectangle(cornerRadius: 14).fill(Color.accentColor.opacity(0.08)).overlay { Text(loading ? "Loading preview…" : "Preview unavailable").font(.callout).foregroundStyle(.secondary) } }
+                                    else if loading { MarketplaceSkeletonBlock().accessibilityLabel("Loading layout preview") }
+                                    else { RoundedRectangle(cornerRadius: 14).fill(Color.accentColor.opacity(0.08)).overlay { Text("Preview unavailable").font(.callout).foregroundStyle(.secondary) } }
                                 }.frame(height: 140)
                                 Text(item.title).font(.headline)
                                 Text(item.description).foregroundStyle(.secondary)
@@ -101,7 +105,7 @@ struct MarketplaceView: View {
                                 }
                             }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 18))
                         }
-                        if listings.isEmpty && !loading {
+                        if listings.isEmpty && !loading && hasLoaded {
                             ForEach(examples.filter { matches($0.id, $0.subtitle, $0.category) }) { item in
                                 Button { selectedExample = item } label: {
                                     VStack(alignment: .leading, spacing: 14) {
@@ -150,7 +154,7 @@ struct MarketplaceView: View {
     }
     private func browse() async {
         guard !loading else { return }; loading = true
-        defer { loading = false }
+        defer { loading = false; hasLoaded = true }
         do {
             let client = try account.api
             listings = try await client.browse(); notice = nil
@@ -201,5 +205,35 @@ private struct MarketplaceLayoutThumbnail: View {
                 }.frame(width: width * scale, height: height * scale)
             }
         }.accessibilityElement(children: .ignore).accessibilityLabel("Layout preview: \(document.name)")
+    }
+}
+
+private struct MarketplaceSkeletonBlock: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulse = false
+    var body: some View {
+        RoundedRectangle(cornerRadius: 10)
+            .fill(Color.primary.opacity(pulse ? 0.10 : 0.05))
+            .onAppear { if !reduceMotion { pulse = true } }
+            .animation(reduceMotion ? nil : .easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: pulse)
+    }
+}
+
+private struct MarketplaceSkeletonCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            MarketplaceSkeletonBlock().frame(height: 140)
+            MarketplaceSkeletonBlock().frame(width: 160, height: 20)
+            MarketplaceSkeletonBlock().frame(height: 16)
+            MarketplaceSkeletonBlock().frame(height: 16).padding(.trailing, 40)
+            HStack {
+                MarketplaceSkeletonBlock().frame(width: 90, height: 16)
+                Spacer()
+                MarketplaceSkeletonBlock().frame(width: 110, height: 40)
+            }
+        }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 18))
+            .accessibilityElement(children: .ignore).accessibilityLabel("Loading layout")
+            .allowsHitTesting(false)
     }
 }
