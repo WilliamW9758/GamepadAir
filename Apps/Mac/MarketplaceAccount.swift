@@ -241,11 +241,6 @@ struct MarketplaceAccountView: View {
                     }
                 }
             }
-            if account.identity != nil {
-                HStack {
-                    Button("Delete account…", role: .destructive) { deleting = true }
-                }
-            }
             if account.accountID != nil {
                 Button("Submit layout…") {
                     selectedLayoutID = ""; submissionLayout = nil; revising = nil
@@ -270,6 +265,10 @@ struct MarketplaceAccountView: View {
             DisclosureGroup("Server connection") {
                 HStack { TextField("API base URL", text: $account.endpoint); Button("Apply") { account.setEndpoint() } }
                 Text("Use the local development server until the public service is available.").font(.callout).foregroundStyle(.secondary)
+            }
+            if account.identity != nil {
+                Divider()
+                Button("Delete account…", role: .destructive) { deleting = true }
             }
         }.disabled(account.busy)
         .onAppear { updateSelection() }

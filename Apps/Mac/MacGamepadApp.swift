@@ -485,6 +485,34 @@ struct HostView: View {
     private func openSettings(_ destination: WorkspaceSection) {
         section = destination; showingSettings = true
     }
+    private var mainScreenLayouts: [LocalLayout] {
+        var layouts = model.localLayouts.filter { !model.generatingLayouts.contains($0.id) }
+        if model.update.connected, let current = model.update.layout?.layout,
+           !layouts.contains(where: { $0.id == current.id }) { layouts.insert(current, at: 0) }
+        return layouts
+    }
+    private var mainLayoutPicker: some View {
+        HStack {
+            Picker("Layout", selection: Binding(get: {
+                model.update.connected ? (model.update.layout?.layout.id ?? model.portable?.id ?? "") : (model.portable?.id ?? "")
+            }, set: { id in
+                model.selectLibrary(id)
+                if model.update.connected, model.portable?.id == id { model.syncLibrarySelection() }
+            })) {
+                ForEach(mainScreenLayouts) { layout in
+                    Text(layout.name + (mainScreenLayouts.filter { $0.name == layout.name }.count > 1 ? " · " + String(layout.id.prefix(6)) : ""))
+                        .tag(layout.id)
+                        .disabled(model.layoutConflicts.contains { $0.mac.id == layout.id || $0.phone.id == layout.id })
+                }
+            }.pickerStyle(.menu).frame(maxWidth: 360)
+                .disabled(mainScreenLayouts.isEmpty || (model.update.connected && model.layoutCommandID != nil))
+                .help("Choose a layout; when connected, it also switches your iPhone.")
+            Spacer()
+            if model.update.connected, let snapshot = model.update.layout, snapshot.layout.hasCursorSwitching {
+                Text(snapshot.layout.resolvedMode(snapshot.activeModeID).name).foregroundStyle(.secondary)
+            }
+        }.padding(.horizontal, 24).padding(.top, 20)
+    }
     private var liveControllerView: some View {
         VStack(spacing: 0) {
             HStack {
@@ -496,14 +524,8 @@ struct HostView: View {
                     .buttonStyle(.plain).help("Settings").accessibilityLabel("Settings")
             }.padding(24)
             Divider()
+            mainLayoutPicker
             if let snapshot = model.update.layout, model.update.connected {
-                HStack {
-                    Text(snapshot.layout.name).font(.headline)
-                    if snapshot.layout.hasCursorSwitching {
-                        Text(snapshot.layout.resolvedMode(snapshot.activeModeID).name).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                }.padding(.horizontal, 24).padding(.top, 20)
                 LayoutEditor(layout: snapshot.layout, embedded: true, liveState: model.update.state,
                              modeID: snapshot.activeModeID, screen: snapshot.screen) { _, _ in }
             } else {

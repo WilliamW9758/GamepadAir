@@ -632,7 +632,7 @@ final class TouchPadView: UIView {
                 text(slot < 0 ? "—" : (labels["custom-\(slot)"] ?? (slot < 8 ? "\(slot + 1)" : "C\(slot + 1)")), at: point, color: radialChoice == i ? contrastingText(on: accent) : .label, size: 12, maxWidth: 34)
             }
         }
-        text(editing ? "Editing · input paused" : "Gamepad Air", at: CGPoint(x: bounds.midX, y: bounds.height - 12), color: muted, size: 9)
+        text(editing ? "Editing · input paused" : (document?.name ?? "Layout"), at: CGPoint(x: bounds.midX, y: bounds.height - 12), color: muted, size: 11, maxWidth: max(44, bounds.width - 80))
     }
     private func text(_ value: String, at center: CGPoint, color: UIColor, size: CGFloat, maxWidth: CGFloat = .greatestFiniteMagnitude) {
         let natural = (value as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: size, weight: .medium)]).width
